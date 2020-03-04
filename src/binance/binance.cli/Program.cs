@@ -32,20 +32,15 @@ namespace binance.cli
             // Test the Client
             //var response = await client.TestConnectivity();
             
-            //var exchangeInfo = await client.GetExchangeInfo();
+            var exchangeInfo = await client.GetExchangeInfo();
 
             //var systemStatus = await client.GetSystemStatus();
 
-            //var symbolsPriceTicker = await client.GetSymbolsPriceTicker();
+            var symbolsPriceTicker = await client.GetSymbolsPriceTicker();
 
             var btcPrice = await client.GetPrice("BTCUSDT");
-            var candleStick = await client.GetKlinesCandlesticks(new BinanceExchange.API.Models.Request.GetKlinesCandlesticksRequest()
-            {
-                StartTime = DateTime.UtcNow.AddDays(-1),
-                Interval = BinanceExchange.API.Enums.KlineInterval.OneMinute,
-                Symbol = "BTCUSDT",
-                EndTime = DateTime.UtcNow
-            });
+            
+
 
             Console.WriteLine("Hello World!");
         }
