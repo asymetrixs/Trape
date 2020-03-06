@@ -1,12 +1,9 @@
-﻿using binance.cli.DataLayer;
-using binance.cli.Jobs;
-using BinanceExchange.API.Client;
+﻿using binance.cli.Jobs;
 using log4net;
+using log4net.Core;
 using Microsoft.Extensions.Configuration;
 using System;
-using System.Threading;
-using System.Threading.Tasks;
-
+[assembly: log4net.Config.XmlConfigurator(ConfigFile = "log4net.config", Watch = true)]
 namespace binance.cli
 {
     class Program
@@ -21,17 +18,20 @@ namespace binance.cli
 
             Configuration = builder.Build();
 
-            var exampleProgramLogger = LogManager.GetLogger(typeof(Program));
-
-            exampleProgramLogger.Debug("Logging Test");
+            var logger = LogManager.GetLogger(typeof(Program));
+            
+            logger.Debug("Logging Test");
+            logger.Error("Logging Test");
+            logger.Warn("Logging Test");
+            logger.Info("Logging Test");
 
             //Initialise the general client client with config
-            var client = new BinanceClient(new ClientConfiguration()
-            {
-                ApiKey = Configuration.GetSection("binance:apikey").Value,
-                SecretKey = Configuration.GetSection("binance:secretkey").Value,
-                Logger = exampleProgramLogger
-            });
+            //var client = new BinanceClient(new ClientConfiguration()
+            //{
+            //    ApiKey = Configuration.GetSection("binance:apikey").Value,
+            //    SecretKey = Configuration.GetSection("binance:secretkey").Value,
+            //    Logger = exampleProgramLogger
+            //});
 
             // Test the Client
             //var response = await client.TestConnectivity();
@@ -45,7 +45,7 @@ namespace binance.cli
             //var btcPrice = await client.GetPrice("BTCUSDT").ConfigureAwait(false);
 
             Console.WriteLine("JobManager started");
-            JobManager.Start();
+            //JobManager.Start();
 
             
             Console.ReadLine();
@@ -54,6 +54,11 @@ namespace binance.cli
             Console.WriteLine("JobManager stopped");
             JobManager.Terminate();
             Console.WriteLine("JobManager terminated");
+        }
+
+        private static void Configure()
+        {
+            
         }
     }
 }
