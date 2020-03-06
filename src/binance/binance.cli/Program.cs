@@ -1,7 +1,10 @@
-﻿using BinanceExchange.API.Client;
+﻿using binance.cli.DataLayer;
+using binance.cli.Jobs;
+using BinanceExchange.API.Client;
 using log4net;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace binance.cli
@@ -9,8 +12,8 @@ namespace binance.cli
     class Program
     {
         public static IConfigurationRoot Configuration;
-
-        async static Task Main(string[] args)
+                
+        static void Main(string[] args)
         {
             var builder = new ConfigurationBuilder()
                 .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
@@ -19,6 +22,7 @@ namespace binance.cli
             Configuration = builder.Build();
 
             var exampleProgramLogger = LogManager.GetLogger(typeof(Program));
+
             exampleProgramLogger.Debug("Logging Test");
 
             //Initialise the general client client with config
@@ -31,18 +35,25 @@ namespace binance.cli
 
             // Test the Client
             //var response = await client.TestConnectivity();
-            
-            var exchangeInfo = await client.GetExchangeInfo();
+
+            //var exchangeInfo = await client.GetExchangeInfo().ConfigureAwait(false);
 
             //var systemStatus = await client.GetSystemStatus();
 
-            var symbolsPriceTicker = await client.GetSymbolsPriceTicker();
+            //var symbolsPriceTicker = await client.GetSymbolsPriceTicker().ConfigureAwait(false);
 
-            var btcPrice = await client.GetPrice("BTCUSDT");
+            //var btcPrice = await client.GetPrice("BTCUSDT").ConfigureAwait(false);
+
+            Console.WriteLine("JobManager started");
+            JobManager.Start();
+
             
+            Console.ReadLine();
 
-
-            Console.WriteLine("Hello World!");
+            JobManager.Stop();
+            Console.WriteLine("JobManager stopped");
+            JobManager.Terminate();
+            Console.WriteLine("JobManager terminated");
         }
     }
 }

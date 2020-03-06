@@ -2,7 +2,8 @@
 
 namespace binance.cli.Jobs
 {
-    class JobAttribute : Attribute
+    [AttributeUsage(AttributeTargets.Class)]
+    public sealed class JobAttribute : Attribute
     {
         public TimeSpan Interval { get; private set; }
 

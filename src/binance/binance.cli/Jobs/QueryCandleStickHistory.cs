@@ -8,15 +8,19 @@ using System.Threading.Tasks;
 
 namespace binance.cli.Jobs
 {
-    [Job(0, 5, 0)]
-    public class QueryCandleSticks : AbstractJob
+    //[Job(0, 10, 0)]
+    public class QueryCandleStickHistory : AbstractJob
     {
         internal string Symbol { get; }
 
+        internal DateTimeOffset Start { get; private set; }
 
-        public QueryCandleSticks(string symbol)
+        private int _chunksInMinutes = 300;
+
+        internal QueryCandleStickHistory(string symbol, DateTimeOffset start)
         {
             this.Symbol = symbol;
+            this.Start = start;
         }
 
         public async override Task Execute(CancellationToken cancellationToken)
@@ -33,15 +37,17 @@ namespace binance.cli.Jobs
 
             var request = new BinanceExchange.API.Models.Request.GetKlinesCandlesticksRequest()
             {
-                StartTime = DateTime.UtcNow.AddMinutes(-6),
+                StartTime = this.Start.UtcDateTime.AddMinutes(-this._chunksInMinutes),
                 Interval = BinanceExchange.API.Enums.KlineInterval.OneMinute,
                 Symbol = Symbol,
-                EndTime = DateTime.UtcNow
+                EndTime = this.Start.UtcDateTime
             };
+
+            this.Start = request.StartTime.Value.AddMinutes(-this._chunksInMinutes);
 
             var candleSticks = await client.GetKlinesCandlesticks(request).ConfigureAwait(false);
 
-            Console.WriteLine($"{DateTime.Now.ToString("HH:mm:ss")} - {this.GetType().Name}: Received {candleSticks.Count} values between {DateTime.UtcNow.AddMinutes(-5).ToString("HH:mm:ss")} and {DateTime.UtcNow.ToString("HH:mm:ss")}");
+            Console.WriteLine($"{DateTime.Now.ToString("HH:mm:ss")} - {this.GetType().Name}: Received {candleSticks.Count} values between {this.Start.AddMinutes(-this._chunksInMinutes).ToString("HH:mm:ss")} and {this.Start.ToString("HH:mm:ss")}");
 
             using (var dbContext = new CoinTradeContext(Program.Configuration.GetConnectionString("CoinTradeDB")))
             {
