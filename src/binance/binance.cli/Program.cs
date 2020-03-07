@@ -1,64 +1,44 @@
-﻿using binance.cli.Jobs;
-using log4net;
-using log4net.Core;
-using Microsoft.Extensions.Configuration;
+﻿using binance.cli.DataCollection;
+using binance.cli.Jobs;
+using Binance.Net.Objects;
+using Serilog;
 using System;
-[assembly: log4net.Config.XmlConfigurator(ConfigFile = "log4net.config", Watch = true)]
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace binance.cli
 {
     class Program
     {
-        public static IConfigurationRoot Configuration;
-                
-        static void Main(string[] args)
+        private static CancellationTokenSource cancellationToken;
+
+        static async Task Main(string[] args)
         {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-                .AddJsonFile("settings.json", optional: false, reloadOnChange: true);
+            cancellationToken = new CancellationTokenSource();
 
-            Configuration = builder.Build();
+            Configuration.SetUp();
+            Service.SetUp(cancellationToken.Token);
 
-            var logger = LogManager.GetLogger(typeof(Program));
-            
-            logger.Debug("Logging Test");
-            logger.Error("Logging Test");
-            logger.Warn("Logging Test");
-            logger.Info("Logging Test");
+            var logger = Service.Get<ILogger>();
+            logger.Information("Initialization complete");
 
-            //Initialise the general client client with config
-            //var client = new BinanceClient(new ClientConfiguration()
-            //{
-            //    ApiKey = Configuration.GetSection("binance:apikey").Value,
-            //    SecretKey = Configuration.GetSection("binance:secretkey").Value,
-            //    Logger = exampleProgramLogger
-            //});
-
-            // Test the Client
-            //var response = await client.TestConnectivity();
-
-            //var exchangeInfo = await client.GetExchangeInfo().ConfigureAwait(false);
-
-            //var systemStatus = await client.GetSystemStatus();
-
-            //var symbolsPriceTicker = await client.GetSymbolsPriceTicker().ConfigureAwait(false);
-
-            //var btcPrice = await client.GetPrice("BTCUSDT").ConfigureAwait(false);
-
-            Console.WriteLine("JobManager started");
-            //JobManager.Start();
-
-            
+            // Start trade info collection
+            Service.Get<CollectionManager>().Run();
+                        
+            for (int i = 0; i < 10; i++)
+            {
+                Console.WriteLine("Client an");
+                await Task.Delay(1000).ConfigureAwait(false);
+            }
+                        
             Console.ReadLine();
 
-            JobManager.Stop();
-            Console.WriteLine("JobManager stopped");
-            JobManager.Terminate();
-            Console.WriteLine("JobManager terminated");
-        }
+            Service.Get<CollectionManager>().Terminate();
 
-        private static void Configure()
-        {
-            
+            //JobManager.Stop();
+            Console.WriteLine("JobManager stopped");
+            //JobManager.Terminate();
+            Console.WriteLine("JobManager terminated");
         }
     }
 }

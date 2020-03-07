@@ -14,7 +14,7 @@ namespace binance.cli.Jobs
         {
             _schedulers = new List<JobScheduler>();
 
-            var symbols = Program.Configuration.GetSection("binance:symbols").Value.Split(';');
+            var symbols = Configuration.GetValue("binance:symbols");
             
             // Get all types in assembly
             foreach (var type in typeof(JobManager).Assembly.GetTypes())
