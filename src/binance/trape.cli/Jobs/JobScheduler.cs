@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 
 
-namespace binance.cli.Jobs
+namespace trape.cli.collector.Jobs
 {
     class JobScheduler : IDisposable
     {

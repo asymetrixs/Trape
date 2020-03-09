@@ -1,10 +1,8 @@
-﻿using binance.cli.DataLayer;
-using Microsoft.Extensions.Configuration;
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace binance.cli.Jobs
+namespace trape.cli.collector.Jobs
 {
     //[Job(0, 10, 0)]
     public class QueryCandleStickHistory : AbstractJob

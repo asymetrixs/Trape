@@ -1,11 +1,11 @@
-﻿using binance.cli.DataLayer;
+﻿using trape.cli.collector.DataLayer;
 using Binance.Net.Objects;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace binance.cli.Jobs
+namespace trape.cli.collector.Jobs
 {
     [Job(0, 5, 0)]
     public class QueryCandleSticks : AbstractJob

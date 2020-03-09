@@ -1,10 +1,10 @@
-﻿using binance.cli.DataLayer;
+﻿using trape.cli.collector.DataLayer;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace binance.cli.Jobs
+namespace trape.cli.collector.Jobs
 {
     [Job(0, 0, 1)]
     public class QueryPrice : AbstractJob

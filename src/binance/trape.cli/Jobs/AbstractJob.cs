@@ -1,7 +1,7 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 
-namespace binance.cli.Jobs
+namespace trape.cli.collector.Jobs
 {
     public abstract class AbstractJob
     {

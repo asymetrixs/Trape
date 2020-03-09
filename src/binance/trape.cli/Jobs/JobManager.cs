@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 
-namespace binance.cli.Jobs
+namespace trape.cli.collector.Jobs
 {
     internal static class JobManager
     {

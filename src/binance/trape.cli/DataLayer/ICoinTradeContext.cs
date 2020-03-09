@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace binance.cli.DataLayer
+namespace trape.cli.collector.DataLayer
 {
     public interface ICoinTradeContext
     {

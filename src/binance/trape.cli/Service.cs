@@ -1,11 +1,11 @@
-﻿using binance.cli.DataCollection;
-using binance.cli.DataLayer;
+﻿using trape.cli.collector.DataCollection;
+using trape.cli.collector.DataLayer;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Exceptions;
 using System.Threading;
 
-namespace binance.cli
+namespace trape.cli.collector
 {
     public static class Service
     {

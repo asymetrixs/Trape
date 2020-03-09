@@ -1,12 +1,11 @@
-﻿using binance.cli.DataCollection;
-using binance.cli.Jobs;
-using Binance.Net.Objects;
+﻿using trape.cli.collector.DataCollection;
+using trape.cli.collector.Jobs;
 using Serilog;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace binance.cli
+namespace trape.cli.collector
 {
     class Program
     {
