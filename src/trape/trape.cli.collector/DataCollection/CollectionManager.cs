@@ -1,6 +1,8 @@
 ﻿using Binance.Net;
 using Binance.Net.Objects;
 using CryptoExchange.Net.Authentication;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -12,7 +14,7 @@ using trape.jobs;
 
 namespace trape.cli.collector.DataCollection
 {
-    public class CollectionManager : IDisposable, ICollectionManager
+    public class CollectionManager : BackgroundService
     {
         private ILogger _logger;
 
@@ -24,49 +26,44 @@ namespace trape.cli.collector.DataCollection
 
         private ActionBlock<BinanceBookTick> _binanceBookTickBuffer;
 
-        private IKillSwitch _killSwitch;
-
-        private SemaphoreSlim _running;
+        private bool _disposed;
 
         private CancellationTokenSource _cancellationTokenSource;
 
-        private bool _disposed;
-
-        public CollectionManager(ILogger logger, IKillSwitch killSwitch)
+        public CollectionManager(ILogger logger)
         {
-            if (null == logger || null == killSwitch)
+            if (null == logger)
             {
                 throw new ArgumentNullException("Paramter cannot be null");
             }
 
             this._logger = logger;
             this._binanceSocketClients = new Dictionary<string, BinanceSocketClient>();
-            this._killSwitch = killSwitch;
-            this._running = new SemaphoreSlim(0, 1);
             this._disposed = false;
+            this._cancellationTokenSource = new CancellationTokenSource();
 
-            this._binanceStreamTickBuffer = new ActionBlock<BinanceStreamTick>(async message => await Save(message).ConfigureAwait(true),
+            this._binanceStreamTickBuffer = new ActionBlock<BinanceStreamTick>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(true),
                 new ExecutionDataflowBlockOptions()
                 {
                     MaxDegreeOfParallelism = 2,
-                    CancellationToken = killSwitch.CancellationToken,
+                    CancellationToken = this._cancellationTokenSource.Token,
                     SingleProducerConstrained = false
                 }
             );
 
-            this._binanceStreamKlineDataBuffer = new ActionBlock<BinanceStreamKlineData>(async message => await Save(message).ConfigureAwait(false),
+            this._binanceStreamKlineDataBuffer = new ActionBlock<BinanceStreamKlineData>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(false),
                 new ExecutionDataflowBlockOptions()
                 {
                     MaxDegreeOfParallelism = 4,
-                    CancellationToken = killSwitch.CancellationToken,
+                    CancellationToken = this._cancellationTokenSource.Token,
                     SingleProducerConstrained = false
                 });
 
-            this._binanceBookTickBuffer = new ActionBlock<BinanceBookTick>(async message => await Save(message).ConfigureAwait(false),
+            this._binanceBookTickBuffer = new ActionBlock<BinanceBookTick>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(false),
                 new ExecutionDataflowBlockOptions()
                 {
                     MaxDegreeOfParallelism = 4,
-                    CancellationToken = killSwitch.CancellationToken,
+                    CancellationToken = this._cancellationTokenSource.Token,
                     SingleProducerConstrained = false
                 });
         }
@@ -74,7 +71,7 @@ namespace trape.cli.collector.DataCollection
         /// <summary>
         /// Public implementation of Dispose pattern callable by consumers.
         /// </summary>
-        public void Dispose()
+        public override sealed void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
@@ -93,20 +90,67 @@ namespace trape.cli.collector.DataCollection
 
             if (disposing)
             {
-                this._running.Dispose();
+                this._cancellationTokenSource.Dispose();
             }
 
             this._disposed = true;
         }
 
-        public async Task Run(CancellationTokenSource cancellationTokenSource)
+        public static async Task Save(BinanceStreamTick bst, CancellationToken cancellationToken)
         {
-            _cancellationTokenSource = cancellationTokenSource;
+            var database = Program.Services.GetService<ICoinTradeContext>();
+            await database.Insert(bst, cancellationToken).ConfigureAwait(false);
+        }
 
+        public static async Task Save(BinanceStreamKlineData bskd, CancellationToken cancellationToken)
+        {
+            var database = Program.Services.GetService<ICoinTradeContext>();
+            await database.Insert(bskd, cancellationToken).ConfigureAwait(false);
+        }
+
+        public static async Task Save(BinanceBookTick bbt, CancellationToken cancellationToken)
+        {
+            var database = Program.Services.GetService<ICoinTradeContext>();
+            await database.Insert(bbt, cancellationToken).ConfigureAwait(false);
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
             this._logger.Information("Setting up Collection Manager");
 
             var symbols = Configuration.GetValue("binance:symbols").Split(';', ',');
 
+            await this._setupClients(symbols).ConfigureAwait(false);
+
+            // Register cleanup job
+
+            Program.Services.GetService<IJobManager>().Start(new CleanUp());
+
+            this._logger.Information($"Collection Mangager is online with {this._binanceSocketClients.Count} clients.");
+        }
+
+        public override async Task StopAsync(CancellationToken cancellationToken)
+        {
+            var terminateClients = new List<Task>();
+
+            foreach (var binanceSocketClient in this._binanceSocketClients)
+            {
+                terminateClients.Add(binanceSocketClient.Value.UnsubscribeAll());
+            }
+
+            Task.WaitAll(terminateClients.ToArray());
+
+            this._binanceStreamTickBuffer.Complete();
+            this._binanceStreamKlineDataBuffer.Complete();
+            this._binanceBookTickBuffer.Complete();
+
+            Program.Services.GetRequiredService<IJobManager>().TerminateAll();
+
+            await base.StopAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        private async Task _setupClients(string[] symbols)
+        {
             foreach (var symbol in symbols)
             {
                 var socketClient = new BinanceSocketClient(new BinanceSocketClientOptions()
@@ -130,52 +174,66 @@ namespace trape.cli.collector.DataCollection
                     this._binanceStreamKlineDataBuffer.Post(bskd);
                 }).ConfigureAwait(false);
 
+                await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeMinutes, (BinanceStreamKlineData bskd) =>
+                {
+                    this._binanceStreamKlineDataBuffer.Post(bskd);
+                }).ConfigureAwait(false);
+
+                await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FiveMinutes, (BinanceStreamKlineData bskd) =>
+                {
+                    this._binanceStreamKlineDataBuffer.Post(bskd);
+                }).ConfigureAwait(false);
+
+                await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FifteenMinutes, (BinanceStreamKlineData bskd) =>
+                {
+                    this._binanceStreamKlineDataBuffer.Post(bskd);
+                }).ConfigureAwait(false);
+
+                await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThirtyMinutes, (BinanceStreamKlineData bskd) =>
+                {
+                    this._binanceStreamKlineDataBuffer.Post(bskd);
+                }).ConfigureAwait(false);
+
+                await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneHour, (BinanceStreamKlineData bskd) =>
+                {
+                    this._binanceStreamKlineDataBuffer.Post(bskd);
+                }).ConfigureAwait(false);
+
+                await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwoHour, (BinanceStreamKlineData bskd) =>
+                {
+                    this._binanceStreamKlineDataBuffer.Post(bskd);
+                }).ConfigureAwait(false);
+
+                await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.SixHour, (BinanceStreamKlineData bskd) =>
+                {
+                    this._binanceStreamKlineDataBuffer.Post(bskd);
+                }).ConfigureAwait(false);
+
+                await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.EightHour, (BinanceStreamKlineData bskd) =>
+                {
+                    this._binanceStreamKlineDataBuffer.Post(bskd);
+                }).ConfigureAwait(false);
+
+                await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwelveHour, (BinanceStreamKlineData bskd) =>
+                {
+                    this._binanceStreamKlineDataBuffer.Post(bskd);
+                }).ConfigureAwait(false);
+
+                await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneDay, (BinanceStreamKlineData bskd) =>
+                {
+                    this._binanceStreamKlineDataBuffer.Post(bskd);
+                }).ConfigureAwait(false);
+
+                await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeDay, (BinanceStreamKlineData bskd) =>
+                {
+                    this._binanceStreamKlineDataBuffer.Post(bskd);
+                }).ConfigureAwait(false);
+
                 socketClient.SubscribeToBookTickerUpdates(symbol, (BinanceBookTick bbt) =>
                 {
                     this._binanceBookTickBuffer.Post(bbt);
                 });
             }
-
-            // Register cleanup job
-            Service.Get<IJobManager>().Start(new CleanUp());
-
-            this._logger.Information($"Collection Mangager is online with {this._binanceSocketClients.Count} clients.");
-
-            await this._running.WaitAsync().ConfigureAwait(false);
-        }
-
-        public void Terminate()
-        {
-            var terminateClients = new List<Task>();
-
-            foreach (var binanceSocketClient in this._binanceSocketClients)
-            {
-                terminateClients.Add(binanceSocketClient.Value.UnsubscribeAll());
-            }
-
-            _cancellationTokenSource.Cancel();
-
-            Task.WaitAll(terminateClients.ToArray());
-
-            this._running.Release();
-        }
-
-        public async Task Save(BinanceStreamTick bst)
-        {
-            var database = Service.Get<ICoinTradeContext>();
-            await database.Insert(bst, this._killSwitch.CancellationToken).ConfigureAwait(false);
-        }
-
-        public async Task Save(BinanceStreamKlineData bskd)
-        {
-            var database = Service.Get<ICoinTradeContext>();
-            await database.Insert(bskd, this._killSwitch.CancellationToken).ConfigureAwait(false);
-        }
-
-        public async Task Save(BinanceBookTick bbt)
-        {
-            var database = Service.Get<ICoinTradeContext>();
-            await database.Insert(bbt, this._killSwitch.CancellationToken).ConfigureAwait(false);
         }
     }
 }

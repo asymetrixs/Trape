@@ -225,6 +225,8 @@ namespace trape.cli.collector.DataLayer
                         con.Close();
                     }
                 }
+
+                return -1;
             }
         }
     }

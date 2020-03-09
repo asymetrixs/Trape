@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.jobs;
@@ -14,11 +15,10 @@ namespace trape.cli.collector.DataLayer
     {
         public async Task Execute(CancellationToken cancellationToken)
         {
-            var database = Service.Get<ICoinTradeContext>();
-            var killSwitch = Service.Get<IKillSwitch>();
-            var logger = Service.Get<ILogger>();
+            var database = Program.Services.GetRequiredService<ICoinTradeContext>();
+            var logger = Program.Services.GetRequiredService<ILogger>();
 
-            var deletedRows = await database.CleanUpBookTicks(killSwitch.CancellationToken).ConfigureAwait(false);
+            var deletedRows = await database.CleanUpBookTicks(cancellationToken).ConfigureAwait(false);
 
             logger.Information($"Cleaned up {deletedRows} book tick records");
         }
