@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29728.190
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "trape.cli.collector", "trape.cli.collector\trape.cli.collector.csproj", "{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "trape.cli.collector", "trape.cli.collector\trape.cli.collector.csproj", "{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "trape.jobs", "trape.jobs\trape.jobs.csproj", "{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

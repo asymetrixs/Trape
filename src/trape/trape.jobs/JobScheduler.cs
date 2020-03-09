@@ -1,15 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Text;
 using System.Threading;
 
 
-namespace trape.cli.collector.Jobs
+namespace trape.jobs
 {
     class JobScheduler : IDisposable
     {
-        private AbstractJob _job;
+        private IJob _job;
 
         private System.Timers.Timer _timer;
 
@@ -19,7 +16,7 @@ namespace trape.cli.collector.Jobs
 
         private bool _disposed;
 
-        internal JobScheduler(AbstractJob job)
+        internal JobScheduler(IJob job)
         {
             if (null == job)
             {

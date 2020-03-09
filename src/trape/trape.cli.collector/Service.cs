@@ -4,6 +4,7 @@ using Serilog.Exceptions;
 using System.Threading;
 using trape.cli.collector.DataCollection;
 using trape.cli.collector.DataLayer;
+using trape.jobs;
 
 namespace trape.cli.collector
 {
@@ -58,12 +59,12 @@ namespace trape.cli.collector
 
             serviceCollection.AddLogging(configure => configure.AddSerilog());
             serviceCollection.AddSingleton<ILogger>(Log.Logger);
-            
+
             // Add cointrade application
             serviceCollection.AddTransient<ICollectionManager, CollectionManager>();
             serviceCollection.AddSingleton<IKillSwitch>(new KillSwitch(cancellationToken));
             serviceCollection.AddTransient<ICoinTradeContext, CoinTradeContext>();
-            
+            serviceCollection.AddSingleton<IJobManager, JobManager>();
 
             _services = serviceCollection.BuildServiceProvider();
 

@@ -22,7 +22,7 @@ namespace trape.cli.collector.DataLayer
         public CoinTradeContext(ILogger logger)
             : base()
         {
-            if(null == logger)
+            if (null == logger)
             {
                 throw new ArgumentNullException("Paramter cannot be NULL");
             }
@@ -46,7 +46,7 @@ namespace trape.cli.collector.DataLayer
                     try
                     {
                         com.CommandType = CommandType.StoredProcedure;
-                        
+
                         com.Parameters.Add("p_event", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamTick.Event;
                         com.Parameters.Add("p_event_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = binanceStreamTick.EventTime;
                         com.Parameters.Add("p_total_trades", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binanceStreamTick.TotalTrades;
@@ -70,7 +70,7 @@ namespace trape.cli.collector.DataLayer
                         com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamTick.Symbol;
                         com.Parameters.Add("p_statistics_open_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = binanceStreamTick.StatisticsOpenTime;
                         com.Parameters.Add("p_statistics_close_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = binanceStreamTick.StatisticsCloseTime;
-                        
+
                         await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -126,7 +126,7 @@ namespace trape.cli.collector.DataLayer
                         com.Parameters.Add("p_taker_buy_quote_asset_volume", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamKlineData.Data.TakerBuyQuoteAssetVolume;
                         com.Parameters.Add("p_trade_count", NpgsqlTypes.NpgsqlDbType.Integer).Value = binanceStreamKlineData.Data.TradeCount;
                         com.Parameters.Add("p_volume", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamKlineData.Data.Volume;
-                        
+
                         await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -170,7 +170,7 @@ namespace trape.cli.collector.DataLayer
                         com.Parameters.Add("p_best_bid_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceBookTick.BestBidPrice;
                         com.Parameters.Add("p_best_bid_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceBookTick.BestBidQuantity;
                         com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceBookTick.Symbol;
-                        com.Parameters.Add("p_update_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binanceBookTick.UpdateId;                        
+                        com.Parameters.Add("p_update_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binanceBookTick.UpdateId;
 
                         await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
@@ -193,6 +193,39 @@ namespace trape.cli.collector.DataLayer
                 }
             }
         }
-        
+
+        public async Task<int> CleanUpBookTicks(CancellationToken cancellationToken)
+        {
+            using (var con = new NpgsqlConnection(this._connectionString))
+            {
+                using (var com = new NpgsqlCommand("cleanup_book_ticks", con))
+                {
+                    try
+                    {
+                        com.CommandType = CommandType.StoredProcedure;
+
+                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+                        var obj = com.ExecuteScalar();
+
+                        return (int)obj;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!cancellationToken.IsCancellationRequested)
+                        {
+                            this._logger.Fatal(ex.Message, ex);
+                        }
+#if DEBUG
+                        throw;
+#endif
+                    }
+                    finally
+                    {
+                        con.Close();
+                    }
+                }
+            }
+        }
     }
 }

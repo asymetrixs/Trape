@@ -8,24 +8,20 @@ namespace trape.cli.collector
 {
     class Program
     {
-        private static CancellationTokenSource _cancellationToken;
-
         static async Task Main(string[] args)
         {
-            _cancellationToken = new CancellationTokenSource();
+            var cancellationTokenSource = new CancellationTokenSource();
 
             Configuration.SetUp();
-            Service.SetUp(_cancellationToken.Token);
+            Service.SetUp(cancellationTokenSource.Token);
 
             var logger = Service.Get<ILogger>();
             logger.Information("Initialization complete");
 
             // Start trade info collection
-            Service.Get<ICollectionManager>().Run().ConfigureAwait(false);
+            Service.Get<ICollectionManager>().Run(cancellationTokenSource).ConfigureAwait(false);
 
             Console.ReadLine();
-
-            _cancellationToken.Cancel();
 
             Service.Get<ICollectionManager>().Terminate();
 

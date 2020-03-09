@@ -277,3 +277,18 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql VOLATILE STRICT;
+
+
+CREATE OR REPLACE FUNCTION cleanup_book_ticks()
+RETURNS int4 AS
+$$
+	DECLARE i_deleted int4;
+BEGIN
+	WITH deleted AS (DELETE FROM binance_book_tick WHERE event_time < NOW() - INTERVAL '48 hours' RETURNING *)
+	SELECT COUNT(*) INTO i_deleted FROM deleted;
+	
+	RETURN i_deleted;
+	
+END;
+$$
+LANGUAGE plpgsql VOLATILE STRICT;

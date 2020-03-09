@@ -2,13 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace trape.cli.collector.DataCollection
 {
     public interface ICollectionManager
     {
-        Task Run();
+        Task Run(CancellationTokenSource cancellationTokenSource);
 
         void Terminate();
 

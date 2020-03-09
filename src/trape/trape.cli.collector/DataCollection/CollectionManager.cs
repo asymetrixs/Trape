@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using trape.cli.collector.DataLayer;
+using trape.jobs;
 
 namespace trape.cli.collector.DataCollection
 {
@@ -27,6 +28,8 @@ namespace trape.cli.collector.DataCollection
 
         private SemaphoreSlim _running;
 
+        private CancellationTokenSource _cancellationTokenSource;
+
         private bool _disposed;
 
         public CollectionManager(ILogger logger, IKillSwitch killSwitch)
@@ -39,7 +42,7 @@ namespace trape.cli.collector.DataCollection
             this._logger = logger;
             this._binanceSocketClients = new Dictionary<string, BinanceSocketClient>();
             this._killSwitch = killSwitch;
-            this._running = new SemaphoreSlim(1, 1);
+            this._running = new SemaphoreSlim(0, 1);
             this._disposed = false;
 
             this._binanceStreamTickBuffer = new ActionBlock<BinanceStreamTick>(async message => await Save(message).ConfigureAwait(true),
@@ -96,8 +99,10 @@ namespace trape.cli.collector.DataCollection
             this._disposed = true;
         }
 
-        public async Task Run()
+        public async Task Run(CancellationTokenSource cancellationTokenSource)
         {
+            _cancellationTokenSource = cancellationTokenSource;
+
             this._logger.Information("Setting up Collection Manager");
 
             var symbols = Configuration.GetValue("binance:symbols").Split(';', ',');
@@ -131,6 +136,9 @@ namespace trape.cli.collector.DataCollection
                 });
             }
 
+            // Register cleanup job
+            Service.Get<IJobManager>().Start(new CleanUp());
+
             this._logger.Information($"Collection Mangager is online with {this._binanceSocketClients.Count} clients.");
 
             await this._running.WaitAsync().ConfigureAwait(false);
@@ -138,15 +146,18 @@ namespace trape.cli.collector.DataCollection
 
         public void Terminate()
         {
-            this._running.Release();
-
             var terminateClients = new List<Task>();
+
             foreach (var binanceSocketClient in this._binanceSocketClients)
             {
                 terminateClients.Add(binanceSocketClient.Value.UnsubscribeAll());
             }
 
+            _cancellationTokenSource.Cancel();
+
             Task.WaitAll(terminateClients.ToArray());
+
+            this._running.Release();
         }
 
         public async Task Save(BinanceStreamTick bst)
