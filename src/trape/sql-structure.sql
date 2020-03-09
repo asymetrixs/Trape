@@ -225,3 +225,55 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql VOLATILE STRICT;
+
+
+
+
+CREATE TABLE binance_book_tick
+(
+	update_id int8 not null,
+	symbol text not null,
+	event_time timestamptz not null,
+	best_ask_price numeric not null,
+	best_ask_quantity numeric not null,
+	best_bid_price numeric not null,
+	best_bid_quantity numeric not null,
+	PRIMARY KEY (update_id)
+);
+
+CREATE INDEX ix_bbt_ets ON binance_book_tick (event_time, symbol);
+
+--DROP FUNCTION insert_binance_book_tick;
+CREATE OR REPLACE FUNCTION insert_binance_book_tick (
+	p_update_id int8,
+	p_symbol text,
+	p_event_time timestamptz,
+	p_best_ask_price numeric,
+	p_best_ask_quantity numeric,
+	p_best_bid_price numeric,
+	p_best_bid_quantity numeric
+)
+	RETURNS void AS
+$$
+BEGIN
+	INSERT INTO binance_book_tick (
+		update_id,
+		symbol,
+		event_time,
+		best_ask_price,
+		best_ask_quantity,
+		best_bid_price,
+		best_bid_quantity
+	) VALUES (
+		p_update_id,
+		p_symbol,
+		p_event_time,
+		p_best_ask_price,
+		p_best_ask_quantity,
+		p_best_bid_price,
+		p_best_bid_quantity
+	) ON CONFLICT DO NOTHING;
+
+END;
+$$
+LANGUAGE plpgsql VOLATILE STRICT;

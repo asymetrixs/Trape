@@ -10,5 +10,9 @@ namespace trape.cli.collector.DataLayer
         Task Insert(BinanceStreamTick binanceStreamTick, CancellationToken cancellationToken);
 
         Task Insert(BinanceStreamKlineData binanceStreamKlineData, CancellationToken cancellationToken);
+
+        Task Insert(BinanceBookTick binanceBookTick, CancellationToken cancellationToken);
+
+        Task CleanUp(CancellationToken cancellationToken);
     }
 }

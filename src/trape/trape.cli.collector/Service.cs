@@ -1,9 +1,9 @@
-﻿using trape.cli.collector.DataCollection;
-using trape.cli.collector.DataLayer;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Exceptions;
 using System.Threading;
+using trape.cli.collector.DataCollection;
+using trape.cli.collector.DataLayer;
 
 namespace trape.cli.collector
 {
@@ -60,8 +60,7 @@ namespace trape.cli.collector
             serviceCollection.AddSingleton<ILogger>(Log.Logger);
             
             // Add cointrade application
-            //serviceCollection.AddTransient<CoinTrader>();
-            serviceCollection.AddTransient<CollectionManager>();
+            serviceCollection.AddTransient<ICollectionManager, CollectionManager>();
             serviceCollection.AddSingleton<IKillSwitch>(new KillSwitch(cancellationToken));
             serviceCollection.AddTransient<ICoinTradeContext, CoinTradeContext>();
             

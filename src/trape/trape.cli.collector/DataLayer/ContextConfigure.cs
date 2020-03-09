@@ -6,8 +6,8 @@ namespace trape.cli.collector.DataLayer
 {
     public sealed class ContextConfigure
     {
-        public const string SCHEMA = "Core";
-        public const string SCHEMA_LOG = "Log";
+        public const string SCHEMA = "public";
+        public const string SCHEMA_LOG = "log";
     }
 
 }

@@ -148,6 +148,51 @@ namespace trape.cli.collector.DataLayer
                 }
             }
         }
+
+        public async Task Insert(BinanceBookTick binanceBookTick, CancellationToken cancellationToken)
+        {
+            if (null == binanceBookTick)
+            {
+                return;
+            }
+
+            using (var con = new NpgsqlConnection(this._connectionString))
+            {
+                using (var com = new NpgsqlCommand("insert_binance_book_tick", con))
+                {
+                    try
+                    {
+                        com.CommandType = CommandType.StoredProcedure;
+
+                        com.Parameters.Add("p_event_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = DateTime.UtcNow;
+                        com.Parameters.Add("p_best_ask_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceBookTick.BestAskPrice;
+                        com.Parameters.Add("p_best_ask_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceBookTick.BestAskQuantity;
+                        com.Parameters.Add("p_best_bid_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceBookTick.BestBidPrice;
+                        com.Parameters.Add("p_best_bid_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceBookTick.BestBidQuantity;
+                        com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceBookTick.Symbol;
+                        com.Parameters.Add("p_update_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binanceBookTick.UpdateId;                        
+
+                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+                        await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!cancellationToken.IsCancellationRequested)
+                        {
+                            this._logger.Fatal(ex.Message, ex);
+                        }
+#if DEBUG
+                        throw;
+#endif
+                    }
+                    finally
+                    {
+                        con.Close();
+                    }
+                }
+            }
+        }
         
     }
 }
