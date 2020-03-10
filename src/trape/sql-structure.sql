@@ -242,6 +242,7 @@ CREATE TABLE binance_book_tick
 );
 
 CREATE INDEX ix_bbt_ets ON binance_book_tick (event_time, symbol);
+CREATE INDEX ix_bbt_et ON binance_book_tick USING BRIN (event_time);
 
 --DROP FUNCTION insert_binance_book_tick;
 CREATE OR REPLACE FUNCTION insert_binance_book_tick (
@@ -295,95 +296,119 @@ LANGUAGE plpgsql VOLATILE STRICT;
 
 
 
---SELECT * FROM binance_book_tick WHERE symbol = 'BTCUSDT' order by update_id desc limit 600
-
-
-CREATE TABLE trends
-(
-	id bigserial not null,
-	created timestamptz not null default NOW(),
-	symbol text NOT NULL,
-	"5seconds" numeric not null,
-	"10seconds" numeric not null,
-	"15seconds" numeric not null,
-	"30seconds" numeric not null,
-	"45seconds" numeric not null,
-	"1minute" numeric not null,
-	"2minutes" numeric not null,
-	"3minutes" numeric not null,
-	"5minutes" numeric not null,
-	"7minutes" numeric not null,
-	"10minutes" numeric not null,
-	"15minutes" numeric not null,
-	"30minutes" numeric not null,
-	"1hour" numeric not null,
-	"2hours" numeric not null,
-	"3hours" numeric not null,
-	"6hours" numeric not null,
-	"12hours" numeric not null,
-	"18hours" numeric not null,
-	"1day" numeric not null,
-	"2days" numeric not null,
-	PRIMARY KEY(id)
-);
-CREATE UNIQUE INDEX uq_trends_cs ON trends (created, symbol);
-
-
-CREATE OR REPLACE FUNCTION collect_trends ()
-	RETURNS void AS
+CREATE OR REPLACE FUNCTION trends_3sec() 
+RETURNS TABLE (
+	r_symbol TEXT,
+	r_5seconds NUMERIC,
+	r_10seconds NUMERIC,
+	r_15seconds NUMERIC,
+	r_30seconds NUMERIC
+) AS
 $$
 BEGIN
-
-	INSERT INTO trends ("5seconds", "10seconds", "15seconds", "30seconds", "45seconds",
-						"1minute", "2minutes", "3minutes","5minutes","7minutes","10minutes","15minutes",
-						"30minutes","1hour","2hours","3hours","6hours","12hours","18hours","1day","2days")
-	SELECT "5secs"."5secs", "10secs"."10secs", "15secs"."15secs", "30secs"."30secs", "45secs"."45secs",
-		"1min"."1min", "2mins"."2mins", "3mins"."3mins", "5mins"."5mins", "7mins"."7mins", "10mins"."10mins", "15mins"."15mins", "30mins"."30mins",
-		"1hour"."1hour", "2hours"."2hours", "3hours"."3hours", "6hours"."6hours", "12hours"."12hours", "18hours"."18hours", 
-		"1day"."1day", "2days"."2days" FROM
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "5secs" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '5 seconds' AND NOW() AND symbol = 'BTCUSDT') "5secs",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "10secs" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '10 seconds' AND NOW() AND symbol = 'BTCUSDT') "10secs",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "15secs" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '15 seconds' AND NOW() AND symbol = 'BTCUSDT') "15secs",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "30secs" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '30 seconds' AND NOW() AND symbol = 'BTCUSDT') "30secs",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "45secs" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '45 seconds' AND NOW() AND symbol = 'BTCUSDT') "45secs",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "1min" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '1 minute' AND NOW() AND symbol = 'BTCUSDT') "1min",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "2mins" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '2 minutes' AND NOW() AND symbol = 'BTCUSDT') "2mins",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "3mins" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '3minutes' AND NOW() AND symbol = 'BTCUSDT') AS "3mins",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "5mins" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '5 minutes' AND NOW() AND symbol = 'BTCUSDT') AS "5mins",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "7mins" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '7 minutes' AND NOW() AND symbol = 'BTCUSDT') AS "7mins",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "10mins" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '10 minutes' AND NOW() AND symbol = 'BTCUSDT') AS "10mins",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "15mins" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '15 minutes' AND NOW() AND symbol = 'BTCUSDT') AS "15mins",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "30mins" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '30 minutes' AND NOW() AND symbol = 'BTCUSDT') AS "30mins",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "1hour" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '1 hour' AND NOW() AND symbol = 'BTCUSDT') AS "1hour",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "2hours" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '2 hours' AND NOW() AND symbol = 'BTCUSDT') AS "2hours",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "3hours" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '3 hours' AND NOW() AND symbol = 'BTCUSDT') AS "3hours",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "6hours" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '6 hours' AND NOW() AND symbol = 'BTCUSDT') AS "6hours",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "12hours" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '12 hours' AND NOW() AND symbol = 'BTCUSDT') AS "12hours",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "18hours" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '18 hours' AND NOW() AND symbol = 'BTCUSDT') AS "18hours",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "1day" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '1 days' AND NOW() AND symbol = 'BTCUSDT') AS "1day",
-	(SELECT regr_slope(best_ask_price, EXTRACT(EPOCH FROM event_time)) AS "2days" FROM binance_book_tick
-					WHERE event_time BETWEEN NOW() - INTERVAL '2 days' AND NOW() AND symbol = 'BTCUSDT') AS "2days";
-
+	RETURN QUERY SELECT symbol,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '5 seconds' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '10 seconds' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '15 seconds' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '30 seconds' AND NOW()))::NUMERIC
+	FROM binance_stream_tick
+	GROUP BY symbol;
 END;
 $$
-LANGUAGE plpgsql VOLATILE STRICT;
+LANGUAGE plpgsql STRICT;
+
+
+
+CREATE OR REPLACE FUNCTION trends_15sec() 
+RETURNS TABLE (
+	r_symbol TEXT,
+	r_45seconds NUMERIC,
+	r_1minute NUMERIC,
+	r_2minutes NUMERIC,
+	r_3minutes NUMERIC
+) AS
+$$
+BEGIN
+	RETURN QUERY SELECT symbol,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '45 seconds' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 minute' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '2 minutes' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '3 minutes' AND NOW()))::NUMERIC
+	FROM binance_stream_tick
+	GROUP BY symbol;
+END;
+$$
+LANGUAGE plpgsql STRICT;
+
+
+
+
+CREATE OR REPLACE FUNCTION trends_2min() 
+RETURNS TABLE (
+	r_symbol TEXT,
+	r_5minutes NUMERIC,
+	r_7minutes NUMERIC,
+	r_10minutes NUMERIC,
+	r_15minutes NUMERIC
+) AS
+$$
+BEGIN
+	RETURN QUERY SELECT symbol,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '5 minutes' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '7 minutes' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '10 minutes' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '15 minutes' AND NOW()))::NUMERIC
+	FROM binance_stream_tick
+	GROUP BY symbol;
+END;
+$$
+LANGUAGE plpgsql STRICT;
+
+
+
+
+CREATE OR REPLACE FUNCTION trends_10min()
+RETURNS TABLE (
+	r_symbol TEXT,
+	r_30minutes NUMERIC,
+	r_1hour NUMERIC,
+	r_2hours NUMERIC,
+	r_3hours NUMERIC
+) AS
+$$
+BEGIN
+	RETURN QUERY SELECT symbol,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '30 minutes' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 hour' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '2 hours' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '3 hours' AND NOW()))::NUMERIC
+	FROM binance_stream_tick
+	GROUP BY symbol;
+END;
+$$
+LANGUAGE plpgsql STRICT;
+
+
+
+
+CREATE OR REPLACE FUNCTION trends_10min()
+RETURNS TABLE (
+	r_symbol TEXT,
+	r_6hours NUMERIC,
+	r_12hours NUMERIC,
+	r_18hours NUMERIC,
+	r_1day NUMERIC
+) AS
+$$
+BEGIN
+	RETURN QUERY SELECT symbol,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '6 hours' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '12 hours' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '18 hours' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 day' AND NOW()))::NUMERIC
+	FROM binance_stream_tick
+	GROUP BY symbol;
+END;
+$$
+LANGUAGE plpgsql STRICT;
+

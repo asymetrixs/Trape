@@ -229,10 +229,10 @@ namespace trape.cli.collector.DataCollection
                     this._binanceStreamKlineDataBuffer.Post(bskd);
                 }).ConfigureAwait(false);
 
-                socketClient.SubscribeToBookTickerUpdates(symbol, (BinanceBookTick bbt) =>
-                {
-                    this._binanceBookTickBuffer.Post(bbt);
-                });
+                //socketClient.SubscribeToBookTickerUpdates(symbol, (BinanceBookTick bbt) =>
+                //{
+                //    this._binanceBookTickBuffer.Post(bbt);
+                //});
             }
         }
     }
