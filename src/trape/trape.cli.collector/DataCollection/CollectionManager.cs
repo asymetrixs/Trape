@@ -98,19 +98,19 @@ namespace trape.cli.collector.DataCollection
 
         public static async Task Save(BinanceStreamTick bst, CancellationToken cancellationToken)
         {
-            var database = Program.Services.GetService<ICoinTradeContext>();
+            var database = Program.Services.GetService<ITrapeContext>();
             await database.Insert(bst, cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task Save(BinanceStreamKlineData bskd, CancellationToken cancellationToken)
         {
-            var database = Program.Services.GetService<ICoinTradeContext>();
+            var database = Program.Services.GetService<ITrapeContext>();
             await database.Insert(bskd, cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task Save(BinanceBookTick bbt, CancellationToken cancellationToken)
         {
-            var database = Program.Services.GetService<ICoinTradeContext>();
+            var database = Program.Services.GetService<ITrapeContext>();
             await database.Insert(bbt, cancellationToken).ConfigureAwait(false);
         }
 

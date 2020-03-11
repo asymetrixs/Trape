@@ -295,22 +295,23 @@ $$
 LANGUAGE plpgsql VOLATILE STRICT;
 
 
-
+DROP FUNCTION trends_3sec();
 CREATE OR REPLACE FUNCTION trends_3sec() 
 RETURNS TABLE (
 	r_symbol TEXT,
-	r_5seconds NUMERIC,
-	r_10seconds NUMERIC,
-	r_15seconds NUMERIC,
-	r_30seconds NUMERIC
+	r_databasis INT,
+	r_seconds5 NUMERIC,
+	r_seconds10 NUMERIC,
+	r_seconds15 NUMERIC,
+	r_seconds30 NUMERIC
 ) AS
 $$
 BEGIN
-	RETURN QUERY SELECT symbol,
+	RETURN QUERY SELECT symbol, (COUNT(*) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '30 seconds' AND NOW()))::INT,
 		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '5 seconds' AND NOW()))::NUMERIC,
 		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '10 seconds' AND NOW()))::NUMERIC,
 		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '15 seconds' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '30 seconds' AND NOW()))::NUMERIC
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '30 seconds' AND NOW()))::NUMERIC
 	FROM binance_stream_tick
 	GROUP BY symbol;
 END;
@@ -318,22 +319,23 @@ $$
 LANGUAGE plpgsql STRICT;
 
 
-
+DROP FUNCTION trends_15sec();
 CREATE OR REPLACE FUNCTION trends_15sec() 
 RETURNS TABLE (
 	r_symbol TEXT,
-	r_45seconds NUMERIC,
-	r_1minute NUMERIC,
-	r_2minutes NUMERIC,
-	r_3minutes NUMERIC
+	r_databasis INT,
+	r_seconds45 NUMERIC,
+	r_minute1 NUMERIC,
+	r_minutes2 NUMERIC,
+	r_minutes3 NUMERIC
 ) AS
 $$
 BEGIN
-	RETURN QUERY SELECT symbol,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '45 seconds' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 minute' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '2 minutes' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '3 minutes' AND NOW()))::NUMERIC
+	RETURN QUERY SELECT symbol, (COUNT(*) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '3 minutes' AND NOW()))::INT,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '45 seconds' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 minute' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '2 minutes' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '3 minutes' AND NOW()))::NUMERIC
 	FROM binance_stream_tick
 	GROUP BY symbol;
 END;
@@ -342,22 +344,23 @@ LANGUAGE plpgsql STRICT;
 
 
 
-
+DROP FUNCTION trends_2min();
 CREATE OR REPLACE FUNCTION trends_2min() 
 RETURNS TABLE (
 	r_symbol TEXT,
-	r_5minutes NUMERIC,
-	r_7minutes NUMERIC,
-	r_10minutes NUMERIC,
-	r_15minutes NUMERIC
+	r_databasis INT,
+	r_minutes5 NUMERIC,
+	r_minutes7 NUMERIC,
+	r_minutes10 NUMERIC,
+	r_minutes15 NUMERIC
 ) AS
 $$
 BEGIN
-	RETURN QUERY SELECT symbol,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '5 minutes' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '7 minutes' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '10 minutes' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '15 minutes' AND NOW()))::NUMERIC
+	RETURN QUERY SELECT symbol, (COUNT(*) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '15 minutes' AND NOW()))::INT,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '5 minutes' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '7 minutes' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '10 minutes' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '15 minutes' AND NOW()))::NUMERIC
 	FROM binance_stream_tick
 	GROUP BY symbol;
 END;
@@ -366,22 +369,23 @@ LANGUAGE plpgsql STRICT;
 
 
 
-
+DROP FUNCTION trends_10min();
 CREATE OR REPLACE FUNCTION trends_10min()
 RETURNS TABLE (
 	r_symbol TEXT,
-	r_30minutes NUMERIC,
-	r_1hour NUMERIC,
-	r_2hours NUMERIC,
-	r_3hours NUMERIC
+	r_databasis INT,
+	r_minutes30 NUMERIC,
+	r_hour1 NUMERIC,
+	r_hours2 NUMERIC,
+	r_hours3 NUMERIC
 ) AS
 $$
 BEGIN
-	RETURN QUERY SELECT symbol,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '30 minutes' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 hour' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '2 hours' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '3 hours' AND NOW()))::NUMERIC
+	RETURN QUERY SELECT symbol, (COUNT(*) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '3 hours' AND NOW()))::INT,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '30 minutes' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 hour' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '2 hours' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '3 hours' AND NOW()))::NUMERIC
 	FROM binance_stream_tick
 	GROUP BY symbol;
 END;
@@ -390,25 +394,110 @@ LANGUAGE plpgsql STRICT;
 
 
 
-
-CREATE OR REPLACE FUNCTION trends_10min()
+DROP FUNCTION  trends_2hours();
+CREATE OR REPLACE FUNCTION trends_2hours()
 RETURNS TABLE (
 	r_symbol TEXT,
-	r_6hours NUMERIC,
-	r_12hours NUMERIC,
-	r_18hours NUMERIC,
-	r_1day NUMERIC
+	r_databasis INT,
+	r_hours6 NUMERIC,
+	r_hours12 NUMERIC,
+	r_hours18 NUMERIC,
+	r_day1 NUMERIC
 ) AS
 $$
 BEGIN
-	RETURN QUERY SELECT symbol,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '6 hours' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '12 hours' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '18 hours' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(best_ask_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 day' AND NOW()))::NUMERIC
+	RETURN QUERY SELECT symbol, (COUNT(*) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 day' AND NOW()))::INT,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '6 hours' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '12 hours' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '18 hours' AND NOW()))::NUMERIC,
+		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 day' AND NOW()))::NUMERIC
 	FROM binance_stream_tick
 	GROUP BY symbol;
 END;
 $$
 LANGUAGE plpgsql STRICT;
 
+
+CREATE OR REPLACE FUNCTION current_price(p_symbol TEXT)
+RETURNS NUMERIC AS
+$$
+	DECLARE r_price NUMERIC;
+BEGIN
+	SELECT current_day_close_price INTO r_price FROM binance_stream_tick
+	WHERE symbol = p_symbol
+	ORDER BY event_time DESC
+	LIMIT 1;
+
+	RETURN r_price;
+END;
+$$
+LANGUAGE plpgsql STRICT;
+
+CREATE TABLE decision
+(
+	id bigserial NOT NULL,
+	event_time TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+	symbol text NOT NULL,
+	decision text NOT NULL,
+	seconds5 NUMERIC NOT NULL,
+	seconds10 NUMERIC NOT NULL,
+	seconds15 NUMERIC NOT NULL,
+	seconds30 NUMERIC NOT NULL,
+	seconds45 NUMERIC NOT NULL,
+	minute1 NUMERIC NOT NULL,
+	minutes2 NUMERIC NOT NULL,
+	minutes3 NUMERIC NOT NULL,
+	minutes5 NUMERIC NOT NULL,
+	minutes7 NUMERIC NOT NULL,
+	minutes10 NUMERIC NOT NULL,
+	minutes15 NUMERIC NOT NULL,
+	minutes30 NUMERIC NOT NULL,
+	hour1 NUMERIC NOT NULL,
+	hours2 NUMERIC NOT NULL,
+	hours3 NUMERIC NOT NULL,
+	hours6 NUMERIC NOT NULL,
+	hours12 NUMERIC NOT NULL,
+	hours18 NUMERIC NOT NULL,
+	day1 NUMERIC NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE INDEX ix_d_ets ON decision USING BRIN (event_time, symbol);
+
+CREATE OR REPLACE FUNCTION insert_decision
+(
+	p_symbol TEXT,
+	p_decision TEXT,
+	p_seconds5 NUMERIC,
+	p_seconds10 NUMERIC,
+	p_seconds15 NUMERIC,
+	p_seconds30 NUMERIC,
+	p_seconds45 NUMERIC,
+	p_minute1 NUMERIC,
+	p_minutes2 NUMERIC,
+	p_minutes3 NUMERIC,
+	p_minutes5 NUMERIC,
+	p_minutes7 NUMERIC,
+	p_minutes10 NUMERIC,
+	p_minutes15 NUMERIC,
+	p_minutes30 NUMERIC,
+	p_hour1 NUMERIC,
+	p_hours2 NUMERIC,
+	p_hours3 NUMERIC,
+	p_hours6 NUMERIC,
+	p_hours12 NUMERIC,
+	p_hours18 NUMERIC,
+	p_day1 NUMERIC
+)
+RETURNS void AS
+$$
+BEGIN
+
+	INSERT INTO decision (symbol, decision, seconds5, seconds10, seconds15, seconds30, seconds45, minute1, minutes2, minutes3, minutes5, minutes7, minutes10, minutes15,
+							minutes30, hour1, hours2, hours3, hours6, hours12, hours18, day1)
+			VALUES (p_symbol, p_decision, p_seconds5, p_seconds10, p_seconds15, p_seconds30, p_seconds45, p_minute1, p_minutes2, p_minutes3, p_minutes5, p_minutes7,
+					p_minutes10, p_minutes15, p_minutes30, p_hour1, p_hours2, p_hours3, p_hours6, p_hours12, p_hours18, p_day1);
+
+END;
+$$
+LANGUAGE plpgsql VOLATILE STRICT;

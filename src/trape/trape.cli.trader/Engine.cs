@@ -1,11 +1,8 @@
 ﻿using Microsoft.Extensions.Hosting;
 using Serilog;
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.cli.trader.Cache;
 
 namespace trape.cli.trader
 {
@@ -13,29 +10,42 @@ namespace trape.cli.trader
     {
         private ILogger _logger;
 
-        private Synchronizer _synchronizer;
+        private Cache.Buffer _buffer;
 
-        public Engine(ILogger logger, Synchronizer synchronizer)
+        private DecisionMaker _decisionMaker;
+
+        public Engine(ILogger logger, Cache.Buffer buffer, DecisionMaker decisionMaker)
         {
-            if(null == logger || null == _synchronizer)
+            if(null == logger || null == buffer || null == decisionMaker)
             {
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
             this._logger = logger;
-            this._synchronizer = synchronizer;
+            this._buffer = buffer;
+            this._decisionMaker = decisionMaker;
         }
 
-        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        protected async override Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            this._synchronizer.Start();
+            this._logger.Information("Engine is starting");
 
-            return Task.CompletedTask;
+            await this._buffer.Start().ConfigureAwait(false);
+
+            this._decisionMaker.Start();
+
+            this._logger.Information("Engine is started");
         }
 
         public override Task StopAsync(CancellationToken cancellationToken)
         {
-            this._synchronizer.Stop();
+            this._logger.Information("Engine is stopping");
+
+            this._decisionMaker.Stop();
+
+            this._buffer.Stop();
+
+            this._logger.Information("Engine is stopped");
 
             return Task.CompletedTask;
         }

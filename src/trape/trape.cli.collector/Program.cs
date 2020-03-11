@@ -80,7 +80,7 @@ namespace trape.cli.collector
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddSingleton<ILogger>(Log.Logger);
-                    services.AddTransient<ICoinTradeContext, CoinTradeContext>();
+                    services.AddTransient<ITrapeContext, TrapeContext>();
                     services.AddSingleton<IJobManager, JobManager>();
                     services.AddHostedService<CollectionManager>();
                 });

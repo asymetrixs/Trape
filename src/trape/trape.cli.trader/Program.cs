@@ -3,7 +3,9 @@ using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Exceptions;
 using System;
+using System.Threading.Tasks;
 using trape.cli.trader.Cache;
+using trape.cli.trader.DataLayer;
 
 namespace trape.cli.trader
 {
@@ -11,7 +13,7 @@ namespace trape.cli.trader
     {
         public static IServiceProvider Services { get; private set; }
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             Configuration.SetUp();
 
@@ -68,6 +70,7 @@ namespace trape.cli.trader
                     path: Configuration.GetValue("logging:filePath"),
                     rollingInterval: (RollingInterval)rollingInterval,
                     retainedFileCountLimit: retainedFileCountLimit))
+                .MinimumLevel.Verbose()
                 .CreateLogger();
 
             return Host.CreateDefaultBuilder(args)
@@ -76,8 +79,10 @@ namespace trape.cli.trader
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddSingleton<ILogger>(Log.Logger);
-                    services.AddSingleton<ISynchronizer, Synchronizer>();
+                    services.AddSingleton<IBuffer, Cache.Buffer>();
                     services.AddSingleton<Cache.Buffer>();
+                    services.AddSingleton<DecisionMaker>();
+                    services.AddTransient<ITrapeContext, TrapeContext>();
                     services.AddHostedService<Engine>();
                 });
         }
