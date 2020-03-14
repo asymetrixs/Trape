@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Serilog;
+using Serilog.Context;
 using System;
 using System.Data;
 using System.Threading;
@@ -45,6 +46,8 @@ namespace trape.cli.collector.DataLayer
                 {
                     try
                     {
+                        this._logger.Verbose("Executing insert_binance_stream_tick ");
+
                         com.CommandType = CommandType.StoredProcedure;
 
                         com.Parameters.Add("p_event", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamTick.Event;
@@ -106,6 +109,8 @@ namespace trape.cli.collector.DataLayer
                 {
                     try
                     {
+                        this._logger.Verbose("Executing insert_binance_stream_kline_data ");
+
                         com.CommandType = CommandType.StoredProcedure;
 
                         com.Parameters.Add("p_event", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamKlineData.Event;
@@ -135,7 +140,7 @@ namespace trape.cli.collector.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex.Message, ex);                            
                         }
 #if DEBUG
                         throw;
@@ -162,6 +167,8 @@ namespace trape.cli.collector.DataLayer
                 {
                     try
                     {
+                        this._logger.Verbose("Executing insert_binance_book_tick");
+
                         com.CommandType = CommandType.StoredProcedure;
 
                         com.Parameters.Add("p_event_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = DateTime.UtcNow;
@@ -202,6 +209,8 @@ namespace trape.cli.collector.DataLayer
                 {
                     try
                     {
+                        this._logger.Verbose("Executing cleanup_book_ticks ");
+
                         com.CommandType = CommandType.StoredProcedure;
 
                         await con.OpenAsync(cancellationToken).ConfigureAwait(false);

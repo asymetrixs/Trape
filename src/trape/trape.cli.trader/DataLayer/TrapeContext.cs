@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Serilog;
+using Serilog.Context;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -33,14 +34,16 @@ namespace trape.cli.trader.DataLayer
         }
 
 
-        public async Task Insert(string symbol, string decision, Trend3Seconds trend3Seconds, Trend15Seconds trend15Seconds, Trend2Minutes trend2Minutes,
+        public async Task Insert(Decision decision, Trend3Seconds trend3Seconds, Trend15Seconds trend15Seconds, Trend2Minutes trend2Minutes,
             Trend10Minutes trend10Minutes, Trend2Hours trend2Hours, CancellationToken cancellationToken)
 
         {
-            if (null == trend3Seconds || null == trend15Seconds || null == trend2Minutes || null == trend10Minutes || null == trend2Hours)
+            if (null == trend3Seconds || null == trend15Seconds || null == trend2Minutes || null == trend10Minutes || null == trend2Hours || null == decision)
             {
                 return;
             }
+
+            var pushedProperties = new List<IDisposable>();
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
@@ -48,10 +51,20 @@ namespace trape.cli.trader.DataLayer
                 {
                     try
                     {
+                        this._logger.Debug("Executing insert_decision");
+
+                        pushedProperties.Add(LogContext.PushProperty("decision", decision));
+                        pushedProperties.Add(LogContext.PushProperty("decision", trend3Seconds));
+                        pushedProperties.Add(LogContext.PushProperty("decision", trend15Seconds));
+                        pushedProperties.Add(LogContext.PushProperty("decision", trend2Minutes));
+                        pushedProperties.Add(LogContext.PushProperty("decision", trend10Minutes));
+                        pushedProperties.Add(LogContext.PushProperty("decision", trend2Hours));
+
                         com.CommandType = CommandType.StoredProcedure;
 
-                        com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = symbol;
-                        com.Parameters.Add("p_decision", NpgsqlTypes.NpgsqlDbType.Text).Value = decision;
+                        com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = decision.Symbol;
+                        com.Parameters.Add("p_decision", NpgsqlTypes.NpgsqlDbType.Text).Value = decision.Action;
+                        com.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = decision.Price;
                         com.Parameters.Add("p_seconds5", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Seconds5;
                         com.Parameters.Add("p_seconds10", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Seconds10;
                         com.Parameters.Add("p_seconds15", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Seconds15;
@@ -90,6 +103,11 @@ namespace trape.cli.trader.DataLayer
                     finally
                     {
                         con.Close();
+
+                        foreach(var pp in pushedProperties)
+                        {
+                            pp.Dispose();
+                        }
                     }
                 }
             }
@@ -98,6 +116,7 @@ namespace trape.cli.trader.DataLayer
         public async Task<IEnumerable<Trend3Seconds>> Get3SecondsTrend(CancellationToken cancellationToken)
         {
             var trends = new List<Trend3Seconds>();
+            IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
@@ -105,6 +124,8 @@ namespace trape.cli.trader.DataLayer
                 {
                     try
                     {
+                        this._logger.Verbose("Executing trends_3sec");
+
                         com.CommandType = CommandType.StoredProcedure;
 
                         await con.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -114,10 +135,18 @@ namespace trape.cli.trader.DataLayer
                             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                             {
                                 // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false))
+                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+                                    )
                                 {
                                     continue;
                                 }
+
+                                pushedProperty = LogContext.PushProperty("reader", reader);
 
                                 var trend = new Trend3Seconds(
                                     reader.GetString(0),
@@ -143,6 +172,8 @@ namespace trape.cli.trader.DataLayer
                     }
                     finally
                     {
+                        pushedProperty?.Dispose();
+
                         con.Close();
                     }
                 }
@@ -154,6 +185,7 @@ namespace trape.cli.trader.DataLayer
         public async Task<IEnumerable<Trend15Seconds>> Get15SecondsTrend(CancellationToken cancellationToken)
         {
             var trends = new List<Trend15Seconds>();
+            IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
@@ -161,6 +193,8 @@ namespace trape.cli.trader.DataLayer
                 {
                     try
                     {
+                        this._logger.Verbose("Executing trends_15sec");
+
                         com.CommandType = CommandType.StoredProcedure;
 
                         await con.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -170,10 +204,18 @@ namespace trape.cli.trader.DataLayer
                             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                             {
                                 // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false))
+                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+                                    )
                                 {
                                     continue;
                                 }
+
+                                pushedProperty = LogContext.PushProperty("reader", reader);
 
                                 var trend = new Trend15Seconds(
                                     reader.GetString(0),
@@ -199,6 +241,8 @@ namespace trape.cli.trader.DataLayer
                     }
                     finally
                     {
+                        pushedProperty?.Dispose();
+
                         con.Close();
                     }
                 }
@@ -210,6 +254,7 @@ namespace trape.cli.trader.DataLayer
         public async Task<IEnumerable<Trend2Minutes>> Get2MinutesTrend(CancellationToken cancellationToken)
         {
             var trends = new List<Trend2Minutes>();
+            IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
@@ -217,6 +262,8 @@ namespace trape.cli.trader.DataLayer
                 {
                     try
                     {
+                        this._logger.Verbose("Executing trends_2min");
+
                         com.CommandType = CommandType.StoredProcedure;
 
                         await con.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -226,10 +273,18 @@ namespace trape.cli.trader.DataLayer
                             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                             {
                                 // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false))
+                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+                                    )
                                 {
                                     continue;
                                 }
+
+                                pushedProperty = LogContext.PushProperty("reader", reader);
 
                                 var trend = new Trend2Minutes(
                                     reader.GetString(0),
@@ -255,6 +310,8 @@ namespace trape.cli.trader.DataLayer
                     }
                     finally
                     {
+                        pushedProperty?.Dispose();
+
                         con.Close();
                     }
                 }
@@ -266,6 +323,7 @@ namespace trape.cli.trader.DataLayer
         public async Task<IEnumerable<Trend10Minutes>> Get10MinutesTrend(CancellationToken cancellationToken)
         {
             var trends = new List<Trend10Minutes>();
+            IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
@@ -273,6 +331,8 @@ namespace trape.cli.trader.DataLayer
                 {
                     try
                     {
+                        this._logger.Verbose("Executing trends_10min");
+
                         com.CommandType = CommandType.StoredProcedure;
 
                         await con.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -282,10 +342,18 @@ namespace trape.cli.trader.DataLayer
                             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                             {
                                 // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false))
+                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+                                    )
                                 {
                                     continue;
                                 }
+
+                                pushedProperty = LogContext.PushProperty("reader", reader);
 
                                 var trend = new Trend10Minutes(
                                     reader.GetString(0),
@@ -311,6 +379,8 @@ namespace trape.cli.trader.DataLayer
                     }
                     finally
                     {
+                        pushedProperty?.Dispose();
+
                         con.Close();
                     }
                 }
@@ -322,6 +392,7 @@ namespace trape.cli.trader.DataLayer
         public async Task<IEnumerable<Trend2Hours>> Get2HoursTrend(CancellationToken cancellationToken)
         {
             var trends = new List<Trend2Hours>();
+            IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
@@ -329,6 +400,8 @@ namespace trape.cli.trader.DataLayer
                 {
                     try
                     {
+                        this._logger.Verbose("Executing trends_2hours");
+
                         com.CommandType = CommandType.StoredProcedure;
 
                         await con.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -338,10 +411,18 @@ namespace trape.cli.trader.DataLayer
                             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                             {
                                 // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false))
+                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+                                    )
                                 {
                                     continue;
                                 }
+
+                                pushedProperty = LogContext.PushProperty("reader", reader);
 
                                 var trend = new Trend2Hours(
                                     reader.GetString(0),
@@ -367,6 +448,8 @@ namespace trape.cli.trader.DataLayer
                     }
                     finally
                     {
+                        pushedProperty?.Dispose();
+
                         con.Close();
                     }
                 }
@@ -378,6 +461,7 @@ namespace trape.cli.trader.DataLayer
         public async Task<decimal> GetCurrentPrice(string symbol, CancellationToken cancellationToken)
         {
             var price = default(decimal);
+            IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
@@ -385,6 +469,8 @@ namespace trape.cli.trader.DataLayer
                 {
                     try
                     {
+                        this._logger.Verbose("Executing current_price");
+
                         com.CommandType = CommandType.StoredProcedure;
 
                         com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = symbol;
@@ -392,6 +478,9 @@ namespace trape.cli.trader.DataLayer
                         await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
                         var obj = await com.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+
+                        pushedProperty = LogContext.PushProperty("obj", obj);
+
                         try
                         {
                             price = (decimal)obj;
@@ -413,6 +502,8 @@ namespace trape.cli.trader.DataLayer
                     }
                     finally
                     {
+                        pushedProperty?.Dispose();
+
                         con.Close();
                     }
                 }

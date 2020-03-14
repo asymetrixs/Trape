@@ -20,7 +20,7 @@ namespace trape.cli.collector.DataLayer
 
             var deletedRows = await database.CleanUpBookTicks(cancellationToken).ConfigureAwait(false);
 
-            logger.Information($"Cleaned up {deletedRows} book tick records");
+            logger.Debug($"Cleaned up {deletedRows} book tick records");
         }
     }
 }

@@ -7,7 +7,7 @@ namespace trape.cli.trader.DataLayer
 {
     public interface ITrapeContext
     {
-        Task Insert(string symbol, string decision, Trend3Seconds trend3Seconds, Trend15Seconds trend15Seconds,
+        Task Insert(Decision decision, Trend3Seconds trend3Seconds, Trend15Seconds trend15Seconds,
             Trend2Minutes trend2Minutes, Trend10Minutes trend10Minutes, Trend2Hours trend2Hours, CancellationToken cancellationToken);
 
         Task<IEnumerable<Trend3Seconds>> Get3SecondsTrend(CancellationToken cancellationToken);

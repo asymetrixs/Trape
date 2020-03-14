@@ -2,13 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Timers;
+using trape.cli.trader.Cache.Trends;
 using trape.cli.trader.DataLayer;
 
 namespace trape.cli.trader
 {
-    public class DecisionMaker
+    public class DecisionMaker : IDisposable
     {
         private ILogger _logger;
 
@@ -19,6 +19,8 @@ namespace trape.cli.trader
         private Timer _makeDecision;
 
         private Dictionary<string, Decision> _rates;
+
+        private bool _disposed;
 
         public DecisionMaker(ILogger logger, Cache.Buffer buffer)
         {
@@ -31,11 +33,12 @@ namespace trape.cli.trader
             this._buffer = buffer;
             this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
             this._rates = new Dictionary<string, Decision>();
+            this._disposed = false;
 
             this._makeDecision = new Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 0, 30).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 5).TotalMilliseconds
             };
             this._makeDecision.Elapsed += _makeDecision_Elapsed;
         }
@@ -46,11 +49,26 @@ namespace trape.cli.trader
 
             foreach (var symbol in this._buffer.GetSymbols())
             {
-                var trend3Seconds = this._buffer.Trends3Seconds.Single(t => t.Symbol == symbol);
-                var trend15Seconds = this._buffer.Trends15Seconds.Single(t => t.Symbol == symbol);
-                var trend2Minutes = this._buffer.Trends2Minutes.Single(t => t.Symbol == symbol);
-                var trend10Minutes = this._buffer.Trends10Minutes.Single(t => t.Symbol == symbol);
-                var trend2Hours = this._buffer.Trends2Hours.Single(t => t.Symbol == symbol);
+                var t3s = this._buffer.Trends3Seconds;
+                var t15s = this._buffer.Trends15Seconds;
+                var t2m = this._buffer.Trends2Minutes;
+                var t10m = this._buffer.Trends10Minutes;
+                var t2h = this._buffer.Trends2Hours;
+
+                var trend3Seconds = t3s.SingleOrDefault(t => t.Symbol == symbol);
+                var trend15Seconds = t15s.SingleOrDefault(t => t.Symbol == symbol);
+                var trend2Minutes = t2m.SingleOrDefault(t => t.Symbol == symbol);
+                var trend10Minutes = t10m.SingleOrDefault(t => t.Symbol == symbol);
+                var trend2Hours = t2h.SingleOrDefault(t => t.Symbol == symbol);
+
+                if (null == trend3Seconds
+                    || null == trend15Seconds
+                    || null == trend2Minutes
+                    || null == trend10Minutes
+                    || null == trend2Hours)
+                {
+                    continue;
+                }
 
                 var lastDecision = this._rates.FirstOrDefault(d => d.Key == symbol);
 
@@ -61,25 +79,31 @@ namespace trape.cli.trader
                 {
                     if (trend10Minutes.Hours2 < 0 && trend2Minutes.Minutes10 > 0)
                     {
-                        lastDecision = new KeyValuePair<string, Decision>(symbol, new Decision()
+                        this._rates.Add(symbol, new Decision()
                         {
                             Action = "Buy",
                             Price = price,
                             Symbol = symbol
                         });
 
-                        this._logger.Verbose($"Added {symbol}");
+                        this._logger.Verbose($"A {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
+
+                        await database.Insert(lastDecision.Value, trend3Seconds, trend15Seconds, trend2Minutes, trend10Minutes, trend2Hours, this._cancellationTokenSource.Token).ConfigureAwait(false);
                     }
                     else
                     {
-                        this._logger.Verbose($"Skipping {symbol}: Trends are 2hrs: {trend10Minutes.Hours2}   10min: {trend2Minutes.Minutes10}");
+                        this._logger.Verbose($"K {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
                     }
                 }
                 else if (lastDecision.Value.Action == "Buy"
-                    && trend10Minutes.Hours2 > 0 && trend10Minutes.Hours1 > 0 && trend2Minutes.Minutes15 < 0 && trend2Minutes.Minutes10 < 0 && trend15Seconds.Minutes3 > 0
-                    && price * 1.01M > lastDecision.Value.Price)
+                    && price * 1.01M > lastDecision.Value.Price
+                    && trend10Minutes.IsValid() && trend10Minutes.Hours2 > 0
+                    && trend10Minutes.IsValid() && trend10Minutes.Hours1 > 0
+                    && trend2Minutes.IsValid() && trend2Minutes.Minutes15 < 0
+                    && trend2Minutes.IsValid() && trend2Minutes.Minutes10 < 0
+                    && trend15Seconds.IsValid() && trend15Seconds.Minutes3 > 0)
                 {
-                    this._logger.Information($"Selling {symbol} for {price}");
+                    this._logger.Information($"S {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
 
                     lastDecision = new KeyValuePair<string, Decision>(symbol, new Decision()
                     {
@@ -94,12 +118,17 @@ namespace trape.cli.trader
                     }
 
                     this._rates.Add(lastDecision.Key, lastDecision.Value);
+                    await database.Insert(lastDecision.Value, trend3Seconds, trend15Seconds, trend2Minutes, trend10Minutes, trend2Hours, this._cancellationTokenSource.Token).ConfigureAwait(false);
                 }
                 else if (lastDecision.Value.Action == "Sell"
-                    && trend10Minutes.Hours2 < 0 && trend10Minutes.Hours1 < 0 && trend2Minutes.Minutes15 > 0 && trend2Minutes.Minutes10 > 0 && trend15Seconds.Minutes3 < 0
-                    && price * 0.99M < lastDecision.Value.Price)
+                    && price * 0.99M < lastDecision.Value.Price
+                    && trend10Minutes.IsValid() && trend10Minutes.Hours2 < 0
+                    && trend10Minutes.IsValid() && trend10Minutes.Hours1 < 0
+                    && trend2Minutes.IsValid() && trend2Minutes.Minutes15 > 0
+                    && trend2Minutes.IsValid() && trend2Minutes.Minutes10 > 0
+                    && trend15Seconds.IsValid() && trend15Seconds.Minutes3 < 0)
                 {
-                    this._logger.Information($"Buying {symbol} for {price}");
+                    this._logger.Information($"B {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
 
                     lastDecision = new KeyValuePair<string, Decision>(symbol, new Decision()
                     {
@@ -114,12 +143,18 @@ namespace trape.cli.trader
                     }
 
                     this._rates.Add(lastDecision.Key, lastDecision.Value);
+                    await database.Insert(lastDecision.Value, trend3Seconds, trend15Seconds, trend2Minutes, trend10Minutes, trend2Hours, this._cancellationTokenSource.Token).ConfigureAwait(false);
                 }
                 else
                 {
-                    this._logger.Verbose($"No action for {symbol}");
+                    this._logger.Verbose($"N {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
                 }
             }
+        }
+
+        private string _GetTrend(Trend10Minutes trend10Minutes, Trend2Minutes trend2Minutes, Trend3Seconds trend3Seconds)
+        {
+            return $"@ 2hrs: {Math.Round(trend10Minutes.Hours2, 4)} | 10min: {Math.Round(trend2Minutes.Minutes10, 4)} | 30sec: {Math.Round(trend3Seconds.Seconds30, 4)} | 5sec: {Math.Round(trend3Seconds.Seconds5, 4)}";
         }
 
         public void Start()
@@ -138,13 +173,34 @@ namespace trape.cli.trader
             this._logger.Information("Decision maker stopped");
         }
 
-        private class Decision
+        /// <summary>
+        /// Public implementation of Dispose pattern callable by consumers.
+        /// </summary>
+        public void Dispose()
         {
-            public string Symbol;
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
-            public decimal Price;
+        /// <summary>
+        /// Protected implementation of Dispose pattern.
+        /// </summary>
+        /// <param name="disposing"></param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (this._disposed)
+            {
+                return;
+            }
 
-            public string Action;
+            if (disposing)
+            {
+                this._cancellationTokenSource.Dispose();
+
+                this._buffer.Dispose();
+            }
+
+            this._disposed = true;
         }
     }
 }

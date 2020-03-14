@@ -307,12 +307,13 @@ RETURNS TABLE (
 ) AS
 $$
 BEGIN
-	RETURN QUERY SELECT symbol, (COUNT(*) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '30 seconds' AND NOW()))::INT,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '5 seconds' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '10 seconds' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '15 seconds' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '30 seconds' AND NOW()))::NUMERIC
+	RETURN QUERY SELECT symbol, COUNT(*)::INT,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 seconds'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 seconds'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '15 seconds'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8)
 	FROM binance_stream_tick
+	WHERE event_time >= NOW() - INTERVAL '30 seconds'
 	GROUP BY symbol;
 END;
 $$
@@ -331,12 +332,13 @@ RETURNS TABLE (
 ) AS
 $$
 BEGIN
-	RETURN QUERY SELECT symbol, (COUNT(*) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '3 minutes' AND NOW()))::INT,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '45 seconds' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 minute' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '2 minutes' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '3 minutes' AND NOW()))::NUMERIC
+	RETURN QUERY SELECT symbol, COUNT(*)::INT,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '45 seconds'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '1 minute'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '2 minutes'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8)
 	FROM binance_stream_tick
+	WHERE event_time >= NOW() - INTERVAL '3 minutes'
 	GROUP BY symbol;
 END;
 $$
@@ -356,12 +358,13 @@ RETURNS TABLE (
 ) AS
 $$
 BEGIN
-	RETURN QUERY SELECT symbol, (COUNT(*) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '15 minutes' AND NOW()))::INT,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '5 minutes' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '7 minutes' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '10 minutes' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '15 minutes' AND NOW()))::NUMERIC
+	RETURN QUERY SELECT symbol, COUNT(*)::INT,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8)
 	FROM binance_stream_tick
+	WHERE event_time >= NOW() - INTERVAL '15 minutes'
 	GROUP BY symbol;
 END;
 $$
@@ -381,12 +384,13 @@ RETURNS TABLE (
 ) AS
 $$
 BEGIN
-	RETURN QUERY SELECT symbol, (COUNT(*) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '3 hours' AND NOW()))::INT,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '30 minutes' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 hour' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '2 hours' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '3 hours' AND NOW()))::NUMERIC
+	RETURN QUERY SELECT symbol, COUNT(*)::INT,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '30 minutes'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '1 hour'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '2 hours'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8)
 	FROM binance_stream_tick
+	WHERE event_time >= NOW() - INTERVAL '3 hours'
 	GROUP BY symbol;
 END;
 $$
@@ -406,12 +410,13 @@ RETURNS TABLE (
 ) AS
 $$
 BEGIN
-	RETURN QUERY SELECT symbol, (COUNT(*) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 day' AND NOW()))::INT,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '6 hours' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '12 hours' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '18 hours' AND NOW()))::NUMERIC,
-		(REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time BETWEEN NOW() - INTERVAL '1 day' AND NOW()))::NUMERIC
+	RETURN QUERY SELECT symbol, COUNT(*)::INT,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '6 hours'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '12 hours'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '18 hours'))::NUMERIC, 8),
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8)
 	FROM binance_stream_tick
+	WHERE event_time >= NOW() - INTERVAL '1 day'
 	GROUP BY symbol;
 END;
 $$
@@ -439,6 +444,7 @@ CREATE TABLE decision
 	event_time TIMESTAMPTZ DEFAULT NOW() NOT NULL,
 	symbol text NOT NULL,
 	decision text NOT NULL,
+	price NUMERIC NOT NULL,
 	seconds5 NUMERIC NOT NULL,
 	seconds10 NUMERIC NOT NULL,
 	seconds15 NUMERIC NOT NULL,
@@ -468,6 +474,7 @@ CREATE OR REPLACE FUNCTION insert_decision
 (
 	p_symbol TEXT,
 	p_decision TEXT,
+	p_price NUMERIC,	
 	p_seconds5 NUMERIC,
 	p_seconds10 NUMERIC,
 	p_seconds15 NUMERIC,
@@ -493,9 +500,9 @@ RETURNS void AS
 $$
 BEGIN
 
-	INSERT INTO decision (symbol, decision, seconds5, seconds10, seconds15, seconds30, seconds45, minute1, minutes2, minutes3, minutes5, minutes7, minutes10, minutes15,
+	INSERT INTO decision (symbol, decision, price, seconds5, seconds10, seconds15, seconds30, seconds45, minute1, minutes2, minutes3, minutes5, minutes7, minutes10, minutes15,
 							minutes30, hour1, hours2, hours3, hours6, hours12, hours18, day1)
-			VALUES (p_symbol, p_decision, p_seconds5, p_seconds10, p_seconds15, p_seconds30, p_seconds45, p_minute1, p_minutes2, p_minutes3, p_minutes5, p_minutes7,
+			VALUES (p_symbol, p_decision, p_price, p_seconds5, p_seconds10, p_seconds15, p_seconds30, p_seconds45, p_minute1, p_minutes2, p_minutes3, p_minutes5, p_minutes7,
 					p_minutes10, p_minutes15, p_minutes30, p_hour1, p_hours2, p_hours3, p_hours6, p_hours12, p_hours18, p_day1);
 
 END;

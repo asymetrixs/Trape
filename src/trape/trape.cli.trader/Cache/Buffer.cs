@@ -91,7 +91,7 @@ namespace trape.cli.trader.Cache
             var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
             this.Trends3Seconds = await database.Get3SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
-            //this._logger.Debug("Updated 3 seconds trend");
+            this._logger.Verbose("Updated 3 seconds trend");
         }
 
         private async void _timerTrend15Seconds_Elapsed(object sender, ElapsedEventArgs e)
@@ -99,7 +99,7 @@ namespace trape.cli.trader.Cache
             var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
             this.Trends15Seconds = await database.Get15SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
-            //this._logger.Debug("Updated 15 seconds trend");
+            this._logger.Verbose("Updated 15 seconds trend");
         }
 
         private async void _timerTrend2Minutes_Elapsed(object sender, ElapsedEventArgs e)
@@ -107,7 +107,7 @@ namespace trape.cli.trader.Cache
             var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
             this.Trends2Minutes = await database.Get2MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
-            //this._logger.Debug("Updated 2 minutes trend");
+            this._logger.Verbose("Updated 2 minutes trend");
         }
 
         private async void _timerTrend10Minutes_Elapsed(object sender, ElapsedEventArgs e)
@@ -115,7 +115,7 @@ namespace trape.cli.trader.Cache
             var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
             this.Trends10Minutes = await database.Get10MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
-            //this._logger.Debug("Updated 10 minutes trend");
+            this._logger.Verbose("Updated 10 minutes trend");
         }
 
         private async void _timerTrend2Hours_Elapsed(object sender, ElapsedEventArgs e)
@@ -123,7 +123,7 @@ namespace trape.cli.trader.Cache
             var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
             this.Trends2Hours = await database.Get2HoursTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
-            //this._logger.Verbose("Updated 2 hours trend");
+            this._logger.Verbose("Updated 2 hours trend");
         }
 
         public async Task Start()
@@ -131,7 +131,7 @@ namespace trape.cli.trader.Cache
             this._logger.Information("Starting Buffer");
 
             // Initial loading
-            this._logger.Verbose("Preloading buffer");
+            this._logger.Debug("Preloading buffer");
             var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
             this.Trends3Seconds = await database.Get3SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this.Trends15Seconds = await database.Get15SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
@@ -139,7 +139,7 @@ namespace trape.cli.trader.Cache
             this.Trends10Minutes = await database.Get10MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this.Trends2Hours = await database.Get2HoursTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
-            this._logger.Verbose("Buffer preloaded");
+            this._logger.Debug("Buffer preloaded");
 
             // Starting of timers
             this._timerTrend3Seconds.Start();
@@ -174,7 +174,7 @@ namespace trape.cli.trader.Cache
                 return new List<string>();
             }
 
-            return this.Trends2Hours.Where(t => t.IsValid()).Select(t => t.Symbol);
+            return this.Trends2Hours/*.Where(t => t.IsValid())*/.Select(t => t.Symbol);
         }
 
         /// <summary>

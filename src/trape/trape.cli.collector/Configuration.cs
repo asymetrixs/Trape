@@ -5,25 +5,25 @@ namespace trape.cli.collector
 {
     public static class Configuration
     {
-        private static IConfigurationRoot _configuration;
-
+        public static IConfigurationRoot Config { get; private set; }
+        
         public static void SetUp()
         {
             var builder = new ConfigurationBuilder()
                 .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
                 .AddJsonFile("settings.json", optional: false, reloadOnChange: true);
 
-            _configuration = builder.Build();
+            Config = builder.Build();
         }
 
         public static string GetValue(string section)
         {
-            return _configuration.GetSection(section).Value;
+            return Config.GetSection(section).Value;
         }
 
         public static string GetConnectionString(string connectionName)
         {
-            return _configuration.GetConnectionString(connectionName);
+            return Config.GetConnectionString(connectionName);
         }
     }
 }
