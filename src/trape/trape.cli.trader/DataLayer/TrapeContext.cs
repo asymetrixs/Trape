@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.cli.trader.Cache.Trends;
+using trape.cli.trader.Cache.Models;
 
 namespace trape.cli.trader.DataLayer
 {
@@ -147,16 +147,14 @@ namespace trape.cli.trader.DataLayer
                                 }
 
                                 pushedProperty = LogContext.PushProperty("reader", reader);
-
-                                var trend = new Trend3Seconds(
+                                
+                                trends.Add(new Trend3Seconds(
                                     reader.GetString(0),
                                     reader.GetInt32(1),
                                     reader.GetDecimal(2),
                                     reader.GetDecimal(3),
                                     reader.GetDecimal(4),
-                                    reader.GetDecimal(5));
-
-                                trends.Add(trend);
+                                    reader.GetDecimal(5)));
                             }
                         }
                     }
@@ -216,16 +214,14 @@ namespace trape.cli.trader.DataLayer
                                 }
 
                                 pushedProperty = LogContext.PushProperty("reader", reader);
-
-                                var trend = new Trend15Seconds(
+                                
+                                trends.Add(new Trend15Seconds(
                                     reader.GetString(0),
                                     reader.GetInt32(1),
                                     reader.GetDecimal(2),
                                     reader.GetDecimal(3),
                                     reader.GetDecimal(4),
-                                    reader.GetDecimal(5));
-
-                                trends.Add(trend);
+                                    reader.GetDecimal(5)));
                             }
                         }
                     }
@@ -285,16 +281,14 @@ namespace trape.cli.trader.DataLayer
                                 }
 
                                 pushedProperty = LogContext.PushProperty("reader", reader);
-
-                                var trend = new Trend2Minutes(
+                                
+                                trends.Add(new Trend2Minutes(
                                     reader.GetString(0),
                                     reader.GetInt32(1),
                                     reader.GetDecimal(2),
                                     reader.GetDecimal(3),
                                     reader.GetDecimal(4),
-                                    reader.GetDecimal(5));
-
-                                trends.Add(trend);
+                                    reader.GetDecimal(5)));
                             }
                         }
                     }
@@ -354,16 +348,14 @@ namespace trape.cli.trader.DataLayer
                                 }
 
                                 pushedProperty = LogContext.PushProperty("reader", reader);
-
-                                var trend = new Trend10Minutes(
+                                
+                                trends.Add(new Trend10Minutes(
                                     reader.GetString(0),
                                     reader.GetInt32(1),
                                     reader.GetDecimal(2),
                                     reader.GetDecimal(3),
                                     reader.GetDecimal(4),
                                     reader.GetDecimal(5));
-
-                                trends.Add(trend);
                             }
                         }
                     }
@@ -423,16 +415,14 @@ namespace trape.cli.trader.DataLayer
                                 }
 
                                 pushedProperty = LogContext.PushProperty("reader", reader);
-
-                                var trend = new Trend2Hours(
+                                
+                                trends.Add(new Trend2Hours(
                                     reader.GetString(0),
                                     reader.GetInt32(1),
                                     reader.GetDecimal(2),
                                     reader.GetDecimal(3),
                                     reader.GetDecimal(4),
-                                    reader.GetDecimal(5));
-
-                                trends.Add(trend);
+                                    reader.GetDecimal(5)));
                             }
                         }
                     }
@@ -512,5 +502,75 @@ namespace trape.cli.trader.DataLayer
             return price;
         }
 
+        public async Task<IEnumerable<CurrentPrice>> GetCurrentPrice(CancellationToken cancellationToken)
+        {
+            var currentPrices = new List<CurrentPrice>();
+            IDisposable pushedProperty = null;
+
+            using (var con = new NpgsqlConnection(this._connectionString))
+            {
+                using (var com = new NpgsqlCommand("current_price", con))
+                {
+                    try
+                    {
+                        this._logger.Verbose("Executing current_price");
+
+                        com.CommandType = CommandType.StoredProcedure;
+
+                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+                        using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
+                        {
+                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                            {
+                                // Skip if values are NULL
+                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
+                                    )
+                                {
+                                    continue;
+                                }
+                                
+                                pushedProperty = LogContext.PushProperty("reader", reader);
+
+                                currentPrices.Add(new CurrentPrice(
+                                    reader.GetString(0),
+                                    reader.GetDateTime(1),
+                                    reader.GetDecimal(1),
+                                    reader.GetDecimal(2),
+                                    reader.GetDecimal(3),
+                                    reader.GetDecimal(4),
+                                    reader.GetDecimal(5),
+                                    reader.GetDecimal(6)));
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!cancellationToken.IsCancellationRequested)
+                        {
+                            this._logger.Fatal(ex.Message, ex);
+                        }
+#if DEBUG
+                        throw;
+#endif
+                    }
+                    finally
+                    {
+                        pushedProperty?.Dispose();
+
+                        con.Close();
+                    }
+                }
+            }
+
+            return currentPrices;
+        }
     }
 }

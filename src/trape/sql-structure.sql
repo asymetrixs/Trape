@@ -438,6 +438,33 @@ END;
 $$
 LANGUAGE plpgsql STRICT;
 
+
+CREATE OR REPLACE FUNCTION current_price()
+RETURNS TABLE 
+(
+	r_symbol TEXT,
+	r_event_time TIMESTAMPTZ,
+	r_low_price NUMERIC,
+	r_high_price NUMERIC,
+	r_open_price NUMERIC,
+	r_current_day_close_price NUMERIC,
+	r_price_change_percentage NUMERIC,
+	r_price_change NUMERIC
+)
+AS
+$$
+BEGIN
+	RETURN QUERY SELECT DISTINCT ON (symbol) symbol, event_time, low_price, high_price, open_price,
+		current_day_close_price, price_change_percentage, price_change
+		FROM binance_stream_tick
+		WHERE event_time > NOW() - INTERVAL '5 seconds'
+		GROUP BY symbol, event_time, symbol, low_price, high_price, open_price, current_day_close_price, price_change_percentage, price_change
+		ORDER BY symbol, event_time DESC;
+END;
+$$
+LANGUAGE plpgsql STRICT;
+
+
 CREATE TABLE decision
 (
 	id bigserial NOT NULL,

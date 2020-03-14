@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
-using trape.cli.trader.Cache.Trends;
+using trape.cli.trader.Cache.Models;
 using trape.cli.trader.DataLayer;
 
 namespace trape.cli.trader.Cache
@@ -27,6 +27,8 @@ namespace trape.cli.trader.Cache
 
         private Timer _timerTrend2Hours;
 
+        private Timer _timerCurrentPrice;
+
         public IEnumerable<Trend3Seconds> Trends3Seconds { get; private set; }
 
         public IEnumerable<Trend15Seconds> Trends15Seconds { get; private set; }
@@ -37,6 +39,7 @@ namespace trape.cli.trader.Cache
 
         public IEnumerable<Trend2Hours> Trends2Hours { get; private set; }
 
+        public IEnumerable<CurrentPrice> CurrentPrices { get; private set; }
 
         public Buffer(ILogger logger)
         {
@@ -84,6 +87,21 @@ namespace trape.cli.trader.Cache
                 Interval = new TimeSpan(2, 0, 0).TotalMilliseconds
             };
             this._timerTrend2Hours.Elapsed += _timerTrend2Hours_Elapsed;
+
+            this._timerCurrentPrice = new Timer()
+            {
+                AutoReset = true,
+                Interval = new TimeSpan(0, 0, 1).TotalMilliseconds
+            };
+            this._timerCurrentPrice.Elapsed += _timerCurrentPrice_Elapsed;
+        }
+
+        private async void _timerCurrentPrice_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
+            this.CurrentPrices = await database.GetCurrentPrices(this._cancellationTokenSource.Token).ConfigureAwait(true);
+
+            this._logger.Verbose("Updated current price");
         }
 
         private async void _timerTrend3Seconds_Elapsed(object sender, ElapsedEventArgs e)

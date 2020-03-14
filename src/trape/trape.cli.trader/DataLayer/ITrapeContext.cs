@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.cli.trader.Cache.Trends;
+using trape.cli.trader.Cache.Models;
 
 namespace trape.cli.trader.DataLayer
 {
@@ -21,5 +21,7 @@ namespace trape.cli.trader.DataLayer
         Task<IEnumerable<Trend2Hours>> Get2HoursTrend(CancellationToken cancellationToken);
 
         Task<decimal> GetCurrentPrice(string symbol, CancellationToken cancellationToken);
+
+        Task<IEnumerable<CurrentPrice>> GetCurrentPrices(CancellationToken cancellationToken);
     }
 }

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Timers;
-using trape.cli.trader.Cache.Trends;
+using trape.cli.trader.Cache.Models;
 using trape.cli.trader.DataLayer;
 
 namespace trape.cli.trader
@@ -54,19 +54,23 @@ namespace trape.cli.trader
                 var t2m = this._buffer.Trends2Minutes;
                 var t10m = this._buffer.Trends10Minutes;
                 var t2h = this._buffer.Trends2Hours;
+                var cp = this._buffer.CurrentPrices;
 
                 var trend3Seconds = t3s.SingleOrDefault(t => t.Symbol == symbol);
                 var trend15Seconds = t15s.SingleOrDefault(t => t.Symbol == symbol);
                 var trend2Minutes = t2m.SingleOrDefault(t => t.Symbol == symbol);
                 var trend10Minutes = t10m.SingleOrDefault(t => t.Symbol == symbol);
                 var trend2Hours = t2h.SingleOrDefault(t => t.Symbol == symbol);
+                var currentPrice = cp.SingleOrDefault(c => c.Symbol == symbol);
 
                 if (null == trend3Seconds
                     || null == trend15Seconds
                     || null == trend2Minutes
                     || null == trend10Minutes
-                    || null == trend2Hours)
+                    || null == trend2Hours
+                    || null == currentPrice || currentPrice.EventTime < DateTime.UtcNow.AddSeconds(-3))
                 {
+                    this._logger.Warning($"Skipped {symbol} due to old or incomplete data");
                     continue;
                 }
 
@@ -92,7 +96,7 @@ namespace trape.cli.trader
                     }
                     else
                     {
-                        this._logger.Verbose($"K {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
+                        this._logger.Verbose($"P {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
                     }
                 }
                 else if (lastDecision.Value.Action == "Buy"
@@ -116,6 +120,21 @@ namespace trape.cli.trader
                     {
                         this._rates.Remove(symbol);
                     }
+
+                    var socketClient = new Binance.Net.BinanceClient(new Binance.Net.Objects.BinanceClientOptions()
+                    {
+                        ApiCredentials = new CryptoExchange.Net.Authentication.ApiCredentials(Configuration.GetValue("binance:apikey"),
+                                                       Configuration.GetValue("binance:secretkey")),
+                        RateLimitingBehaviour = CryptoExchange.Net.Objects.RateLimitingBehaviour.Fail
+                    });
+                    var ai = socketClient.GetAccountInfo();
+                        
+                    var @as = socketClient.GetAccountStatus();
+                    socketClient.PlaceMarginOrder("BTCUSDT", Binance.Net.Objects.OrderSide.Buy, Binance.Net.Objects.OrderType.TakeProfitLimit,
+                        quantity: 0.5, newClientOrderId: System.Guid.NewGuid(), timeInForce: Binance.Net.Objects.TimeInForce.GoodTillCancel,
+                        sideEffectType: Binance.Net.Objects.SideEffectType.MarginBuy, orderResponseType: Binance.Net.Objects.OrderResponseType.Full
+
+
 
                     this._rates.Add(lastDecision.Key, lastDecision.Value);
                     await database.Insert(lastDecision.Value, trend3Seconds, trend15Seconds, trend2Minutes, trend10Minutes, trend2Hours, this._cancellationTokenSource.Token).ConfigureAwait(false);
