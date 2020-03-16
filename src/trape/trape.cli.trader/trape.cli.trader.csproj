@@ -6,6 +6,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Trading\**" />
+    <EmbeddedResource Remove="Trading\**" />
+    <None Remove="Trading\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Binance.Net" Version="5.0.9" />
     <PackageReference Include="Microsoft.CodeQuality.Analyzers" Version="2.9.8">
       <PrivateAssets>all</PrivateAssets>
@@ -24,10 +30,6 @@
     <PackageReference Include="Serilog.Sinks.Async" Version="1.4.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="3.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="4.1.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Trading\" />
   </ItemGroup>
 
   <ItemGroup>

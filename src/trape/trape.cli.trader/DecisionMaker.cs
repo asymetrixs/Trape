@@ -81,7 +81,7 @@ namespace trape.cli.trader
                 // No trade yet
                 if (!this._rates.ContainsKey(symbol))
                 {
-                    if (trend10Minutes.Hours2 < 0 && trend2Minutes.Minutes10 > 0)
+                    if (trend10Minutes.Hours1 < 0 && trend2Minutes.Minutes10 > 0)
                     {
                         this._rates.Add(symbol, new Decision()
                         {
@@ -100,8 +100,7 @@ namespace trape.cli.trader
                     }
                 }
                 else if (lastDecision.Value.Action == "Buy"
-                    && price * 1.01M > lastDecision.Value.Price
-                    && trend10Minutes.IsValid() && trend10Minutes.Hours2 > 0
+                    && price > lastDecision.Value.Price * 1.01M
                     && trend10Minutes.IsValid() && trend10Minutes.Hours1 > 0
                     && trend2Minutes.IsValid() && trend2Minutes.Minutes15 < 0
                     && trend2Minutes.IsValid() && trend2Minutes.Minutes10 < 0
@@ -121,18 +120,18 @@ namespace trape.cli.trader
                         this._rates.Remove(symbol);
                     }
 
-                    var socketClient = new Binance.Net.BinanceClient(new Binance.Net.Objects.BinanceClientOptions()
-                    {
-                        ApiCredentials = new CryptoExchange.Net.Authentication.ApiCredentials(Configuration.GetValue("binance:apikey"),
-                                                       Configuration.GetValue("binance:secretkey")),
-                        RateLimitingBehaviour = CryptoExchange.Net.Objects.RateLimitingBehaviour.Fail
-                    });
-                    var ai = socketClient.GetAccountInfo();
-                        
-                    var @as = socketClient.GetAccountStatus();
-                    socketClient.PlaceMarginOrder("BTCUSDT", Binance.Net.Objects.OrderSide.Buy, Binance.Net.Objects.OrderType.TakeProfitLimit,
-                        quantity: 0.5, newClientOrderId: System.Guid.NewGuid(), timeInForce: Binance.Net.Objects.TimeInForce.GoodTillCancel,
-                        sideEffectType: Binance.Net.Objects.SideEffectType.MarginBuy, orderResponseType: Binance.Net.Objects.OrderResponseType.Full
+                    //var socketClient = new Binance.Net.BinanceClient(new Binance.Net.Objects.BinanceClientOptions()
+                    //{
+                    //    ApiCredentials = new CryptoExchange.Net.Authentication.ApiCredentials(Configuration.GetValue("binance:apikey"),
+                    //                                   Configuration.GetValue("binance:secretkey")),
+                    //    RateLimitingBehaviour = CryptoExchange.Net.Objects.RateLimitingBehaviour.Fail
+                    //});
+                    //var ai = socketClient.GetAccountInfo();
+
+                    //var @as = socketClient.GetAccountStatus();
+                    //socketClient.PlaceMarginOrder("BTCUSDT", Binance.Net.Objects.OrderSide.Buy, Binance.Net.Objects.OrderType.TakeProfitLimit,
+                    //    quantity: 0.5, newClientOrderId: System.Guid.NewGuid(), timeInForce: Binance.Net.Objects.TimeInForce.GoodTillCancel,
+                    //    sideEffectType: Binance.Net.Objects.SideEffectType.MarginBuy, orderResponseType: Binance.Net.Objects.OrderResponseType.Full
 
 
 
@@ -140,8 +139,8 @@ namespace trape.cli.trader
                     await database.Insert(lastDecision.Value, trend3Seconds, trend15Seconds, trend2Minutes, trend10Minutes, trend2Hours, this._cancellationTokenSource.Token).ConfigureAwait(false);
                 }
                 else if (lastDecision.Value.Action == "Sell"
-                    && price * 0.99M < lastDecision.Value.Price
-                    && trend10Minutes.IsValid() && trend10Minutes.Hours2 < 0
+                    && price < lastDecision.Value.Price * 0.99M
+                    && trend10Minutes.IsValid() && trend10Minutes.Hours1 < 0
                     && trend10Minutes.IsValid() && trend10Minutes.Hours1 < 0
                     && trend2Minutes.IsValid() && trend2Minutes.Minutes15 > 0
                     && trend2Minutes.IsValid() && trend2Minutes.Minutes10 > 0
@@ -173,7 +172,7 @@ namespace trape.cli.trader
 
         private string _GetTrend(Trend10Minutes trend10Minutes, Trend2Minutes trend2Minutes, Trend3Seconds trend3Seconds)
         {
-            return $"@ 2hrs: {Math.Round(trend10Minutes.Hours2, 4)} | 10min: {Math.Round(trend2Minutes.Minutes10, 4)} | 30sec: {Math.Round(trend3Seconds.Seconds30, 4)} | 5sec: {Math.Round(trend3Seconds.Seconds5, 4)}";
+            return $"@ 2/1: {Math.Round(trend10Minutes.Hours2, 4)}/{Math.Round(trend10Minutes.Hours1, 4)} | 10: {Math.Round(trend2Minutes.Minutes10, 4)} | 30: {Math.Round(trend3Seconds.Seconds30, 4)} | 5: {Math.Round(trend3Seconds.Seconds5, 4)}";
         }
 
         public void Start()
