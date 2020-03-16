@@ -6,6 +6,8 @@
 
         public decimal Price { get; set; }
 
-        public string Action { get; set; }
+        public Action Action { get; set; }
+
+        public decimal Indicator { get; set; }
     }
 }

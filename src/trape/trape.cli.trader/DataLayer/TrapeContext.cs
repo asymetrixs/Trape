@@ -63,7 +63,7 @@ namespace trape.cli.trader.DataLayer
                         com.CommandType = CommandType.StoredProcedure;
 
                         com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = decision.Symbol;
-                        com.Parameters.Add("p_decision", NpgsqlTypes.NpgsqlDbType.Text).Value = decision.Action;
+                        com.Parameters.Add("p_decision", NpgsqlTypes.NpgsqlDbType.Text).Value = decision.Action.ToString() + "-" + decision.Indicator.ToString("0.0000");
                         com.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = decision.Price;
                         com.Parameters.Add("p_seconds5", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Seconds5;
                         com.Parameters.Add("p_seconds10", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Seconds10;

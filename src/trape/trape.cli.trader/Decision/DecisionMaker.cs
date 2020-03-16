@@ -87,7 +87,7 @@ namespace trape.cli.trader.Decision
                     {
                         lastDecision = new KeyValuePair<string, Decision>(symbol, new Decision()
                         {
-                            Action = "Buy",
+                            Action = Action.Buy,
                             Price = price,
                             Symbol = symbol
                         });
@@ -102,7 +102,7 @@ namespace trape.cli.trader.Decision
                         this._logger.Verbose($"P {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
                     }
                 }
-                else if (lastDecision.Value.Action == "Buy"
+                else if (lastDecision.Value.Action == Action.Buy
                     && price > lastDecision.Value.Price * 1.01M
                     && trend10Minutes.IsValid() && trend10Minutes.Hours1 > 0
                     && trend2Minutes.IsValid() && trend2Minutes.Minutes15 < 0
@@ -113,9 +113,10 @@ namespace trape.cli.trader.Decision
 
                     lastDecision = new KeyValuePair<string, Decision>(symbol, new Decision()
                     {
-                        Action = "Sell",
+                        Action = Action.Sell,
                         Price = price,
-                        Symbol = symbol
+                        Symbol = symbol,
+                        Indicator = trend10Minutes.Hours1 * 10 + trend2Minutes.Minutes15 * 100 + trend2Minutes.Minutes10 * 1000 + trend15Seconds.Minutes3 * 5
                     });
 
                     if (this._rates.ContainsKey(symbol))
@@ -123,27 +124,11 @@ namespace trape.cli.trader.Decision
                         this._rates.Remove(symbol);
                     }
 
-                    //var socketClient = new Binance.Net.BinanceClient(new Binance.Net.Objects.BinanceClientOptions()
-                    //{
-                    //    ApiCredentials = new CryptoExchange.Net.Authentication.ApiCredentials(Configuration.GetValue("binance:apikey"),
-                    //                                   Configuration.GetValue("binance:secretkey")),
-                    //    RateLimitingBehaviour = CryptoExchange.Net.Objects.RateLimitingBehaviour.Fail
-                    //});
-                    //var ai = socketClient.GetAccountInfo();
-
-                    //var @as = socketClient.GetAccountStatus();
-                    //socketClient.PlaceMarginOrder("BTCUSDT", Binance.Net.Objects.OrderSide.Buy, Binance.Net.Objects.OrderType.TakeProfitLimit,
-                    //    quantity: 0.5, newClientOrderId: System.Guid.NewGuid(), timeInForce: Binance.Net.Objects.TimeInForce.GoodTillCancel,
-                    //    sideEffectType: Binance.Net.Objects.SideEffectType.MarginBuy, orderResponseType: Binance.Net.Objects.OrderResponseType.Full
-
-
-
                     this._rates.Add(lastDecision.Key, lastDecision.Value);
                     await database.Insert(lastDecision.Value, trend3Seconds, trend15Seconds, trend2Minutes, trend10Minutes, trend2Hours, this._cancellationTokenSource.Token).ConfigureAwait(false);
                 }
-                else if (lastDecision.Value.Action == "Sell"
+                else if (lastDecision.Value.Action == Action.Sell
                     && price < lastDecision.Value.Price * 0.99M
-                    && trend10Minutes.IsValid() && trend10Minutes.Hours1 < 0
                     && trend10Minutes.IsValid() && trend10Minutes.Hours1 < 0
                     && trend2Minutes.IsValid() && trend2Minutes.Minutes15 > 0
                     && trend2Minutes.IsValid() && trend2Minutes.Minutes10 > 0
@@ -153,9 +138,10 @@ namespace trape.cli.trader.Decision
 
                     lastDecision = new KeyValuePair<string, Decision>(symbol, new Decision()
                     {
-                        Action = "Buy",
+                        Action = Action.Buy,
                         Price = price,
-                        Symbol = symbol
+                        Symbol = symbol,
+                        Indicator = trend10Minutes.Hours1 * 10 + trend2Minutes.Minutes15 * 100 + trend2Minutes.Minutes10 * 1000 + trend15Seconds.Minutes3 * 5
                     });
 
                     if (this._rates.ContainsKey(symbol))
