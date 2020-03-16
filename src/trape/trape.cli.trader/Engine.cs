@@ -3,6 +3,10 @@ using Serilog;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using trape.cli.trader.Account;
+using trape.cli.trader.Cache;
+using trape.cli.trader.Decision;
+using trape.cli.trader.trade;
 
 namespace trape.cli.trader
 {
@@ -10,13 +14,17 @@ namespace trape.cli.trader
     {
         private ILogger _logger;
 
-        private Cache.Buffer _buffer;
+        private IBuffer _buffer;
 
-        private DecisionMaker _decisionMaker;
+        private IDecisionMaker _decisionMaker;
 
-        public Engine(ILogger logger, Cache.Buffer buffer, DecisionMaker decisionMaker)
+        private ITrader _trader;
+
+        private IAccountant _accountant;
+
+        public Engine(ILogger logger, IBuffer buffer, IDecisionMaker decisionMaker, ITrader trader, IAccountant accountant)
         {
-            if(null == logger || null == buffer || null == decisionMaker)
+            if(null == logger || null == buffer || null == decisionMaker || null == trader)
             {
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
@@ -24,6 +32,8 @@ namespace trape.cli.trader
             this._logger = logger;
             this._buffer = buffer;
             this._decisionMaker = decisionMaker;
+            this._trader = trader;
+            this._accountant = accountant;
         }
 
         protected async override Task ExecuteAsync(CancellationToken stoppingToken)
@@ -34,6 +44,8 @@ namespace trape.cli.trader
 
             this._decisionMaker.Start();
 
+            await this._accountant.Start().ConfigureAwait(false);
+
             this._logger.Information("Engine is started");
         }
 
@@ -41,8 +53,10 @@ namespace trape.cli.trader
         {
             this._logger.Information("Engine is stopping");
 
-            this._decisionMaker.Stop();
+            this._accountant.Stop();
 
+            this._decisionMaker.Stop();
+                       
             this._buffer.Stop();
 
             this._logger.Information("Engine is stopped");

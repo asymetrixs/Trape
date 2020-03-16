@@ -34,7 +34,7 @@ namespace trape.cli.trader.DataLayer
         }
 
 
-        public async Task Insert(Decision decision, Trend3Seconds trend3Seconds, Trend15Seconds trend15Seconds, Trend2Minutes trend2Minutes,
+        public async Task Insert(Decision.Decision decision, Trend3Seconds trend3Seconds, Trend15Seconds trend15Seconds, Trend2Minutes trend2Minutes,
             Trend10Minutes trend10Minutes, Trend2Hours trend2Hours, CancellationToken cancellationToken)
 
         {

@@ -3,16 +3,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Timers;
+using trape.cli.trader.Cache;
 using trape.cli.trader.Cache.Models;
 using trape.cli.trader.DataLayer;
 
-namespace trape.cli.trader
+namespace trape.cli.trader.Decision
 {
-    public class DecisionMaker : IDisposable
+    public class DecisionMaker : IDisposable, IDecisionMaker
     {
         private ILogger _logger;
 
-        private Cache.Buffer _buffer;
+        private IBuffer _buffer;
 
         private System.Threading.CancellationTokenSource _cancellationTokenSource;
 
@@ -22,7 +23,8 @@ namespace trape.cli.trader
 
         private bool _disposed;
 
-        public DecisionMaker(ILogger logger, Cache.Buffer buffer)
+
+        public DecisionMaker(ILogger logger, IBuffer buffer)
         {
             if (null == logger || null == buffer)
             {
@@ -83,12 +85,13 @@ namespace trape.cli.trader
                 {
                     if (trend10Minutes.Hours1 < 0 && trend2Minutes.Minutes10 > 0)
                     {
-                        this._rates.Add(symbol, new Decision()
+                        lastDecision = new KeyValuePair<string, Decision>(symbol, new Decision()
                         {
                             Action = "Buy",
                             Price = price,
                             Symbol = symbol
                         });
+                        this._rates.Add(lastDecision.Key, lastDecision.Value);
 
                         this._logger.Verbose($"A {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
 
@@ -219,6 +222,16 @@ namespace trape.cli.trader
             }
 
             this._disposed = true;
+        }
+
+        public void ConfirmBuy(string symbol)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int Recommendation(string symbol)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace trape.cli.trader
+﻿namespace trape.cli.trader.Decision
 {
     public class Decision
     {

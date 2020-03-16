@@ -4,8 +4,11 @@ using Serilog;
 using Serilog.Exceptions;
 using System;
 using System.Threading.Tasks;
+using trape.cli.trader.Account;
 using trape.cli.trader.Cache;
 using trape.cli.trader.DataLayer;
+using trape.cli.trader.Decision;
+using trape.cli.trader.trade;
 
 namespace trape.cli.trader
 {
@@ -47,9 +50,12 @@ namespace trape.cli.trader
                 {
                     services.AddSingleton<ILogger>(Log.Logger);
                     services.AddSingleton<IBuffer, Cache.Buffer>();
-                    services.AddSingleton<Cache.Buffer>();
-                    services.AddSingleton<DecisionMaker>();
+                    services.AddSingleton<IDecisionMaker, DecisionMaker>();
+                    services.AddSingleton<ITrader, Trader>();
+                    services.AddSingleton<IAccountant, Accountant>();
+
                     services.AddTransient<ITrapeContext, TrapeContext>();
+                    
                     services.AddHostedService<Engine>();
                 });
         }
