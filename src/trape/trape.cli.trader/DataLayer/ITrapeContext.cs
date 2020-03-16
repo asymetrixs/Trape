@@ -22,6 +22,6 @@ namespace trape.cli.trader.DataLayer
 
         Task<decimal> GetCurrentPrice(string symbol, CancellationToken cancellationToken);
 
-        Task<IEnumerable<CurrentPrice>> GetCurrentPrices(CancellationToken cancellationToken);
+        Task<IEnumerable<CurrentPrice>> GetCurrentPrice(CancellationToken cancellationToken);
     }
 }

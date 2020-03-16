@@ -355,7 +355,7 @@ namespace trape.cli.trader.DataLayer
                                     reader.GetDecimal(2),
                                     reader.GetDecimal(3),
                                     reader.GetDecimal(4),
-                                    reader.GetDecimal(5));
+                                    reader.GetDecimal(5)));
                             }
                         }
                     }
@@ -523,6 +523,8 @@ namespace trape.cli.trader.DataLayer
                         {
                             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                             {
+                                pushedProperty = LogContext.PushProperty("reader", reader);
+
                                 // Skip if values are NULL
                                 if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
@@ -537,17 +539,15 @@ namespace trape.cli.trader.DataLayer
                                     continue;
                                 }
                                 
-                                pushedProperty = LogContext.PushProperty("reader", reader);
-
                                 currentPrices.Add(new CurrentPrice(
                                     reader.GetString(0),
                                     reader.GetDateTime(1),
-                                    reader.GetDecimal(1),
                                     reader.GetDecimal(2),
                                     reader.GetDecimal(3),
                                     reader.GetDecimal(4),
                                     reader.GetDecimal(5),
-                                    reader.GetDecimal(6)));
+                                    reader.GetDecimal(6),
+                                    reader.GetDecimal(7)));
                             }
                         }
                     }

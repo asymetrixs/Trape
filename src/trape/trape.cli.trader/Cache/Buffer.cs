@@ -99,7 +99,7 @@ namespace trape.cli.trader.Cache
         private async void _timerCurrentPrice_Elapsed(object sender, ElapsedEventArgs e)
         {
             var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
-            this.CurrentPrices = await database.GetCurrentPrices(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.CurrentPrices = await database.GetCurrentPrice(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
             this._logger.Verbose("Updated current price");
         }
@@ -156,6 +156,7 @@ namespace trape.cli.trader.Cache
             this.Trends2Minutes = await database.Get2MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this.Trends10Minutes = await database.Get10MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this.Trends2Hours = await database.Get2HoursTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.CurrentPrices = await database.GetCurrentPrice(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
             this._logger.Debug("Buffer preloaded");
 
@@ -165,6 +166,7 @@ namespace trape.cli.trader.Cache
             this._timerTrend2Minutes.Start();
             this._timerTrend10Minutes.Start();
             this._timerTrend2Hours.Start();
+            this._timerCurrentPrice.Start();
 
             this._logger.Information("Buffer started");
         }
@@ -180,6 +182,7 @@ namespace trape.cli.trader.Cache
             this._timerTrend2Minutes.Stop();
             this._timerTrend10Minutes.Stop();
             this._timerTrend2Hours.Stop();
+            this._timerCurrentPrice.Stop();
 
             this._logger.Information("Buffer stopped");
         }
