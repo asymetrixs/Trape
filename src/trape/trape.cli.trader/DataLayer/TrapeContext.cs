@@ -34,8 +34,8 @@ namespace trape.cli.trader.DataLayer
         }
 
 
-        public async Task Insert(Decision.Decision decision, Trend3Seconds trend3Seconds, Trend15Seconds trend15Seconds, Trend2Minutes trend2Minutes,
-            Trend10Minutes trend10Minutes, Trend2Hours trend2Hours, CancellationToken cancellationToken)
+        public async Task Insert(Decision.Decision decision, Stats3s trend3Seconds, Stats15s trend15Seconds, Stats2m trend2Minutes,
+            Stats10m trend10Minutes, Stats2h trend2Hours, CancellationToken cancellationToken)
 
         {
             if (null == trend3Seconds || null == trend15Seconds || null == trend2Minutes || null == trend10Minutes || null == trend2Hours || null == decision)
@@ -65,26 +65,26 @@ namespace trape.cli.trader.DataLayer
                         com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = decision.Symbol;
                         com.Parameters.Add("p_decision", NpgsqlTypes.NpgsqlDbType.Text).Value = decision.Action.ToString() + "-" + decision.Indicator.ToString("0.0000");
                         com.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = decision.Price;
-                        com.Parameters.Add("p_seconds5", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Seconds5;
-                        com.Parameters.Add("p_seconds10", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Seconds10;
-                        com.Parameters.Add("p_seconds15", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Seconds15;
-                        com.Parameters.Add("p_seconds30", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Seconds30;
-                        com.Parameters.Add("p_seconds45", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend15Seconds.Seconds45;
-                        com.Parameters.Add("p_minute1", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend15Seconds.Minutes1;
-                        com.Parameters.Add("p_minutes2", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend15Seconds.Minutes2;
-                        com.Parameters.Add("p_minutes3", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend15Seconds.Minutes3;
-                        com.Parameters.Add("p_minutes5", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Minutes.Minutes5;
-                        com.Parameters.Add("p_minutes7", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Minutes.Minutes7;
-                        com.Parameters.Add("p_minutes10", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Minutes.Minutes10;
-                        com.Parameters.Add("p_minutes15", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Minutes.Minutes15;
-                        com.Parameters.Add("p_minutes30", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend10Minutes.Minutes30;
-                        com.Parameters.Add("p_hour1", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend10Minutes.Hours1;
-                        com.Parameters.Add("p_hours2", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend10Minutes.Hours2;
-                        com.Parameters.Add("p_hours3", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend10Minutes.Hours3;
-                        com.Parameters.Add("p_hours6", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Hours.Hours6;
-                        com.Parameters.Add("p_hours12", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Hours.Hours12;
-                        com.Parameters.Add("p_hours18", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Hours.Hours18;
-                        com.Parameters.Add("p_day1", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Hours.Day1;
+                        com.Parameters.Add("p_seconds5", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Slope5s;
+                        com.Parameters.Add("p_seconds10", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Slope10s;
+                        com.Parameters.Add("p_seconds15", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Slope15s;
+                        com.Parameters.Add("p_seconds30", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend3Seconds.Slope30s;
+                        com.Parameters.Add("p_seconds45", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend15Seconds.Slope45s;
+                        com.Parameters.Add("p_minute1", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend15Seconds.Slope1m;
+                        com.Parameters.Add("p_minutes2", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend15Seconds.Slope2m;
+                        com.Parameters.Add("p_minutes3", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend15Seconds.Slope3m;
+                        com.Parameters.Add("p_minutes5", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Minutes.Slope5m;
+                        com.Parameters.Add("p_minutes7", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Minutes.Slope7m;
+                        com.Parameters.Add("p_minutes10", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Minutes.Slope10m;
+                        com.Parameters.Add("p_minutes15", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Minutes.Slope15m;
+                        com.Parameters.Add("p_minutes30", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend10Minutes.Slope30m;
+                        com.Parameters.Add("p_hour1", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend10Minutes.Slope1h;
+                        com.Parameters.Add("p_hours2", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend10Minutes.Slope2h;
+                        com.Parameters.Add("p_hours3", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend10Minutes.Slope3h;
+                        com.Parameters.Add("p_hours6", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Hours.Slope6h;
+                        com.Parameters.Add("p_hours12", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Hours.Slope12h;
+                        com.Parameters.Add("p_hours18", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Hours.Slope18h;
+                        com.Parameters.Add("p_day1", NpgsqlTypes.NpgsqlDbType.Numeric).Value = trend2Hours.Slope1d;
 
                         await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
@@ -104,7 +104,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         con.Close();
 
-                        foreach(var pp in pushedProperties)
+                        foreach (var pp in pushedProperties)
                         {
                             pp.Dispose();
                         }
@@ -113,9 +113,9 @@ namespace trape.cli.trader.DataLayer
             }
         }
 
-        public async Task<IEnumerable<Trend3Seconds>> Get3SecondsTrend(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats3s>> Get3SecondsTrend(CancellationToken cancellationToken)
         {
-            var trends = new List<Trend3Seconds>();
+            var trends = new List<Stats3s>();
             IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this._connectionString))
@@ -141,20 +141,28 @@ namespace trape.cli.trader.DataLayer
                                     || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
                                     )
                                 {
                                     continue;
                                 }
 
                                 pushedProperty = LogContext.PushProperty("reader", reader);
-                                
-                                trends.Add(new Trend3Seconds(
+
+                                trends.Add(new Stats3s(
                                     reader.GetString(0),
                                     reader.GetInt32(1),
                                     reader.GetDecimal(2),
                                     reader.GetDecimal(3),
                                     reader.GetDecimal(4),
-                                    reader.GetDecimal(5)));
+                                    reader.GetDecimal(5),
+                                    reader.GetDecimal(6),
+                                    reader.GetDecimal(7),
+                                    reader.GetDecimal(8),
+                                    reader.GetDecimal(9)));
                             }
                         }
                     }
@@ -180,9 +188,9 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<IEnumerable<Trend15Seconds>> Get15SecondsTrend(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats15s>> Get15SecondsTrend(CancellationToken cancellationToken)
         {
-            var trends = new List<Trend15Seconds>();
+            var trends = new List<Stats15s>();
             IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this._connectionString))
@@ -208,20 +216,28 @@ namespace trape.cli.trader.DataLayer
                                     || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
                                     )
                                 {
                                     continue;
                                 }
 
                                 pushedProperty = LogContext.PushProperty("reader", reader);
-                                
-                                trends.Add(new Trend15Seconds(
+
+                                trends.Add(new Stats15s(
                                     reader.GetString(0),
                                     reader.GetInt32(1),
                                     reader.GetDecimal(2),
                                     reader.GetDecimal(3),
                                     reader.GetDecimal(4),
-                                    reader.GetDecimal(5)));
+                                    reader.GetDecimal(5),
+                                    reader.GetDecimal(6),
+                                    reader.GetDecimal(7),
+                                    reader.GetDecimal(8),
+                                    reader.GetDecimal(9)));
                             }
                         }
                     }
@@ -247,9 +263,9 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<IEnumerable<Trend2Minutes>> Get2MinutesTrend(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats2m>> Get2MinutesTrend(CancellationToken cancellationToken)
         {
-            var trends = new List<Trend2Minutes>();
+            var trends = new List<Stats2m>();
             IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this._connectionString))
@@ -275,20 +291,28 @@ namespace trape.cli.trader.DataLayer
                                     || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
                                     )
                                 {
                                     continue;
                                 }
 
                                 pushedProperty = LogContext.PushProperty("reader", reader);
-                                
-                                trends.Add(new Trend2Minutes(
+
+                                trends.Add(new Stats2m(
                                     reader.GetString(0),
                                     reader.GetInt32(1),
                                     reader.GetDecimal(2),
                                     reader.GetDecimal(3),
                                     reader.GetDecimal(4),
-                                    reader.GetDecimal(5)));
+                                    reader.GetDecimal(5),
+                                    reader.GetDecimal(6),
+                                    reader.GetDecimal(7),
+                                    reader.GetDecimal(8),
+                                    reader.GetDecimal(9)));
                             }
                         }
                     }
@@ -314,9 +338,9 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<IEnumerable<Trend10Minutes>> Get10MinutesTrend(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats10m>> Get10MinutesTrend(CancellationToken cancellationToken)
         {
-            var trends = new List<Trend10Minutes>();
+            var trends = new List<Stats10m>();
             IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this._connectionString))
@@ -342,20 +366,28 @@ namespace trape.cli.trader.DataLayer
                                     || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
                                     )
                                 {
                                     continue;
                                 }
 
                                 pushedProperty = LogContext.PushProperty("reader", reader);
-                                
-                                trends.Add(new Trend10Minutes(
+
+                                trends.Add(new Stats10m(
                                     reader.GetString(0),
                                     reader.GetInt32(1),
                                     reader.GetDecimal(2),
                                     reader.GetDecimal(3),
                                     reader.GetDecimal(4),
-                                    reader.GetDecimal(5)));
+                                    reader.GetDecimal(5),
+                                    reader.GetDecimal(6),
+                                    reader.GetDecimal(7),
+                                    reader.GetDecimal(8),
+                                    reader.GetDecimal(9)));
                             }
                         }
                     }
@@ -381,9 +413,9 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<IEnumerable<Trend2Hours>> Get2HoursTrend(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats2h>> Get2HoursTrend(CancellationToken cancellationToken)
         {
-            var trends = new List<Trend2Hours>();
+            var trends = new List<Stats2h>();
             IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this._connectionString))
@@ -409,20 +441,28 @@ namespace trape.cli.trader.DataLayer
                                     || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
                                     )
                                 {
                                     continue;
                                 }
 
                                 pushedProperty = LogContext.PushProperty("reader", reader);
-                                
-                                trends.Add(new Trend2Hours(
+
+                                trends.Add(new Stats2h(
                                     reader.GetString(0),
                                     reader.GetInt32(1),
                                     reader.GetDecimal(2),
                                     reader.GetDecimal(3),
                                     reader.GetDecimal(4),
-                                    reader.GetDecimal(5)));
+                                    reader.GetDecimal(5),
+                                    reader.GetDecimal(6),
+                                    reader.GetDecimal(7),
+                                    reader.GetDecimal(8),
+                                    reader.GetDecimal(9)));
                             }
                         }
                     }
@@ -538,7 +578,7 @@ namespace trape.cli.trader.DataLayer
                                 {
                                     continue;
                                 }
-                                
+
                                 currentPrices.Add(new CurrentPrice(
                                     reader.GetString(0),
                                     reader.GetDateTime(1),

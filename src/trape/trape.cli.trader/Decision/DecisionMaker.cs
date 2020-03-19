@@ -6,13 +6,13 @@ using System.Timers;
 using trape.cli.trader.Account;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Cache.Models;
-using trape.cli.trader.DataLayer;
-using trape.cli.trader.trade;
 
 namespace trape.cli.trader.Decision
 {
     public class DecisionMaker : IDisposable, IDecisionMaker
     {
+        #region Fields
+
         private ILogger _logger;
 
         private IBuffer _buffer;
@@ -25,6 +25,7 @@ namespace trape.cli.trader.Decision
 
         private bool _disposed;
 
+        #endregion
 
         public DecisionMaker(ILogger logger, IBuffer buffer)
         {
@@ -57,11 +58,11 @@ namespace trape.cli.trader.Decision
 
         private async System.Threading.Tasks.Task _decide(string symbol)
         {
-            var t3s = this._buffer.Trends3Seconds;
-            var t15s = this._buffer.Trends15Seconds;
-            var t2m = this._buffer.Trends2Minutes;
-            var t10m = this._buffer.Trends10Minutes;
-            var t2h = this._buffer.Trends2Hours;
+            var t3s = this._buffer.Stats3s;
+            var t15s = this._buffer.Stats15s;
+            var t2m = this._buffer.Stats2m;
+            var t10m = this._buffer.Stats10m;
+            var t2h = this._buffer.Stats2h;
             var cp = this._buffer.CurrentPrices;
 
             var trend3Seconds = t3s.SingleOrDefault(t => t.Symbol == symbol);
@@ -94,11 +95,11 @@ namespace trape.cli.trader.Decision
             }
 
 
-            var veryShortImpact = trend3Seconds.Seconds5 + trend3Seconds.Seconds10 + trend3Seconds.Seconds15 + trend3Seconds.Seconds30;
-            var shortImpact = trend15Seconds.Seconds45 + trend15Seconds.Minutes1 + trend15Seconds.Minutes2 + trend15Seconds.Minutes3;
-            var midImpact = trend2Minutes.Minutes5 + trend2Minutes.Minutes7 + trend2Minutes.Minutes10 + trend2Minutes.Minutes15;
-            var longImpact = trend10Minutes.Minutes30 + trend10Minutes.Hours1 + trend10Minutes.Hours2 + trend10Minutes.Hours3;
-            var veryLongImpact = trend2Hours.Hours6 + trend2Hours.Hours12 + trend2Hours.Hours18 + trend2Hours.Day1;
+            var veryShortImpact = trend3Seconds.Slope5s + trend3Seconds.Slope10s + trend3Seconds.Slope15s + trend3Seconds.Slope30s;
+            var shortImpact = trend15Seconds.Slope45s + trend15Seconds.Slope1m + trend15Seconds.Slope2m + trend15Seconds.Slope3m;
+            var midImpact = trend2Minutes.Slope5m + trend2Minutes.Slope7m + trend2Minutes.Slope10m + trend2Minutes.Slope15m;
+            var longImpact = trend10Minutes.Slope30m + trend10Minutes.Slope1h + trend10Minutes.Slope2h + trend10Minutes.Slope3h;
+            var veryLongImpact = trend2Hours.Slope6h + trend2Hours.Slope12h + trend2Hours.Slope18h + trend2Hours.Slope1d;
 
             // kaufen 1 => 15min
             // 7 unter 25, 7+, 25+
@@ -124,16 +125,9 @@ namespace trape.cli.trader.Decision
             database = null;
         }
 
-        private decimal _calculateIndicator(Trend3Seconds trend3Seconds, Trend15Seconds trend15Seconds, Trend2Minutes trend2Minutes, Trend10Minutes trend10Minutes, Trend2Hours trend2Hours)
+        private string _GetTrend(Stats10m trend10Minutes, Stats2m trend2Minutes, Stats3s trend3Seconds)
         {
-
-
-            return 0;
-        }
-
-        private string _GetTrend(Trend10Minutes trend10Minutes, Trend2Minutes trend2Minutes, Trend3Seconds trend3Seconds)
-        {
-            return $"@ 2/1: {Math.Round(trend10Minutes.Hours2, 4)}/{Math.Round(trend10Minutes.Hours1, 4)} | 10: {Math.Round(trend2Minutes.Minutes10, 4)} | 30: {Math.Round(trend3Seconds.Seconds30, 4)} | 5: {Math.Round(trend3Seconds.Seconds5, 4)}";
+            return $"@ 2/1: {Math.Round(trend10Minutes.Slope2h, 4)}/{Math.Round(trend10Minutes.Slope1h, 4)} | 10: {Math.Round(trend2Minutes.Slope10m, 4)} | 30: {Math.Round(trend3Seconds.Slope30s, 4)} | 5: {Math.Round(trend3Seconds.Slope5s, 4)}";
         }
 
         public Decision GetDecision(string symbol)
@@ -145,6 +139,19 @@ namespace trape.cli.trader.Decision
 
             return null;
         }
+
+
+        public void ConfirmBuy(string symbol)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int Recommendation(string symbol)
+        {
+            throw new NotImplementedException();
+        }
+
+        #region Start / Stop
 
         public void Start()
         {
@@ -161,6 +168,10 @@ namespace trape.cli.trader.Decision
 
             this._logger.Information("Decision maker stopped");
         }
+
+        #endregion
+
+        #region Dispose
 
         /// <summary>
         /// Public implementation of Dispose pattern callable by consumers.
@@ -192,14 +203,6 @@ namespace trape.cli.trader.Decision
             this._disposed = true;
         }
 
-        public void ConfirmBuy(string symbol)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int Recommendation(string symbol)
-        {
-            throw new NotImplementedException();
-        }
+        #endregion
     }
 }

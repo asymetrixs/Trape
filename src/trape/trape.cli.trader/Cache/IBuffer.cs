@@ -7,15 +7,15 @@ namespace trape.cli.trader.Cache
 {
     public interface IBuffer : IDisposable
     {
-        IEnumerable<Trend3Seconds> Trends3Seconds { get; }
+        IEnumerable<Stats3s> Stats3s { get; }
 
-        IEnumerable<Trend15Seconds> Trends15Seconds { get; }
+        IEnumerable<Stats15s> Stats15s { get; }
 
-        IEnumerable<Trend2Minutes> Trends2Minutes { get; }
+        IEnumerable<Stats2m> Stats2m { get; }
 
-        IEnumerable<Trend10Minutes> Trends10Minutes { get; }
+        IEnumerable<Stats10m> Stats10m { get; }
 
-        IEnumerable<Trend2Hours> Trends2Hours { get; }
+        IEnumerable<Stats2h> Stats2h { get; }
 
         IEnumerable<CurrentPrice> CurrentPrices { get; }
 
