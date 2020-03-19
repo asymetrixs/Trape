@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Serilog;
-using Serilog.Context;
 using System;
 using System.Data;
 using System.Threading;
@@ -18,6 +17,8 @@ namespace trape.cli.collector.DataLayer
 
         private string _connectionString;
 
+        private bool _disposed;
+
         #endregion Fields
 
         public TrapeContext(ILogger logger)
@@ -30,6 +31,7 @@ namespace trape.cli.collector.DataLayer
 
             this._logger = logger;
             this._connectionString = Configuration.GetConnectionString("CoinTradeDB");
+            this._disposed = false;
         }
 
 
@@ -39,7 +41,7 @@ namespace trape.cli.collector.DataLayer
             {
                 return;
             }
-
+            
             using (var con = new NpgsqlConnection(this._connectionString))
             {
                 using (var com = new NpgsqlCommand("insert_binance_stream_tick", con))
@@ -237,6 +239,37 @@ namespace trape.cli.collector.DataLayer
 
                 return -1;
             }
+        }
+
+        /// <summary>
+        /// Public implementation of Dispose pattern callable by consumers.
+        /// </summary>
+        public sealed override void Dispose()
+        {
+            Dispose(true);            
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Protected implementation of Dispose pattern.
+        /// </summary>
+        /// <param name="disposing"></param>
+        protected virtual async void Dispose(bool disposing)
+        {
+            if (this._disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                this._logger = null;
+                this._connectionString = null;
+                
+                await base.DisposeAsync();
+            }
+
+            this._disposed = true;
         }
     }
 }

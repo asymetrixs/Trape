@@ -9,17 +9,17 @@ namespace trape.cli.collector.DataLayer
 #if DEBUG
     [Job(0, 1, 0)]
 #else
-    [Job(48, 0, 0)]
+    [Job(0, 5, 0)]
 #endif
     class CleanUp : IJob
     {
         public async Task Execute(CancellationToken cancellationToken)
         {
-            var database = Program.Services.GetRequiredService<ITrapeContext>();
             var logger = Program.Services.GetRequiredService<ILogger>();
-
+            var database = Pool.DatabasePool.Get();
             var deletedRows = await database.CleanUpBookTicks(cancellationToken).ConfigureAwait(false);
-
+            Pool.DatabasePool.Put(database);
+            database = null;
             logger.Debug($"Cleaned up {deletedRows} book tick records");
         }
     }

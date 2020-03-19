@@ -1,10 +1,11 @@
 ﻿using Binance.Net.Objects;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace trape.cli.collector.DataLayer
 {
-    public interface ITrapeContext
+    public interface ITrapeContext : IDisposable
     {
         Task Insert(BinanceStreamTick binanceStreamTick, CancellationToken cancellationToken);
 

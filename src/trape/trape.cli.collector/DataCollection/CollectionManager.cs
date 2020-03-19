@@ -104,20 +104,26 @@ namespace trape.cli.collector.DataCollection
 
         public static async Task Save(BinanceStreamTick bst, CancellationToken cancellationToken)
         {
-            var database = Program.Services.GetService<ITrapeContext>();
+            var database = Pool.DatabasePool.Get();
             await database.Insert(bst, cancellationToken).ConfigureAwait(false);
+            Pool.DatabasePool.Put(database);
+            database = null;
         }
 
         public static async Task Save(BinanceStreamKlineData bskd, CancellationToken cancellationToken)
         {
-            var database = Program.Services.GetService<ITrapeContext>();
+            var database = Pool.DatabasePool.Get();
             await database.Insert(bskd, cancellationToken).ConfigureAwait(false);
+            Pool.DatabasePool.Put(database);
+            database = null;
         }
 
         public static async Task Save(BinanceBookTick bbt, CancellationToken cancellationToken)
         {
-            var database = Program.Services.GetService<ITrapeContext>();
+            var database = Pool.DatabasePool.Get();
             await database.Insert(bbt, cancellationToken).ConfigureAwait(false);
+            Pool.DatabasePool.Put(database);
+            database = null;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -168,7 +174,7 @@ namespace trape.cli.collector.DataCollection
                 this._binanceStreamTickBuffer.Complete();
                 this._binanceStreamKlineDataBuffer.Complete();
                 this._binanceBookTickBuffer.Complete();
-
+                
                 Program.Services.GetRequiredService<IJobManager>().TerminateAll();
 
                 this._cancellationTokenSource.Cancel();

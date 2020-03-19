@@ -1,11 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
-using Serilog.Exceptions;
 using System;
 using System.Threading.Tasks;
 using trape.cli.collector.DataCollection;
-using trape.cli.collector.DataLayer;
 using trape.jobs;
 
 namespace trape.cli.collector
@@ -28,16 +26,22 @@ namespace trape.cli.collector
             {
                 await app.RunAsync().ConfigureAwait(false);
             }
+            catch(OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception e)
             {
                 logger.Error(e, e.Message);
             }
 
+            Pool.DatabasePool.ClearUnused();
+
             logger.Information("Shut down complete");
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args)
-        {            
+        {
             Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(Configuration.Config).CreateLogger();
 
@@ -47,7 +51,6 @@ namespace trape.cli.collector
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddSingleton<ILogger>(Log.Logger);
-                    services.AddTransient<ITrapeContext, TrapeContext>();
                     services.AddSingleton<IJobManager, JobManager>();
                     services.AddHostedService<CollectionManager>();
                 });

@@ -14,6 +14,8 @@ namespace trape.cli.collector
                 .AddJsonFile("settings.json", optional: false, reloadOnChange: true);
 
             Config = builder.Build();
+
+            Pool.Initialize();
         }
 
         public static string GetValue(string section)
