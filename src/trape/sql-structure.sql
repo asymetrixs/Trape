@@ -295,133 +295,6 @@ $$
 LANGUAGE plpgsql VOLATILE STRICT;
 
 
-DROP FUNCTION trends_3sec();
-CREATE OR REPLACE FUNCTION trends_3sec() 
-RETURNS TABLE (
-	r_symbol TEXT,
-	r_databasis INT,
-	r_seconds5 NUMERIC,
-	r_seconds10 NUMERIC,
-	r_seconds15 NUMERIC,
-	r_seconds30 NUMERIC
-) AS
-$$
-BEGIN
-	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 seconds'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 seconds'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '15 seconds'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8)
-	FROM binance_stream_tick
-	WHERE event_time >= NOW() - INTERVAL '30 seconds'
-	GROUP BY symbol;
-END;
-$$
-LANGUAGE plpgsql STRICT;
-
-
-DROP FUNCTION trends_15sec();
-CREATE OR REPLACE FUNCTION trends_15sec() 
-RETURNS TABLE (
-	r_symbol TEXT,
-	r_databasis INT,
-	r_seconds45 NUMERIC,
-	r_minute1 NUMERIC,
-	r_minutes2 NUMERIC,
-	r_minutes3 NUMERIC
-) AS
-$$
-BEGIN
-	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '45 seconds'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '1 minute'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '2 minutes'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8)
-	FROM binance_stream_tick
-	WHERE event_time >= NOW() - INTERVAL '3 minutes'
-	GROUP BY symbol;
-END;
-$$
-LANGUAGE plpgsql STRICT;
-
-
-
-DROP FUNCTION trends_2min();
-CREATE OR REPLACE FUNCTION trends_2min() 
-RETURNS TABLE (
-	r_symbol TEXT,
-	r_databasis INT,
-	r_minutes5 NUMERIC,
-	r_minutes7 NUMERIC,
-	r_minutes10 NUMERIC,
-	r_minutes15 NUMERIC
-) AS
-$$
-BEGIN
-	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8)
-	FROM binance_stream_tick
-	WHERE event_time >= NOW() - INTERVAL '15 minutes'
-	GROUP BY symbol;
-END;
-$$
-LANGUAGE plpgsql STRICT;
-
-
-
-DROP FUNCTION trends_10min();
-CREATE OR REPLACE FUNCTION trends_10min()
-RETURNS TABLE (
-	r_symbol TEXT,
-	r_databasis INT,
-	r_minutes30 NUMERIC,
-	r_hour1 NUMERIC,
-	r_hours2 NUMERIC,
-	r_hours3 NUMERIC
-) AS
-$$
-BEGIN
-	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '30 minutes'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '1 hour'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '2 hours'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8)
-	FROM binance_stream_tick
-	WHERE event_time >= NOW() - INTERVAL '3 hours'
-	GROUP BY symbol;
-END;
-$$
-LANGUAGE plpgsql STRICT;
-
-
-
-DROP FUNCTION  trends_2hours();
-CREATE OR REPLACE FUNCTION trends_2hours()
-RETURNS TABLE (
-	r_symbol TEXT,
-	r_databasis INT,
-	r_hours6 NUMERIC,
-	r_hours12 NUMERIC,
-	r_hours18 NUMERIC,
-	r_day1 NUMERIC
-) AS
-$$
-BEGIN
-	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '6 hours'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '12 hours'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '18 hours'))::NUMERIC, 8),
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8)
-	FROM binance_stream_tick
-	WHERE event_time >= NOW() - INTERVAL '1 day'
-	GROUP BY symbol;
-END;
-$$
-LANGUAGE plpgsql STRICT;
-
 
 CREATE OR REPLACE FUNCTION current_price(p_symbol TEXT)
 RETURNS NUMERIC AS
@@ -544,174 +417,179 @@ LANGUAGE plpgsql VOLATILE STRICT;
 
 
 
-
-CREATE OR REPLACE FUNCTION movingaverage_3sec()
+CREATE OR REPLACE FUNCTION stats_3s() 
 RETURNS TABLE (
 	r_symbol TEXT,
 	r_databasis INT,
-	r_seconds5 NUMERIC,
-	r_seconds10 NUMERIC,
-	r_seconds15 NUMERIC,
-	r_seconds30 NUMERIC
+	r_slope_5s NUMERIC,
+	r_slope_10s NUMERIC,
+	r_slope_15s NUMERIC,
+	r_slope_30s NUMERIC,
+	r_movav_5s NUMERIC,
+	r_movav_10s NUMERIC,
+	r_movav_15s NUMERIC,
+	r_movav_30s NUMERIC
 ) AS
 $$
 BEGIN
-	RETURN QUERY
-		SELECT symbol, COUNT(*)::INT,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '5 seconds') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '5 seconds')), 8) ma5s,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '10 seconds') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '10 seconds')), 8) ma10s,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '15 seconds') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '15 seconds')), 8) ma15s,
-			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) ma30s
-			FROM binance_stream_tick	
-			WHERE event_time >= NOW() - INTERVAL '30 seconds'
-			GROUP BY symbol;
-END;
-$$
-LANGUAGE plpgsql STRICT;
-
-
-CREATE OR REPLACE FUNCTION movingaverage_15sec()
-RETURNS TABLE (
-	r_symbol TEXT,
-	r_databasis INT,
-	r_seconds45 NUMERIC,
-	r_minute1 NUMERIC,
-	r_minute2 NUMERIC,
-	r_minute3 NUMERIC
-) AS
-$$
-BEGIN
-	RETURN QUERY
-		SELECT symbol, COUNT(*)::INT,			
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '45 second') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '45 second')), 8) ma45s,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '1 minute') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '1 minute')), 8) ma1m,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '2 minutes') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '2 minutes')), 8) ma2m,
-			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) ma3m
-			FROM binance_stream_tick	
-			WHERE event_time >= NOW() - INTERVAL '3 minutes'
-			GROUP BY symbol;
+	RETURN QUERY SELECT symbol, COUNT(*)::INT,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 seconds'))::NUMERIC, 8) AS slope_5s,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 seconds'))::NUMERIC, 8) AS slope_10s,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '15 seconds'))::NUMERIC, 8) AS slope_15s,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8) AS slope_30s,
+		ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '5 seconds') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '5 seconds')), 8) AS movav_5s,
+		ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '10 seconds') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '10 seconds')), 8) AS movav_10s,
+		ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '15 seconds') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '15 seconds')), 8) AS movav_15s,
+		ROUND((SUM(current_day_close_price) / COUNT(*)), 8) AS movav_30s
+	FROM binance_stream_tick
+	WHERE event_time >= NOW() - INTERVAL '30 seconds'
+	GROUP BY symbol;
 END;
 $$
 LANGUAGE plpgsql STRICT;
 
 
 
-CREATE OR REPLACE FUNCTION movingaverage_2min()
+CREATE OR REPLACE FUNCTION stats_15s() 
 RETURNS TABLE (
 	r_symbol TEXT,
 	r_databasis INT,
-	r_minute5 NUMERIC,
-	r_minute7 NUMERIC,
-	r_minute10 NUMERIC,
-	r_minute15 NUMERIC
+	r_slope_45s NUMERIC,
+	r_slope_1m NUMERIC,
+	r_slope_2m NUMERIC,
+	r_slope_3m NUMERIC,
+	r_movav_45s NUMERIC,
+	r_movav_1m NUMERIC,
+	r_movav_2m NUMERIC,
+	r_movav_3m NUMERIC
 ) AS
 $$
 BEGIN
-	RETURN QUERY
-		SELECT symbol, COUNT(*)::INT,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes')), 8) ma5m,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes')), 8) ma7m,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes')), 8) ma10m,
-			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) ma15m
-			FROM binance_stream_tick	
-			WHERE event_time >= NOW() - INTERVAL '15 minutes'
-			GROUP BY symbol;
+	RETURN QUERY SELECT symbol, COUNT(*)::INT,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '45 seconds'))::NUMERIC, 8) AS slope_45s,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '1 minute'))::NUMERIC, 8) AS slope_1m,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '2 minutes'))::NUMERIC, 8) AS slope_2m,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8) AS slope_3m,
+		ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '45 second') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '45 second')), 8) AS movav_45s,
+			ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '1 minute') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '1 minute')), 8) AS movav_1m,
+			ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '2 minutes') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '2 minutes')), 8) AS movav_2m,
+			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) AS movav_3m
+	FROM binance_stream_tick
+	WHERE event_time >= NOW() - INTERVAL '3 minutes'
+	GROUP BY symbol;
+END;
+$$
+LANGUAGE plpgsql STRICT;
+
+
+CREATE OR REPLACE FUNCTION stats_2m() 
+RETURNS TABLE (
+	r_symbol TEXT,
+	r_databasis INT,
+	r_slope_5m NUMERIC,
+	r_slope_7m NUMERIC,
+	r_slope_10m NUMERIC,
+	r_slope_15m NUMERIC,
+	r_movav_5m NUMERIC,
+	r_movav_7m NUMERIC,
+	r_movav_10m NUMERIC,
+	r_movav_15m NUMERIC
+) AS
+$$
+BEGIN
+	RETURN QUERY SELECT symbol, COUNT(*)::INT,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes'))::NUMERIC, 8) AS slope_5m,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes'))::NUMERIC, 8) AS slope_7m,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes'))::NUMERIC, 8) AS slope_10,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8) AS slope_15m,
+		ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes')), 8) AS movav_5m,
+			ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes')), 8) AS movav_7m,
+			ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes')), 8) AS movav_10m,
+			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) AS movav_15m
+	FROM binance_stream_tick
+	WHERE event_time >= NOW() - INTERVAL '15 minutes'
+	GROUP BY symbol;
 END;
 $$
 LANGUAGE plpgsql STRICT;
 
 
 
-CREATE OR REPLACE FUNCTION movingaverage_10min()
+CREATE OR REPLACE FUNCTION stats_10m()
 RETURNS TABLE (
 	r_symbol TEXT,
 	r_databasis INT,
-	r_minute30 NUMERIC,
-	r_hour1 NUMERIC,
-	r_hour2 NUMERIC,
-	r_hour3 NUMERIC
+	r_slope_30m NUMERIC,
+	r_slope_1h NUMERIC,
+	r_slope_2h NUMERIC,
+	r_slope_3h NUMERIC,
+	r_movav_30m NUMERIC,
+	r_movav_1h NUMERIC,
+	r_movav_2h NUMERIC,
+	r_movav_3h NUMERIC
 ) AS
 $$
 BEGIN
-	RETURN QUERY
-		SELECT symbol, COUNT(*)::INT,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '30 minutes') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '30 minutes')), 8) ma30m,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '1 hours') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '1 hours')), 8) ma1h,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '2 hours') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '2 hours')), 8) ma2h,
-			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) ma3h
-			FROM binance_stream_tick	
-			WHERE event_time >= NOW() - INTERVAL '3 hours'
-			GROUP BY symbol;
+	RETURN QUERY SELECT symbol, COUNT(*)::INT,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '30 minutes'))::NUMERIC, 8) AS slope_30m,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '1 hour'))::NUMERIC, 8) AS slope_1h,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '2 hours'))::NUMERIC, 8) AS slope_2h,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8) AS slope_3h,
+		ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '30 minutes') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '30 minutes')), 8) AS movav_30m,
+			ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '1 hours') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '1 hours')), 8) AS movav_1h,
+			ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '2 hours') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '2 hours')), 8) AS movav_2h,
+			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) AS movav_3h
+	FROM binance_stream_tick
+	WHERE event_time >= NOW() - INTERVAL '3 hours'
+	GROUP BY symbol;
 END;
 $$
 LANGUAGE plpgsql STRICT;
 
 
-CREATE OR REPLACE FUNCTION movingaverage_2hours()
+
+CREATE OR REPLACE FUNCTION stats_2h()
 RETURNS TABLE (
 	r_symbol TEXT,
 	r_databasis INT,
-	r_hours6 NUMERIC,
-	r_hours12 NUMERIC,
-	r_hours18 NUMERIC,
-	r_day1 NUMERIC
+	r_slope_6h NUMERIC,
+	r_slope_12h NUMERIC,
+	r_slope_18h NUMERIC,
+	r_slope_1d NUMERIC,
+	r_movav_6h NUMERIC,
+	r_movav_12h NUMERIC,
+	r_movav_18h NUMERIC,
+	r_movav_1d NUMERIC
 ) AS
 $$
 BEGIN
-	RETURN QUERY
-		SELECT symbol, COUNT(*)::INT,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '6 hours') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '6 hours')), 8) ma6h,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '12 hours') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '12 hours')), 8) ma12h,
-			ROUND((SUM(current_day_close_price)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '18 hours') 
-			/ COUNT(*)
-				FILTER (WHERE event_time >= NOW() - INTERVAL '18 hours')), 8) ma18h,
-			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) ma1d
-		FROM binance_stream_tick
-		WHERE event_time >= NOW() - INTERVAL '1 day'
-		GROUP BY symbol;
+	RETURN QUERY SELECT symbol, COUNT(*)::INT,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '6 hours'))::NUMERIC, 8) AS slope_6h,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '12 hours'))::NUMERIC, 8) AS slope_12h,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '18 hours'))::NUMERIC, 8) AS slope_18h,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8) AS slope_1d,
+		ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '6 hours') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '6 hours')), 8) AS movav_6h,
+			ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '12 hours') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '12 hours')), 8) AS movav_12h,
+			ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '18 hours') 
+			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '18 hours')), 8) AS movav_18h,
+			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) AS movav_1d
+	FROM binance_stream_tick
+	WHERE event_time >= NOW() - INTERVAL '1 day'
+	GROUP BY symbol;
 END;
 $$
 LANGUAGE plpgsql STRICT;

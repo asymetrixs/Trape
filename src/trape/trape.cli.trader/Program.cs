@@ -53,9 +53,7 @@ namespace trape.cli.trader
                     services.AddSingleton<IDecisionMaker, DecisionMaker>();
                     services.AddSingleton<ITrader, Trader>();
                     services.AddSingleton<IAccountant, Accountant>();
-
-                    services.AddTransient<ITrapeContext, TrapeContext>();
-                    
+                                        
                     services.AddHostedService<Engine>();
                 });
         }

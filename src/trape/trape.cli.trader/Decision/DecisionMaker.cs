@@ -79,7 +79,7 @@ namespace trape.cli.trader.Decision
                 this._logger.Warning($"Skipped {symbol} due to old or incomplete data");
             }
 
-            var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
+            var database = Pool.DatabasePool.Get();
             var accountant = Program.Services.GetService(typeof(IAccountant)) as IAccountant;
 
             this._lastDecision.TryGetValue(symbol, out Decision lastDecision);
@@ -119,6 +119,9 @@ namespace trape.cli.trader.Decision
             //this._lastDecision.Add(symbol, currentDecision);
 
             //await database.Insert(currentDecision, trend3Seconds, trend15Seconds, trend2Minutes, trend10Minutes, trend2Hours, this._cancellationTokenSource.Token).ConfigureAwait(false);
+
+            Pool.DatabasePool.Put(database);
+            database = null;
         }
 
         private decimal _calculateIndicator(Trend3Seconds trend3Seconds, Trend15Seconds trend15Seconds, Trend2Minutes trend2Minutes, Trend10Minutes trend10Minutes, Trend2Hours trend2Hours)

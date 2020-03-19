@@ -98,48 +98,60 @@ namespace trape.cli.trader.Cache
 
         private async void _timerCurrentPrice_Elapsed(object sender, ElapsedEventArgs e)
         {
-            var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
+            var database = Pool.DatabasePool.Get();
             this.CurrentPrices = await database.GetCurrentPrice(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            Pool.DatabasePool.Put(database);
+            database = null;
 
             this._logger.Verbose("Updated current price");
         }
 
         private async void _timerTrend3Seconds_Elapsed(object sender, ElapsedEventArgs e)
         {
-            var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
+            var database = Pool.DatabasePool.Get();
             this.Trends3Seconds = await database.Get3SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            Pool.DatabasePool.Put(database);
+            database = null;
 
             this._logger.Verbose("Updated 3 seconds trend");
         }
 
         private async void _timerTrend15Seconds_Elapsed(object sender, ElapsedEventArgs e)
         {
-            var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
+            var database = Pool.DatabasePool.Get();
             this.Trends15Seconds = await database.Get15SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            Pool.DatabasePool.Put(database);
+            database = null;
 
             this._logger.Verbose("Updated 15 seconds trend");
         }
 
         private async void _timerTrend2Minutes_Elapsed(object sender, ElapsedEventArgs e)
         {
-            var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
+            var database = Pool.DatabasePool.Get();
             this.Trends2Minutes = await database.Get2MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            Pool.DatabasePool.Put(database);
+            database = null;
 
             this._logger.Verbose("Updated 2 minutes trend");
         }
 
         private async void _timerTrend10Minutes_Elapsed(object sender, ElapsedEventArgs e)
         {
-            var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
+            var database = Pool.DatabasePool.Get();
             this.Trends10Minutes = await database.Get10MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            Pool.DatabasePool.Put(database);
+            database = null;
 
             this._logger.Verbose("Updated 10 minutes trend");
         }
 
         private async void _timerTrend2Hours_Elapsed(object sender, ElapsedEventArgs e)
         {
-            var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
+            var database = Pool.DatabasePool.Get();
             this.Trends2Hours = await database.Get2HoursTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            Pool.DatabasePool.Put(database);
+            database = null;
 
             this._logger.Verbose("Updated 2 hours trend");
         }
@@ -150,13 +162,16 @@ namespace trape.cli.trader.Cache
 
             // Initial loading
             this._logger.Debug("Preloading buffer");
-            var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
+            var database = Pool.DatabasePool.Get();
             this.Trends3Seconds = await database.Get3SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this.Trends15Seconds = await database.Get15SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this.Trends2Minutes = await database.Get2MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this.Trends10Minutes = await database.Get10MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this.Trends2Hours = await database.Get2HoursTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this.CurrentPrices = await database.GetCurrentPrice(this._cancellationTokenSource.Token).ConfigureAwait(true);
+
+            Pool.DatabasePool.Put(database);
+            database = null;
 
             this._logger.Debug("Buffer preloaded");
 
