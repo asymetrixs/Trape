@@ -6,5 +6,6 @@ namespace trape.cli.trader.trade
 {
     public interface ITrader
     {
+        
     }
 }

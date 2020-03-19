@@ -3,9 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Timers;
+using trape.cli.trader.Account;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Cache.Models;
 using trape.cli.trader.DataLayer;
+using trape.cli.trader.trade;
 
 namespace trape.cli.trader.Decision
 {
@@ -19,7 +21,7 @@ namespace trape.cli.trader.Decision
 
         private Timer _makeDecision;
 
-        private Dictionary<string, Decision> _rates;
+        private Dictionary<string, Decision> _lastDecision;
 
         private bool _disposed;
 
@@ -34,7 +36,7 @@ namespace trape.cli.trader.Decision
             this._logger = logger;
             this._buffer = buffer;
             this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
-            this._rates = new Dictionary<string, Decision>();
+            this._lastDecision = new Dictionary<string, Decision>();
             this._disposed = false;
 
             this._makeDecision = new Timer()
@@ -47,121 +49,98 @@ namespace trape.cli.trader.Decision
 
         private async void _makeDecision_Elapsed(object sender, ElapsedEventArgs e)
         {
-            var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
-
             foreach (var symbol in this._buffer.GetSymbols())
             {
-                var t3s = this._buffer.Trends3Seconds;
-                var t15s = this._buffer.Trends15Seconds;
-                var t2m = this._buffer.Trends2Minutes;
-                var t10m = this._buffer.Trends10Minutes;
-                var t2h = this._buffer.Trends2Hours;
-                var cp = this._buffer.CurrentPrices;
-
-                var trend3Seconds = t3s.SingleOrDefault(t => t.Symbol == symbol);
-                var trend15Seconds = t15s.SingleOrDefault(t => t.Symbol == symbol);
-                var trend2Minutes = t2m.SingleOrDefault(t => t.Symbol == symbol);
-                var trend10Minutes = t10m.SingleOrDefault(t => t.Symbol == symbol);
-                var trend2Hours = t2h.SingleOrDefault(t => t.Symbol == symbol);
-                var currentPrice = cp.SingleOrDefault(c => c.Symbol == symbol);
-
-                if (null == trend3Seconds
-                    || null == trend15Seconds
-                    || null == trend2Minutes
-                    || null == trend10Minutes
-                    || null == trend2Hours
-                    || null == currentPrice || currentPrice.EventTime < DateTime.UtcNow.AddSeconds(-3))
-                {
-                    this._logger.Warning($"Skipped {symbol} due to old or incomplete data");
-                    continue;
-                }
-
-                var lastDecision = this._rates.FirstOrDefault(d => d.Key == symbol);
-
-                var price = await database.GetCurrentPrice(symbol, this._cancellationTokenSource.Token).ConfigureAwait(false);
-
-                // No trade yet
-                if (!this._rates.ContainsKey(symbol))
-                {
-                    if (trend10Minutes.Hours1 < 0 && trend2Minutes.Minutes10 > 0)
-                    {
-                        lastDecision = new KeyValuePair<string, Decision>(symbol, new Decision()
-                        {
-                            Action = Action.Buy,
-                            Price = price,
-                            Symbol = symbol
-                        });
-                        this._rates.Add(lastDecision.Key, lastDecision.Value);
-
-                        this._logger.Verbose($"A {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
-
-                        await database.Insert(lastDecision.Value, trend3Seconds, trend15Seconds, trend2Minutes, trend10Minutes, trend2Hours, this._cancellationTokenSource.Token).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        this._logger.Verbose($"P {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
-                    }
-                }
-                else if (lastDecision.Value.Action == Action.Buy
-                    && price > lastDecision.Value.Price * 1.01M
-                    && trend10Minutes.IsValid() && trend10Minutes.Hours1 > 0
-                    && trend2Minutes.IsValid() && trend2Minutes.Minutes15 < 0
-                    && trend2Minutes.IsValid() && trend2Minutes.Minutes10 < 0
-                    && trend15Seconds.IsValid() && trend15Seconds.Minutes3 > 0)
-                {
-                    this._logger.Information($"S {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
-
-                    lastDecision = new KeyValuePair<string, Decision>(symbol, new Decision()
-                    {
-                        Action = Action.Sell,
-                        Price = price,
-                        Symbol = symbol,
-                        Indicator = trend10Minutes.Hours1 * 10 + trend2Minutes.Minutes15 * 100 + trend2Minutes.Minutes10 * 1000 + trend15Seconds.Minutes3 * 5
-                    });
-
-                    if (this._rates.ContainsKey(symbol))
-                    {
-                        this._rates.Remove(symbol);
-                    }
-
-                    this._rates.Add(lastDecision.Key, lastDecision.Value);
-                    await database.Insert(lastDecision.Value, trend3Seconds, trend15Seconds, trend2Minutes, trend10Minutes, trend2Hours, this._cancellationTokenSource.Token).ConfigureAwait(false);
-                }
-                else if (lastDecision.Value.Action == Action.Sell
-                    && price < lastDecision.Value.Price * 0.99M
-                    && trend10Minutes.IsValid() && trend10Minutes.Hours1 < 0
-                    && trend2Minutes.IsValid() && trend2Minutes.Minutes15 > 0
-                    && trend2Minutes.IsValid() && trend2Minutes.Minutes10 > 0
-                    && trend15Seconds.IsValid() && trend15Seconds.Minutes3 < 0)
-                {
-                    this._logger.Information($"B {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
-
-                    lastDecision = new KeyValuePair<string, Decision>(symbol, new Decision()
-                    {
-                        Action = Action.Buy,
-                        Price = price,
-                        Symbol = symbol,
-                        Indicator = trend10Minutes.Hours1 * 10 + trend2Minutes.Minutes15 * 100 + trend2Minutes.Minutes10 * 1000 + trend15Seconds.Minutes3 * 5
-                    });
-
-                    if (this._rates.ContainsKey(symbol))
-                    {
-                        this._rates.Remove(symbol);
-                    }
-
-                    this._rates.Add(lastDecision.Key, lastDecision.Value);
-                    await database.Insert(lastDecision.Value, trend3Seconds, trend15Seconds, trend2Minutes, trend10Minutes, trend2Hours, this._cancellationTokenSource.Token).ConfigureAwait(false);
-                }
-                else
-                {
-                    this._logger.Verbose($"N {symbol} @ {Math.Round(price, 6).ToString("0000.000000")}: {_GetTrend(trend10Minutes, trend2Minutes, trend3Seconds)}");
-                }
+                await _decide(symbol).ConfigureAwait(false);
             }
+        }
+
+        private async System.Threading.Tasks.Task _decide(string symbol)
+        {
+            var t3s = this._buffer.Trends3Seconds;
+            var t15s = this._buffer.Trends15Seconds;
+            var t2m = this._buffer.Trends2Minutes;
+            var t10m = this._buffer.Trends10Minutes;
+            var t2h = this._buffer.Trends2Hours;
+            var cp = this._buffer.CurrentPrices;
+
+            var trend3Seconds = t3s.SingleOrDefault(t => t.Symbol == symbol);
+            var trend15Seconds = t15s.SingleOrDefault(t => t.Symbol == symbol);
+            var trend2Minutes = t2m.SingleOrDefault(t => t.Symbol == symbol);
+            var trend10Minutes = t10m.SingleOrDefault(t => t.Symbol == symbol);
+            var trend2Hours = t2h.SingleOrDefault(t => t.Symbol == symbol);
+
+            if (null == trend3Seconds || !trend3Seconds.IsValid()
+                || null == trend15Seconds || !trend15Seconds.IsValid()
+                || null == trend2Minutes || !trend2Minutes.IsValid()
+                || null == trend10Minutes || !trend10Minutes.IsValid()
+                || null == trend2Hours || !trend2Hours.IsValid())
+            {
+                this._logger.Warning($"Skipped {symbol} due to old or incomplete data");
+            }
+
+            var database = Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext;
+            var accountant = Program.Services.GetService(typeof(IAccountant)) as IAccountant;
+
+            this._lastDecision.TryGetValue(symbol, out Decision lastDecision);
+
+            var assetBalance = accountant.GetBinanceBalance(symbol);
+            var availableUSDT = accountant.GetBinanceBalance("USDT");
+            var currentPrice = await database.GetCurrentPrice(symbol, this._cancellationTokenSource.Token).ConfigureAwait(false);
+
+            if (this._lastDecision.ContainsKey(symbol))
+            {
+                this._lastDecision.Remove(symbol);
+            }
+
+
+            var veryShortImpact = trend3Seconds.Seconds5 + trend3Seconds.Seconds10 + trend3Seconds.Seconds15 + trend3Seconds.Seconds30;
+            var shortImpact = trend15Seconds.Seconds45 + trend15Seconds.Minutes1 + trend15Seconds.Minutes2 + trend15Seconds.Minutes3;
+            var midImpact = trend2Minutes.Minutes5 + trend2Minutes.Minutes7 + trend2Minutes.Minutes10 + trend2Minutes.Minutes15;
+            var longImpact = trend10Minutes.Minutes30 + trend10Minutes.Hours1 + trend10Minutes.Hours2 + trend10Minutes.Hours3;
+            var veryLongImpact = trend2Hours.Hours6 + trend2Hours.Hours12 + trend2Hours.Hours18 + trend2Hours.Day1;
+
+            // kaufen 1 => 15min
+            // 7 unter 25, 7+, 25+
+            // (7 geht hoch ODER 7 geht runter UND 3 geht hoch)
+            // 
+            // verkaufen
+            // 7 unter 25, 25+ > preis+
+            // 7- =preis
+
+            //var currentDecision = new Decision()
+            //{
+            //    Action = action,
+            //    Price = currentPrice,
+            //    Symbol = symbol,
+            //    Indicator = _calculateIndicator(trend3Seconds, trend15Seconds, trend2Minutes, trend10Minutes, trend2Hours)
+            //};
+
+            //this._lastDecision.Add(symbol, currentDecision);
+
+            //await database.Insert(currentDecision, trend3Seconds, trend15Seconds, trend2Minutes, trend10Minutes, trend2Hours, this._cancellationTokenSource.Token).ConfigureAwait(false);
+        }
+
+        private decimal _calculateIndicator(Trend3Seconds trend3Seconds, Trend15Seconds trend15Seconds, Trend2Minutes trend2Minutes, Trend10Minutes trend10Minutes, Trend2Hours trend2Hours)
+        {
+
+
+            return 0;
         }
 
         private string _GetTrend(Trend10Minutes trend10Minutes, Trend2Minutes trend2Minutes, Trend3Seconds trend3Seconds)
         {
             return $"@ 2/1: {Math.Round(trend10Minutes.Hours2, 4)}/{Math.Round(trend10Minutes.Hours1, 4)} | 10: {Math.Round(trend2Minutes.Minutes10, 4)} | 30: {Math.Round(trend3Seconds.Seconds30, 4)} | 5: {Math.Round(trend3Seconds.Seconds5, 4)}";
+        }
+
+        public Decision GetDecision(string symbol)
+        {
+            if (this._lastDecision.TryGetValue(symbol, out Decision decision))
+            {
+                return decision;
+            }
+
+            return null;
         }
 
         public void Start()

@@ -116,12 +116,12 @@ namespace trape.cli.trader.Account
                 ct: this._cancellationTokenSource.Token);
         }
 
-        public decimal? AvailableCredit(string symbol)
+        public BinanceBalance GetBinanceBalance(string symbol)
         {
             // Take reference to original instance in case _binanceAccountInfo is updated
             var bac = this._binanceAccountInfo;
 
-            return bac.Balances.SingleOrDefault(b => b.Asset == symbol)?.Free;
+            return bac.Balances.SingleOrDefault(b => b.Asset == symbol);
         }
 
         public async System.Threading.Tasks.Task Start()

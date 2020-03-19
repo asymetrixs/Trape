@@ -2,7 +2,7 @@
 {
     public enum Action
     {
-        Hold,
+        Wait,
         Buy,
         Sell
     }

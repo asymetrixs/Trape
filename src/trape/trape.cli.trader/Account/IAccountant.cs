@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Binance.Net.Objects;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,6 +12,6 @@ namespace trape.cli.trader.Account
 
         void Stop();
 
-        decimal? AvailableCredit(string symbol);
+        BinanceBalance GetBinanceBalance(string symbol);
     }
 }
