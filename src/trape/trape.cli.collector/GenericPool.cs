@@ -1,7 +1,5 @@
-﻿using Serilog;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
-using trape.cli.collector.DataLayer;
 
 namespace trape.cli.collector
 {
@@ -16,12 +14,12 @@ namespace trape.cli.collector
         /// <summary>
         /// Function to call for creating the object
         /// </summary>
-        private Func<T> ctor;
+        private readonly Func<T> ctor;
 
         /// <summary>
         /// Holds the instances
         /// </summary>
-        private ConcurrentBag<T> objects;
+        private readonly ConcurrentBag<T> objects;
 
         #endregion Fields
 
