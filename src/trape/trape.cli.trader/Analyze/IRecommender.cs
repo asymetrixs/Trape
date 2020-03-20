@@ -1,6 +1,6 @@
-﻿namespace trape.cli.trader.Decision
+﻿namespace trape.cli.trader.Analyze
 {
-	public interface IDecisionMaker
+	public interface IRecommender
 	{
 		void ConfirmBuy(string symbol);
 

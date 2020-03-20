@@ -344,72 +344,120 @@ $$
 LANGUAGE plpgsql STRICT;
 
 
-CREATE TABLE decision
+
+
+CREATE TABLE recommendation
 (
 	id bigserial NOT NULL,
 	event_time TIMESTAMPTZ DEFAULT NOW() NOT NULL,
 	symbol text NOT NULL,
 	decision text NOT NULL,
 	price NUMERIC NOT NULL,
-	seconds5 NUMERIC NOT NULL,
-	seconds10 NUMERIC NOT NULL,
-	seconds15 NUMERIC NOT NULL,
-	seconds30 NUMERIC NOT NULL,
-	seconds45 NUMERIC NOT NULL,
-	minute1 NUMERIC NOT NULL,
-	minutes2 NUMERIC NOT NULL,
-	minutes3 NUMERIC NOT NULL,
-	minutes5 NUMERIC NOT NULL,
-	minutes7 NUMERIC NOT NULL,
-	minutes10 NUMERIC NOT NULL,
-	minutes15 NUMERIC NOT NULL,
-	minutes30 NUMERIC NOT NULL,
-	hour1 NUMERIC NOT NULL,
-	hours2 NUMERIC NOT NULL,
-	hours3 NUMERIC NOT NULL,
-	hours6 NUMERIC NOT NULL,
-	hours12 NUMERIC NOT NULL,
-	hours18 NUMERIC NOT NULL,
-	day1 NUMERIC NOT NULL,
+	slope5s NUMERIC NOT NULL,
+	movav5s NUMERIC NOT NULL,
+	slope10s NUMERIC NOT NULL,
+	movav10s NUMERIC NOT NULL,
+	slope15s NUMERIC NOT NULL,
+	movav15s NUMERIC NOT NULL,
+	slope30s NUMERIC NOT NULL,
+	movav30s NUMERIC NOT NULL,
+	slope45s NUMERIC NOT NULL,
+	movav45s NUMERIC NOT NULL,
+	slope1m NUMERIC NOT NULL,
+	movav1m NUMERIC NOT NULL,
+	slope2m NUMERIC NOT NULL,
+	movav2m NUMERIC NOT NULL,
+	slope3m NUMERIC NOT NULL,
+	movav3m NUMERIC NOT NULL,
+	slope5m NUMERIC NOT NULL,
+	movav5m NUMERIC NOT NULL,
+	slope7m NUMERIC NOT NULL,
+	movav7m NUMERIC NOT NULL,
+	slope10m NUMERIC NOT NULL,
+	movav10m NUMERIC NOT NULL,
+	slope15m NUMERIC NOT NULL,
+	movav15m NUMERIC NOT NULL,
+	slope30m NUMERIC NOT NULL,
+	movav30m NUMERIC NOT NULL,
+	slope1h NUMERIC NOT NULL,
+	movav1h NUMERIC NOT NULL,
+	slope2h NUMERIC NOT NULL,
+	movav2h NUMERIC NOT NULL,
+	slope3h NUMERIC NOT NULL,
+	movav3h NUMERIC NOT NULL,
+	slope6h NUMERIC NOT NULL,
+	movav6h NUMERIC NOT NULL,
+	slope12h NUMERIC NOT NULL,
+	movav12h NUMERIC NOT NULL,
+	slope18h NUMERIC NOT NULL,
+	movav18h NUMERIC NOT NULL,
+	slope1d NUMERIC NOT NULL,
+	movav1d NUMERIC NOT NULL,
 	PRIMARY KEY (id)
 );
 
-CREATE INDEX ix_d_ets ON decision USING BRIN (event_time, symbol);
+CREATE INDEX ix_r_ets ON recommendation USING BRIN (event_time, symbol);
 
-CREATE OR REPLACE FUNCTION insert_decision
+
+CREATE OR REPLACE FUNCTION insert_recommendation
 (
 	p_symbol TEXT,
 	p_decision TEXT,
-	p_price NUMERIC,	
-	p_seconds5 NUMERIC,
-	p_seconds10 NUMERIC,
-	p_seconds15 NUMERIC,
-	p_seconds30 NUMERIC,
-	p_seconds45 NUMERIC,
-	p_minute1 NUMERIC,
-	p_minutes2 NUMERIC,
-	p_minutes3 NUMERIC,
-	p_minutes5 NUMERIC,
-	p_minutes7 NUMERIC,
-	p_minutes10 NUMERIC,
-	p_minutes15 NUMERIC,
-	p_minutes30 NUMERIC,
-	p_hour1 NUMERIC,
-	p_hours2 NUMERIC,
-	p_hours3 NUMERIC,
-	p_hours6 NUMERIC,
-	p_hours12 NUMERIC,
-	p_hours18 NUMERIC,
-	p_day1 NUMERIC
+	p_price NUMERIC,
+	p_slope5s NUMERIC,
+	p_movav5s NUMERIC,
+	p_slope10s NUMERIC,
+	p_movav10s NUMERIC,
+	p_slope15s NUMERIC,
+	p_movav15s NUMERIC,
+	p_slope30s NUMERIC,
+	p_movav30s NUMERIC,
+	p_slope45s NUMERIC,
+	p_movav45s NUMERIC,
+	p_slope1m NUMERIC,
+	p_movav1m NUMERIC,
+	p_slope2m NUMERIC,
+	p_movav2m NUMERIC,
+	p_slope3m NUMERIC,
+	p_movav3m NUMERIC,
+	p_slope5m NUMERIC,
+	p_movav5m NUMERIC,
+	p_slope7m NUMERIC,
+	p_movav7m NUMERIC,
+	p_slope10m NUMERIC,
+	p_movav10m NUMERIC,
+	p_slope15m NUMERIC,
+	p_movav15m NUMERIC,
+	p_slope30m NUMERIC,
+	p_movav30m NUMERIC,
+	p_slope1h NUMERIC,
+	p_movav1h NUMERIC,
+	p_slope2h NUMERIC,
+	p_movav2h NUMERIC,
+	p_slope3h NUMERIC,
+	p_movav3h NUMERIC,
+	p_slope6h NUMERIC,
+	p_movav6h NUMERIC,
+	p_slope12h NUMERIC,
+	p_movav12h NUMERIC,
+	p_slope18h NUMERIC,
+	p_movav18h NUMERIC,
+	p_slope1d NUMERIC,
+	p_movav1d NUMERIC
 )
 RETURNS void AS
 $$
 BEGIN
 
-	INSERT INTO decision (symbol, decision, price, seconds5, seconds10, seconds15, seconds30, seconds45, minute1, minutes2, minutes3, minutes5, minutes7, minutes10, minutes15,
-							minutes30, hour1, hours2, hours3, hours6, hours12, hours18, day1)
-			VALUES (p_symbol, p_decision, p_price, p_seconds5, p_seconds10, p_seconds15, p_seconds30, p_seconds45, p_minute1, p_minutes2, p_minutes3, p_minutes5, p_minutes7,
-					p_minutes10, p_minutes15, p_minutes30, p_hour1, p_hours2, p_hours3, p_hours6, p_hours12, p_hours18, p_day1);
+	INSERT INTO recommendation 
+					(symbol, decision, price, slope5s, movav5s, slope10s, movav10s, slope15s, movav15s, slope30s, movav30s, slope45s, movav45s,
+					slope1m, movav1m, slope2m, movav2m, slope3m, movav3m, slope5m, movav5m, slope7m, movav7m, slope10m, movav10m,
+					slope15m, movav15m, slope30m, movav30m, slope1h, movav1h, slope2h, movav2h, slope3h, movav3h,
+					slope6h, movav6h, slope12h, movav12h, slope18h, movav18h, slope1d, movav1d)
+			VALUES (p_symbol, p_decision, p_price, p_slope5s, p_movav5s, p_slope10s, p_movav10s, p_slope15s, p_movav15s, p_slope30s, p_movav30s, p_slope45s, p_movav45s,
+					p_slope1m, p_movav1m, p_slope2m, p_movav2m, p_slope3m, p_movav3m, p_slope5m, p_movav5m, p_slope7m, p_movav7m, p_slope10m, p_movav10m,
+					p_slope15m, p_movav15m, p_slope30m, p_movav30m, p_slope1h, p_movav1h, p_slope2h, p_movav2h, p_slope3h, p_movav3h,
+					p_slope6h, p_movav6h, p_slope12h, p_movav12h, p_slope18h, p_movav18h, p_slope1d, p_movav1d);
 
 END;
 $$
@@ -487,6 +535,8 @@ END;
 $$
 LANGUAGE plpgsql STRICT;
 
+select * From stats_2m()
+select * From stats_10m()
 
 CREATE OR REPLACE FUNCTION stats_2m() 
 RETURNS TABLE (

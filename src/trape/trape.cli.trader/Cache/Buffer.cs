@@ -68,7 +68,7 @@ namespace trape.cli.trader.Cache
             this._timerStats3s = new Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 0, 3).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 1).TotalMilliseconds
             };
             this._timerStats3s.Elapsed += _timerTrend3Seconds_Elapsed;
 
@@ -76,28 +76,28 @@ namespace trape.cli.trader.Cache
             this._timerStats15s = new Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 0, 15).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 5).TotalMilliseconds
             };
             this._timerStats15s.Elapsed += _timerTrend15Seconds_Elapsed;
 
             this._timerStats2m = new Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 2, 0).TotalMilliseconds
+                Interval = new TimeSpan(0, 1, 0).TotalMilliseconds
             };
             this._timerStats2m.Elapsed += _timerTrend2Minutes_Elapsed;
 
             this._timerStats10m = new Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 10, 0).TotalMilliseconds
+                Interval = new TimeSpan(0, 3, 0).TotalMilliseconds
             };
             this._timerStats10m.Elapsed += _timerTrend10Minutes_Elapsed;
 
             this._timerStats2h = new Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(2, 0, 0).TotalMilliseconds
+                Interval = new TimeSpan(0, 10, 0).TotalMilliseconds
             };
             this._timerStats2h.Elapsed += _timerTrend2Hours_Elapsed;
 

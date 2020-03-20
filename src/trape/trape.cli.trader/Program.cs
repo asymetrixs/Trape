@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Cache;
 using trape.cli.trader.DataLayer;
-using trape.cli.trader.Decision;
+using trape.cli.trader.Analyze;
 using trape.cli.trader.trade;
 
 namespace trape.cli.trader
@@ -50,7 +50,7 @@ namespace trape.cli.trader
                 {
                     services.AddSingleton<ILogger>(Log.Logger);
                     services.AddSingleton<IBuffer, Cache.Buffer>();
-                    services.AddSingleton<IDecisionMaker, DecisionMaker>();
+                    services.AddSingleton<IRecommender, Recommender>();
                     services.AddSingleton<ITrader, Trader>();
                     services.AddSingleton<IAccountant, Accountant>();
                                         

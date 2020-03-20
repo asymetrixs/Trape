@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Cache;
-using trape.cli.trader.Decision;
+using trape.cli.trader.Analyze;
 using trape.cli.trader.trade;
 
 namespace trape.cli.trader
@@ -16,22 +16,22 @@ namespace trape.cli.trader
 
         private IBuffer _buffer;
 
-        private IDecisionMaker _decisionMaker;
+        private IRecommender _recommender;
 
         private ITrader _trader;
 
         private IAccountant _accountant;
 
-        public Engine(ILogger logger, IBuffer buffer, IDecisionMaker decisionMaker, ITrader trader, IAccountant accountant)
+        public Engine(ILogger logger, IBuffer buffer, IRecommender recommender, ITrader trader, IAccountant accountant)
         {
-            if(null == logger || null == buffer || null == decisionMaker || null == trader)
+            if(null == logger || null == buffer || null == recommender || null == trader)
             {
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
             this._logger = logger;
             this._buffer = buffer;
-            this._decisionMaker = decisionMaker;
+            this._recommender = recommender;
             this._trader = trader;
             this._accountant = accountant;
         }
@@ -42,7 +42,7 @@ namespace trape.cli.trader
 
             await this._buffer.Start().ConfigureAwait(false);
 
-            this._decisionMaker.Start();
+            this._recommender.Start();
 
             await this._accountant.Start().ConfigureAwait(false);
 
@@ -55,7 +55,7 @@ namespace trape.cli.trader
 
             this._accountant.Stop();
 
-            this._decisionMaker.Stop();
+            this._recommender.Stop();
                        
             this._buffer.Stop();
 

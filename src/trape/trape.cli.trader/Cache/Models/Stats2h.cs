@@ -40,7 +40,7 @@
         public bool IsValid()
         {
             // Roughly 24 * 60 * 60 (24 hours)
-            return this.DataBasis > 86300;
+            return this.DataBasis > 86200;
         }
     }
 }

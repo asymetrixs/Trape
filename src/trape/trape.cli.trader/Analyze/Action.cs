@@ -1,4 +1,4 @@
-﻿namespace trape.cli.trader.Decision
+﻿namespace trape.cli.trader.Analyze
 {
     public enum Action
     {
