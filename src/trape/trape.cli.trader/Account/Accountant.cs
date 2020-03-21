@@ -155,13 +155,13 @@ namespace trape.cli.trader.Account
             });
 
             // Subscribe to socket events
-            await this._binanceSocketClient.SubscribeToUserDataUpdatesAsync(this._binanceListenKey,
-                (bsai) => _saveBinanceStreamAccountInfo(bsai),
-                (bsou) => _saveBinanceStreamOrderUpdate(bsou),
-                (bsol) => _saveBinanceStreamOrderList(bsol),
-                (bsbs) => _saveBinanceStreamBalance(bsbs),
-                (bsbu) => _saveBinanceStreamBalanceUpdate(bsbu)
-                ).ConfigureAwait(false);
+            //await this._binanceSocketClient.SubscribeToUserDataUpdatesAsync(this._binanceListenKey,
+            //    (bsai) => _saveBinanceStreamAccountInfo(bsai),
+            //    (bsou) => _saveBinanceStreamOrderUpdate(bsou),
+            //    (bsol) => _saveBinanceStreamOrderList(bsol),
+            //    (bsbs) => _saveBinanceStreamBalance(bsbs),
+            //    (bsbu) => _saveBinanceStreamBalanceUpdate(bsbu)
+            //    ).ConfigureAwait(false);
 
             this._logger.Information("Binance Client is online");
 
@@ -171,30 +171,30 @@ namespace trape.cli.trader.Account
             this._logger.Debug("Accountant started");
         }
 
-        private void _saveBinanceStreamAccountInfo(BinanceStreamAccountInfo binanceStreamAccountInfo)
-        {
-            this._binanceStreamAccountInfo = binanceStreamAccountInfo;
-        }
+        //private void _saveBinanceStreamAccountInfo(BinanceStreamAccountInfo binanceStreamAccountInfo)
+        //{
+        //    this._binanceStreamAccountInfo = binanceStreamAccountInfo;
+        //}
 
-        private void _saveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
-        {
+        //private void _saveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
+        //{
 
-        }
+        //}
 
-        private void _saveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)
-        {
+        //private void _saveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)
+        //{
 
-        }
+        //}
 
-        private void _saveBinanceStreamBalance(IEnumerable<BinanceStreamBalance> binanceStreamBalances)
-        {
+        //private void _saveBinanceStreamBalance(IEnumerable<BinanceStreamBalance> binanceStreamBalances)
+        //{
 
-        }
+        //}
 
-        private void _saveBinanceStreamBalanceUpdate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
-        {
+        //private void _saveBinanceStreamBalanceUpdate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
+        //{
 
-        }
+        //}
 
         public void Stop()
         {

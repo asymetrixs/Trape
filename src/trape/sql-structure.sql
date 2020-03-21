@@ -643,3 +643,29 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql STRICT;
+
+--SELECT * FROM get_recommendation_history('BTCUSDT')
+
+CREATE OR REPLACE FUNCTION get_recommendation_history(p_symbol TEXT) RETURNS SETOF recommendation AS
+$BODY$
+DECLARE
+    r recommendation%rowtype;
+	action TEXT;
+	last_action TEXT;
+BEGIN
+	--CREATE TEMPORARY TABLE recommendation_change ON COMMIT DROP AS SELECT * FROM recommendation ORDER BY id DESC LIMIT 1;
+	
+    FOR r IN SELECT * FROM recommendation WHERE symbol = p_symbol ORDER BY id DESC
+    LOOP
+		action := SUBSTRING(r.decision FROM 0 FOR 4);
+		
+		IF (action != last_action) THEN
+        	RETURN NEXT r;
+		END IF;
+		
+		last_action := action;
+    END LOOP;
+    RETURN;
+END
+$BODY$
+LANGUAGE plpgsql;

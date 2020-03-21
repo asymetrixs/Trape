@@ -15,9 +15,9 @@ namespace trape.cli.trader.DataLayer
     {
         #region Fields
 
-        private ILogger _logger;
+        private readonly ILogger _logger;
 
-        private string _connectionString;
+        private readonly string _connectionString;
 
         #endregion Fields
 
@@ -63,7 +63,7 @@ namespace trape.cli.trader.DataLayer
                         com.CommandType = CommandType.StoredProcedure;
 
                         com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = recommendation.Symbol;
-                        com.Parameters.Add("p_decision", NpgsqlTypes.NpgsqlDbType.Text).Value = recommendation.Action.ToString() + "-" + recommendation.Indicator.ToString("0.0000");
+                        com.Parameters.Add("p_decision", NpgsqlTypes.NpgsqlDbType.Text).Value = recommendation.Action.ToString();
                         com.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = recommendation.Price;
                         com.Parameters.Add("p_slope5s", NpgsqlTypes.NpgsqlDbType.Numeric).Value = stat3s.Slope5s;
                         com.Parameters.Add("p_movav5s", NpgsqlTypes.NpgsqlDbType.Numeric).Value = stat3s.MovingAverage5s;
@@ -531,14 +531,11 @@ namespace trape.cli.trader.DataLayer
 
                         pushedProperty = LogContext.PushProperty("obj", obj);
 
-                        try
-                        {
-                            price = (decimal)obj;
-                        }
-                        catch
-                        {
-                            this._logger.Error("Value is not decimal: " + obj.ToString());
-                        }
+                        price = (decimal)obj;
+                    }
+                    catch (InvalidCastException)
+                    {
+                        this._logger.Error("Value is not decimal");
                     }
                     catch (Exception ex)
                     {

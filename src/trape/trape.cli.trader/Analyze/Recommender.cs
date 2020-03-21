@@ -110,12 +110,13 @@ namespace trape.cli.trader.Analyze
             {
                 Action = action,
                 Price = currentPrice,
-                Symbol = symbol,
-                Indicator = stat10m.Slope30m + stat10m.Slope1h * 10 + stat10m.Slope2h * 100 + stat10m.MovingAverage1h + stat10m.MovingAverage2h
+                Symbol = symbol
             };
 
+            Recommendation lastRecommendation = null;
             if (this._lastRecommendation.ContainsKey(symbol))
             {
+                lastRecommendation = this._lastRecommendation[symbol];
                 this._lastRecommendation[symbol] = newRecommendation;
             }
             else
@@ -123,6 +124,9 @@ namespace trape.cli.trader.Analyze
                 this._lastRecommendation.Add(symbol, newRecommendation);
             }
 
+            if(null == lastRecommendation || lastRecommendation.Action != newRecommendation.Action)
+            
+                 
             await database.Insert(newRecommendation, stat3s, stat15s, stat2m, stat10m, stat2h, this._cancellationTokenSource.Token).ConfigureAwait(false);
 
             Pool.DatabasePool.Put(database);

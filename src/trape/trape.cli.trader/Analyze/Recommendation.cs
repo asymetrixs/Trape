@@ -10,8 +10,6 @@ namespace trape.cli.trader.Analyze
 
         public Action Action { get; set; }
 
-        public decimal Indicator { get; set; }
-
         public DateTimeOffset EventTime { get; set; }
     }
 }
