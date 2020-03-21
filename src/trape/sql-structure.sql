@@ -644,7 +644,7 @@ END;
 $$
 LANGUAGE plpgsql STRICT;
 
---SELECT * FROM get_recommendation_history('BTCUSDT')
+--SELECT * FROM get_recommendation_history('ETHUSDT')
 
 CREATE OR REPLACE FUNCTION get_recommendation_history(p_symbol TEXT) RETURNS SETOF recommendation AS
 $BODY$
@@ -669,3 +669,115 @@ BEGIN
 END
 $BODY$
 LANGUAGE plpgsql;
+
+CREATE TABLE binance_stream_balance
+(
+	id BIGSERIAL NOT NULL,
+	event_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	asset TEXT NOT NULL,
+	free NUMERIC NOT NULL,
+	locked NUMERIC NOT NULL,
+	total NUMERIC NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE INDEX ix_bsb_es ON binance_stream_balance USING BRIN (event_time, asset);
+
+CREATE FUNCTION insert_binance_stream_balance (p_asset TEXT, p_free NUMERIC, p_locked NUMERIC, p_total NUMERIC)
+RETURNS void AS
+$$
+BEGIN
+
+	INSERT INTO binance_stream_balance (asset, free, locked, total)
+			VALUES (p_asset, p_free, p_locked, p_total);
+
+END;
+$$
+LANGUAGE plpgsql VOLATILE STRICT;
+
+DROP TABLE binance_stream_balance_update;
+DROP FUNCTION insert_binance_stream_balance_update(timestamptz, text, text, numeric, timestamptz);
+CREATE TABLE binance_stream_balance_update
+(
+	id BIGSERIAL NOT NULL,
+	event_time TIMESTAMPTZ NOT NULL,
+	event TEXT NOT NULL,
+	asset TEXT NOT NULL,
+	balance_delta NUMERIC NOT NULL,
+	clear_time TIMESTAMPTZ NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE INDEX ix_bsbu_eta ON binance_stream_balance_update USING BRIN (event_time, asset);
+
+
+CREATE FUNCTION insert_binance_stream_balance_update (p_event_time TIMESTAMPTZ, p_event TEXT, p_asset TEXT, p_balance_delta NUMERIC, p_clear_time TIMESTAMPTZ)
+RETURNS void AS
+$$
+BEGIN
+
+	INSERT INTO binance_stream_balance_update (event_time, event, asset, balance_delta, clear_time)
+			VALUES (p_event_time, p_event, p_asset, p_balance_delta, p_clear_time);
+
+END;
+$$
+LANGUAGE plpgsql VOLATILE STRICT;
+
+
+
+DROP FUNCTION insert_binance_stream_order_list (TEXT, TIMESTAMPTZ, INT8, TEXT, TEXT, TEXT, TEXT);
+DROP TABLE binance_stream_order_list;
+
+CREATE TABLE binance_stream_order_list
+(
+	id BIGSERIAL NOT NULL,
+	event_time TIMESTAMPTZ NOT NULL,
+	event TEXT NOT NULL,
+	symbol TEXT NOT NULL,
+	transaction_time TIMESTAMPTZ NOT NULL,
+	order_list_id INT8 NOT NULL,
+	contingency_type TEXT NOT NULL,
+	list_status_type TEXT NOT NULL,
+	list_order_status TEXT NOT NULL,
+	list_client_order_id TEXT NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE INDEX ix_bsol_ets ON binance_stream_order_list USING BRIN (event_time, symbol);
+CREATE INDEX ix_bsol_s ON binance_stream_order_list (symbol);
+CREATE INDEX ix_bsol_coid ON binance_stream_order_list (list_client_order_id);
+
+CREATE TABLE binance_stream_order_id
+(
+	id BIGSERIAL NOT NULL,
+	symbol TEXT NOT NULL,
+	order_id INT8 NOT NULL,
+	client_order_id TEXT NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE INDEX ix_bsoi_oid ON binance_stream_order_id (order_id);
+CREATE INDEX ix_bsoi_coid ON binance_stream_order_id (client_order_id);
+
+CREATE OR REPLACE FUNCTION insert_binance_stream_order_list
+	(p_event_time TIMESTAMPTZ, p_event TEXT, p_symbol TEXT, p_transaction_time TIMESTAMPTZ, p_order_list_id INT8, p_contingency_type TEXT, p_list_status_type TEXT,
+		p_list_order_status TEXT, p_list_client_order_id TEXT)
+RETURNS VOID AS
+$$
+BEGIN
+	INSERT INTO binance_stream_order_list (event_time, event, symbol, transaction_time, order_list_id, contingency_type, list_status_type, list_order_status, list_client_order_id)
+		VALUES(p_event_time, p_eventp_symbol, p_transaction_time, p_order_list_id, p_contingency_type, p_list_status_type, p_list_order_status, p_list_client_order_id);
+END;
+$$
+LANGUAGE plpgsql VOLATILE STRICT;
+
+CREATE OR REPLACE FUNCTION insert_binance_stream_order_id
+	(p_symbol TEXT, p_order_id INT8, client_order_id TEXT)
+RETURNS VOID AS
+$$
+BEGIN
+	INSERT INTO binance_stream_order_id (symbol, order_id, client_order_id)
+		VALUES(p_symbol, p_order_id, p_client_order_id);
+END;
+$$
+LANGUAGE plpgsql VOLATILE STRICT;

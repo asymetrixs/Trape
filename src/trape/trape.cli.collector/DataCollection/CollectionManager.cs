@@ -16,6 +16,8 @@ namespace trape.cli.collector.DataCollection
 {
     public class CollectionManager : BackgroundService
     {
+        #region Fields
+
         private ILogger _logger;
 
         private Dictionary<string, BinanceSocketClient> _binanceSocketClients;
@@ -34,6 +36,10 @@ namespace trape.cli.collector.DataCollection
 
         private bool _shutdown;
 
+        #endregion
+
+        #region Constructor
+
         public CollectionManager(ILogger logger)
         {
             if (null == logger)
@@ -47,6 +53,8 @@ namespace trape.cli.collector.DataCollection
             this._cancellationTokenSource = new CancellationTokenSource();
             this._startStop = new SemaphoreSlim(1, 1);
             this._shutdown = false;
+
+            #region Timer Setup
 
             this._binanceStreamTickBuffer = new ActionBlock<BinanceStreamTick>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(true),
                 new ExecutionDataflowBlockOptions()
@@ -72,42 +80,19 @@ namespace trape.cli.collector.DataCollection
                     CancellationToken = this._cancellationTokenSource.Token,
                     SingleProducerConstrained = false
                 });
+
+            #endregion
         }
 
-        /// <summary>
-        /// Public implementation of Dispose pattern callable by consumers.
-        /// </summary>
-        public override sealed void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
+        #endregion
 
-        /// <summary>
-        /// Protected implementation of Dispose pattern.
-        /// </summary>
-        /// <param name="disposing"></param>
-        protected virtual void Dispose(bool disposing)
-        {
-            if (this._disposed)
-            {
-                return;
-            }
-
-            if (disposing)
-            {
-                this._cancellationTokenSource.Dispose();
-            }
-
-            this._disposed = true;
-        }
+        #region Timer Elapsed
 
         public static async Task Save(BinanceStreamTick bst, CancellationToken cancellationToken)
         {
             var database = Pool.DatabasePool.Get();
             await database.Insert(bst, cancellationToken).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
-            database = null;
         }
 
         public static async Task Save(BinanceStreamKlineData bskd, CancellationToken cancellationToken)
@@ -115,7 +100,6 @@ namespace trape.cli.collector.DataCollection
             var database = Pool.DatabasePool.Get();
             await database.Insert(bskd, cancellationToken).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
-            database = null;
         }
 
         public static async Task Save(BinanceBookTick bbt, CancellationToken cancellationToken)
@@ -123,8 +107,9 @@ namespace trape.cli.collector.DataCollection
             var database = Pool.DatabasePool.Get();
             await database.Insert(bbt, cancellationToken).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
-            database = null;
         }
+        
+        #endregion
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -318,5 +303,37 @@ namespace trape.cli.collector.DataCollection
                 this._logger.Debug($"Collectors online for {symbol}");
             }
         }
+
+        #region Dispose
+
+        /// <summary>
+        /// Public implementation of Dispose pattern callable by consumers.
+        /// </summary>
+        public override sealed void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Protected implementation of Dispose pattern.
+        /// </summary>
+        /// <param name="disposing"></param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (this._disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                this._cancellationTokenSource.Dispose();
+            }
+
+            this._disposed = true;
+        }
+
+        #endregion
     }
 }

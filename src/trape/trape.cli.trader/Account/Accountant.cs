@@ -13,6 +13,8 @@ namespace trape.cli.trader.Account
 {
     public class Accountant : IAccountant, IDisposable
     {
+        #region Fields
+
         private bool _disposed;
 
         private Timer _timerSynchronizeAccountInfo;
@@ -33,10 +35,16 @@ namespace trape.cli.trader.Account
 
         private string _binanceListenKey;
 
+        #endregion
+
+        #region Constructor
+
         public Accountant(ILogger logger)
         {
             this._logger = logger;
             this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
+
+            #region Timer Setup
 
             // Create timer for account info synchronization
             this._timerSynchronizeAccountInfo = new Timer()
@@ -53,7 +61,13 @@ namespace trape.cli.trader.Account
                 Interval = new TimeSpan(0, 15, 0).TotalMilliseconds
             };
             this._timerConnectionKeepAlive.Elapsed += _timerConnectionKeepAlive_Elapsed;
+
+            #endregion
         }
+
+        #endregion
+
+        #region Timer Elapsed
 
         private async void _timerConnectionKeepAlive_Elapsed(object sender, ElapsedEventArgs e)
         {
@@ -93,6 +107,8 @@ namespace trape.cli.trader.Account
             this._logger.Debug("Account info synchronized");
         }
 
+        #endregion
+
         private void Order()
         {
             var orderId = Guid.NewGuid().ToString("N");
@@ -123,6 +139,8 @@ namespace trape.cli.trader.Account
 
             return bac.Balances.SingleOrDefault(b => b.Asset == symbol);
         }
+
+        #region Start / Stop
 
         public async System.Threading.Tasks.Task Start()
         {
@@ -155,13 +173,13 @@ namespace trape.cli.trader.Account
             });
 
             // Subscribe to socket events
-            //await this._binanceSocketClient.SubscribeToUserDataUpdatesAsync(this._binanceListenKey,
-            //    (bsai) => _saveBinanceStreamAccountInfo(bsai),
-            //    (bsou) => _saveBinanceStreamOrderUpdate(bsou),
-            //    (bsol) => _saveBinanceStreamOrderList(bsol),
-            //    (bsbs) => _saveBinanceStreamBalance(bsbs),
-            //    (bsbu) => _saveBinanceStreamBalanceUpdate(bsbu)
-            //    ).ConfigureAwait(false);
+            await this._binanceSocketClient.SubscribeToUserDataUpdatesAsync(this._binanceListenKey,
+                (bsai) => _saveBinanceStreamAccountInfo(bsai),
+                (bsou) => _saveBinanceStreamOrderUpdate(bsou),
+                (bsol) => _saveBinanceStreamOrderList(bsol),
+                (bsbs) => _saveBinanceStreamBalance(bsbs),
+                (bsbu) => _saveBinanceStreamBalanceUpdate(bsbu)
+                ).ConfigureAwait(false);
 
             this._logger.Information("Binance Client is online");
 
@@ -171,30 +189,36 @@ namespace trape.cli.trader.Account
             this._logger.Debug("Accountant started");
         }
 
-        //private void _saveBinanceStreamAccountInfo(BinanceStreamAccountInfo binanceStreamAccountInfo)
-        //{
-        //    this._binanceStreamAccountInfo = binanceStreamAccountInfo;
-        //}
+        private void _saveBinanceStreamAccountInfo(BinanceStreamAccountInfo binanceStreamAccountInfo)
+        {
+            this._binanceStreamAccountInfo = binanceStreamAccountInfo;
+        }
 
-        //private void _saveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
-        //{
+        private void _saveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
+        {
+            //binanceStreamOrderUpdate.
+        }
 
-        //}
+        private async void _saveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)
+        {
+            var database = Pool.DatabasePool.Get();
+            await database.Insert(binanceStreamOrderList, this._cancellationTokenSource.Token).ConfigureAwait(false);
+            Pool.DatabasePool.Put(database);
+        }
 
-        //private void _saveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)
-        //{
+        private async void _saveBinanceStreamBalance(IEnumerable<BinanceStreamBalance> binanceStreamBalances)
+        {
+            var database = Pool.DatabasePool.Get();
+            await database.Insert(binanceStreamBalances, this._cancellationTokenSource.Token).ConfigureAwait(false);
+            Pool.DatabasePool.Put(database);
+        }
 
-        //}
-
-        //private void _saveBinanceStreamBalance(IEnumerable<BinanceStreamBalance> binanceStreamBalances)
-        //{
-
-        //}
-
-        //private void _saveBinanceStreamBalanceUpdate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
-        //{
-
-        //}
+        private async void _saveBinanceStreamBalanceUpdate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
+        {
+            var database = Pool.DatabasePool.Get();
+            await database.Insert(binanceStreamBalanceUpdate, this._cancellationTokenSource.Token).ConfigureAwait(false);
+            Pool.DatabasePool.Put(database);
+        }
 
         public void Stop()
         {
@@ -205,6 +229,10 @@ namespace trape.cli.trader.Account
 
             this._logger.Debug("Accountant stopped");
         }
+
+        #endregion
+
+        #region Dispose
 
         /// <summary>
         /// Public implementation of Dispose pattern callable by consumers.
@@ -234,5 +262,7 @@ namespace trape.cli.trader.Account
 
             this._disposed = true;
         }
+
+        #endregion
     }
 }

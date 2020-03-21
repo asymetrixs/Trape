@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using Binance.Net.Objects;
+using Binance.Net.Objects.Sockets;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache.Models;
@@ -23,5 +25,11 @@ namespace trape.cli.trader.DataLayer
         Task<decimal> GetCurrentPrice(string symbol, CancellationToken cancellationToken);
 
         Task<IEnumerable<CurrentPrice>> GetCurrentPrice(CancellationToken cancellationToken);
+
+        Task Insert(IEnumerable<BinanceStreamBalance> binanceStreamBalances, CancellationToken cancellationToken);
+
+        Task Insert(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate, CancellationToken cancellationToken);
+
+        Task Insert(BinanceStreamOrderList binanceStreamOrderList, CancellationToken cancellationToken);
     }
 }
