@@ -296,23 +296,6 @@ LANGUAGE plpgsql VOLATILE STRICT;
 
 
 
-CREATE OR REPLACE FUNCTION current_price(p_symbol TEXT)
-RETURNS NUMERIC AS
-$$
-	DECLARE r_price NUMERIC;
-BEGIN
-	SELECT current_day_close_price INTO r_price FROM binance_stream_tick
-	WHERE symbol = p_symbol
-	ORDER BY event_time DESC
-	LIMIT 1;
-
-	RETURN r_price;
-END;
-$$
-LANGUAGE plpgsql STRICT;
-
-select 
-
 --delete from decision where id = 43;
 --select * from decision order by id desc;
 --select symbol, decision, SUM(price)
@@ -336,7 +319,7 @@ BEGIN
 	RETURN QUERY SELECT DISTINCT ON (symbol) symbol, event_time, low_price, high_price, open_price,
 		current_day_close_price, price_change_percentage, price_change
 		FROM binance_stream_tick
-		WHERE event_time > NOW() - INTERVAL '5 seconds'
+		WHERE event_time > NOW() - INTERVAL '3 seconds'
 		GROUP BY symbol, event_time, symbol, low_price, high_price, open_price, current_day_close_price, price_change_percentage, price_change
 		ORDER BY symbol, event_time DESC;
 END;

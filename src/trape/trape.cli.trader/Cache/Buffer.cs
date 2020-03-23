@@ -1,14 +1,16 @@
-﻿using Serilog;
+﻿using Binance.Net.Interfaces;
+using Binance.Net.Objects;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 using trape.cli.trader.Cache.Models;
 
 namespace trape.cli.trader.Cache
 {
-    public class Buffer : IBuffer, IDisposable
+    public class Buffer : IBuffer
     {
         #region Fields
 
@@ -16,21 +18,21 @@ namespace trape.cli.trader.Cache
 
         private bool _disposed;
 
-        private System.Threading.CancellationTokenSource _cancellationTokenSource;
+        private CancellationTokenSource _cancellationTokenSource;
 
         #region Timers
 
-        private Timer _timerStats3s;
+        private System.Timers.Timer _timerStats3s;
 
-        private Timer _timerStats15s;
+        private System.Timers.Timer _timerStats15s;
 
-        private Timer _timerStats2m;
+        private System.Timers.Timer _timerStats2m;
 
-        private Timer _timerStats10m;
+        private System.Timers.Timer _timerStats10m;
 
-        private Timer _timerStats2h;
+        private System.Timers.Timer _timerStats2h;
 
-        private Timer _timerCurrentPrice;
+        private System.Timers.Timer _timerCurrentPrice;
 
         #endregion
 
@@ -52,6 +54,8 @@ namespace trape.cli.trader.Cache
 
         #endregion
 
+        #region Constructor
+
         public Buffer(ILogger logger)
         {
             if (null == logger)
@@ -65,7 +69,7 @@ namespace trape.cli.trader.Cache
 
             #region Timer setup
 
-            this._timerStats3s = new Timer()
+            this._timerStats3s = new System.Timers.Timer()
             {
                 AutoReset = true,
                 Interval = new TimeSpan(0, 0, 1).TotalMilliseconds
@@ -73,35 +77,35 @@ namespace trape.cli.trader.Cache
             this._timerStats3s.Elapsed += _timerTrend3Seconds_Elapsed;
 
 
-            this._timerStats15s = new Timer()
+            this._timerStats15s = new System.Timers.Timer()
             {
                 AutoReset = true,
                 Interval = new TimeSpan(0, 0, 5).TotalMilliseconds
             };
             this._timerStats15s.Elapsed += _timerTrend15Seconds_Elapsed;
 
-            this._timerStats2m = new Timer()
+            this._timerStats2m = new System.Timers.Timer()
             {
                 AutoReset = true,
                 Interval = new TimeSpan(0, 1, 0).TotalMilliseconds
             };
             this._timerStats2m.Elapsed += _timerTrend2Minutes_Elapsed;
 
-            this._timerStats10m = new Timer()
+            this._timerStats10m = new System.Timers.Timer()
             {
                 AutoReset = true,
                 Interval = new TimeSpan(0, 3, 0).TotalMilliseconds
             };
             this._timerStats10m.Elapsed += _timerTrend10Minutes_Elapsed;
 
-            this._timerStats2h = new Timer()
+            this._timerStats2h = new System.Timers.Timer()
             {
                 AutoReset = true,
                 Interval = new TimeSpan(0, 10, 0).TotalMilliseconds
             };
             this._timerStats2h.Elapsed += _timerTrend2Hours_Elapsed;
 
-            this._timerCurrentPrice = new Timer()
+            this._timerCurrentPrice = new System.Timers.Timer()
             {
                 AutoReset = true,
                 Interval = new TimeSpan(0, 0, 1).TotalMilliseconds
@@ -111,64 +115,60 @@ namespace trape.cli.trader.Cache
             #endregion
         }
 
+        #endregion
+
         #region Timer elapsed
 
-        private async void _timerCurrentPrice_Elapsed(object sender, ElapsedEventArgs e)
+        private async void _timerCurrentPrice_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var database = Pool.DatabasePool.Get();
             this.CurrentPrices = await database.GetCurrentPrice(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
-            database = null;
 
             this._logger.Verbose("Updated current price");
         }
 
-        private async void _timerTrend3Seconds_Elapsed(object sender, ElapsedEventArgs e)
+        private async void _timerTrend3Seconds_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var database = Pool.DatabasePool.Get();
             this.Stats3s = await database.Get3SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
-            database = null;
 
             this._logger.Verbose("Updated 3 seconds trend");
         }
 
-        private async void _timerTrend15Seconds_Elapsed(object sender, ElapsedEventArgs e)
+        private async void _timerTrend15Seconds_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var database = Pool.DatabasePool.Get();
             this.Stats15s = await database.Get15SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
-            database = null;
 
             this._logger.Verbose("Updated 15 seconds trend");
         }
 
-        private async void _timerTrend2Minutes_Elapsed(object sender, ElapsedEventArgs e)
+        private async void _timerTrend2Minutes_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var database = Pool.DatabasePool.Get();
             this.Stats2m = await database.Get2MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
-            database = null;
 
             this._logger.Verbose("Updated 2 minutes trend");
         }
 
-        private async void _timerTrend10Minutes_Elapsed(object sender, ElapsedEventArgs e)
+        private async void _timerTrend10Minutes_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var database = Pool.DatabasePool.Get();
             this.Stats10m = await database.Get10MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
-            database = null;
 
             this._logger.Verbose("Updated 10 minutes trend");
         }
 
-        private async void _timerTrend2Hours_Elapsed(object sender, ElapsedEventArgs e)
+        private async void _timerTrend2Hours_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var database = Pool.DatabasePool.Get();
             this.Stats2h = await database.Get2HoursTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
-            database = null;
 
             this._logger.Verbose("Updated 2 hours trend");
         }
@@ -177,7 +177,7 @@ namespace trape.cli.trader.Cache
 
         public IEnumerable<string> GetSymbols()
         {
-            // Take symbols that are in the widest spanning trend
+            // Take symbols that are we have data for
             if (null == this.Stats2h)
             {
                 return new List<string>();
@@ -206,6 +206,22 @@ namespace trape.cli.trader.Cache
             database = null;
 
             this._logger.Debug("Buffer preloaded");
+
+            var binanceSocketClient = Program.Services.GetService(typeof(IBinanceSocketClient)) as IBinanceSocketClient;
+
+            await binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.GetSymbols(), (BinanceBookTick bbt) =>
+            {
+                if (!this._currentAskingPrice.ContainsKey(bbt.Symbol))
+                {
+                    if (!this._currentAskingPrice.TryAdd(bbt.Symbol, new decimal[20]))
+                    {
+                        
+                    }
+                }
+
+            }).ConfigureAwait(true);
+
+            this._logger.Debug($"Subscribed to Book Ticker");
 
             // Starting of timers
             this._timerStats3s.Start();

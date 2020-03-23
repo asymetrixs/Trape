@@ -1,29 +1,31 @@
 ﻿using Binance.Net;
+using Binance.Net.Interfaces;
 using Binance.Net.Objects;
 using Binance.Net.Objects.Sockets;
 using CryptoExchange.Net.Authentication;
 using Serilog;
-using Serilog.Context;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Timers;
+using System.Threading;
+using System.Threading.Tasks;
+using trape.cli.trader.Analyze;
 
 namespace trape.cli.trader.Account
 {
-    public class Accountant : IAccountant, IDisposable
+    public class Accountant : IAccountant
     {
         #region Fields
 
         private bool _disposed;
 
-        private Timer _timerSynchronizeAccountInfo;
+        private System.Timers.Timer _timerSynchronizeAccountInfo;
 
-        private Timer _timerConnectionKeepAlive;
+        private System.Timers.Timer _timerConnectionKeepAlive;
 
-        private BinanceClient _binanceClient;
+        private IBinanceClient _binanceClient;
 
-        private BinanceSocketClient _binanceSocketClient;
+        private IBinanceSocketClient _binanceSocketClient;
 
         private BinanceAccountInfo _binanceAccountInfo;
 
@@ -31,23 +33,26 @@ namespace trape.cli.trader.Account
 
         private ILogger _logger;
 
-        private System.Threading.CancellationTokenSource _cancellationTokenSource;
+        private CancellationTokenSource _cancellationTokenSource;
 
         private string _binanceListenKey;
+
+        private IRecommender _recommender;
 
         #endregion
 
         #region Constructor
 
-        public Accountant(ILogger logger)
+        public Accountant(ILogger logger, IRecommender recommender)
         {
             this._logger = logger;
-            this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
+            this._cancellationTokenSource = new CancellationTokenSource();
+            this._recommender = recommender;
 
             #region Timer Setup
 
             // Create timer for account info synchronization
-            this._timerSynchronizeAccountInfo = new Timer()
+            this._timerSynchronizeAccountInfo = new System.Timers.Timer()
             {
                 AutoReset = true,
                 Interval = new TimeSpan(0, 0, 5).TotalMilliseconds
@@ -55,7 +60,7 @@ namespace trape.cli.trader.Account
             this._timerSynchronizeAccountInfo.Elapsed += _timerSynchronizeAccountInfo_Elapsed;
 
             // Create timer for connection keep alive
-            this._timerConnectionKeepAlive = new Timer()
+            this._timerConnectionKeepAlive = new System.Timers.Timer()
             {
                 AutoReset = true,
                 Interval = new TimeSpan(0, 15, 0).TotalMilliseconds
@@ -69,7 +74,7 @@ namespace trape.cli.trader.Account
 
         #region Timer Elapsed
 
-        private async void _timerConnectionKeepAlive_Elapsed(object sender, ElapsedEventArgs e)
+        private async void _timerConnectionKeepAlive_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             // Test connection to binance
             var ping = await this._binanceClient.PingAsync(this._cancellationTokenSource.Token).ConfigureAwait(false);
@@ -95,7 +100,7 @@ namespace trape.cli.trader.Account
             }
         }
 
-        private async void _timerSynchronizeAccountInfo_Elapsed(object sender, ElapsedEventArgs e)
+        private async void _timerSynchronizeAccountInfo_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             // Get latest account information
             var accountInfo = await this._binanceClient.GetAccountInfoAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
@@ -109,35 +114,19 @@ namespace trape.cli.trader.Account
 
         #endregion
 
-        private void Order()
+        private async Task Order(string symbol)
         {
-            var orderId = Guid.NewGuid().ToString("N");
             this._logger.Information("Placing test order");
 
-            // Quote Order Qty Market orders have been enabled on all symbols.
-            // Quote Order Qty MARKET orders allow a user to specify the total quoteOrderQty spent or received in the MARKET order.
-            // Quote Order Qty MARKET orders will not break LOT_SIZE filter rules; the order will execute a quantity that will have the notional value as close as possible to quoteOrderQty.
-            // Using BNBBTC as an example:
-            // On the BUY side, the order will buy as many BNB as quoteOrderQty BTC can.
-            // On the SELL side, the order will sell as much BNB as needed to receive quoteOrderQty BTC.
-
-            var testOrder = this._binanceClient.PlaceTestOrder(
-                symbol: "BTCUSDT",
-                side: OrderSide.Buy,
-                type: OrderType.Limit,
-                price: 6000,
-                quantity: 1,
-                newClientOrderId: orderId,
-                timeInForce: TimeInForce.ImmediateOrCancel,
-                ct: this._cancellationTokenSource.Token);
+            
         }
-
-        public BinanceBalance GetBinanceBalance(string symbol)
+        
+        public BinanceBalance GetBalance(string asset)
         {
             // Take reference to original instance in case _binanceAccountInfo is updated
             var bac = this._binanceAccountInfo;
 
-            return bac.Balances.SingleOrDefault(b => b.Asset == symbol);
+            return bac.Balances.SingleOrDefault(b => b.Asset == asset);
         }
 
         #region Start / Stop
@@ -147,11 +136,7 @@ namespace trape.cli.trader.Account
             this._logger.Verbose("Starting Accountant");
 
             // Create new binance client
-            this._binanceClient = new BinanceClient(new BinanceClientOptions()
-            {
-                ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
-                                                        Configuration.GetValue("binance:secretkey")),
-            });
+            this._binanceClient = Program.Services.GetService(typeof(IBinanceClient)) as IBinanceClient;
 
             // Connect to user stream
             var result = await this._binanceClient.StartUserStreamAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
@@ -165,12 +150,7 @@ namespace trape.cli.trader.Account
             _timerConnectionKeepAlive_Elapsed(null, null);
 
             // Create new binance socket client
-            this._binanceSocketClient = new BinanceSocketClient(new BinanceSocketClientOptions()
-            {
-                ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
-                                                        Configuration.GetValue("binance:secretkey")),
-                AutoReconnect = true
-            });
+            this._binanceSocketClient = Program.Services.GetService(typeof(IBinanceSocketClient)) as IBinanceSocketClient;
 
             // Subscribe to socket events
             await this._binanceSocketClient.SubscribeToUserDataUpdatesAsync(this._binanceListenKey,
@@ -192,6 +172,7 @@ namespace trape.cli.trader.Account
         private void _saveBinanceStreamAccountInfo(BinanceStreamAccountInfo binanceStreamAccountInfo)
         {
             this._binanceStreamAccountInfo = binanceStreamAccountInfo;
+            this._logger.Verbose("Received Binance Stream Account Info");
         }
 
         private async void _saveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
@@ -199,6 +180,8 @@ namespace trape.cli.trader.Account
             var database = Pool.DatabasePool.Get();
             await database.Insert(binanceStreamOrderUpdate, this._cancellationTokenSource.Token).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
+
+            this._logger.Verbose("Received Binance Stream Order Update");
         }
 
         private async void _saveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)
@@ -206,6 +189,8 @@ namespace trape.cli.trader.Account
             var database = Pool.DatabasePool.Get();
             await database.Insert(binanceStreamOrderList, this._cancellationTokenSource.Token).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
+
+            this._logger.Verbose("Received Binance Stream Order List");
         }
 
         private async void _saveBinanceStreamBalance(IEnumerable<BinanceStreamBalance> binanceStreamBalances)
@@ -213,6 +198,8 @@ namespace trape.cli.trader.Account
             var database = Pool.DatabasePool.Get();
             await database.Insert(binanceStreamBalances, this._cancellationTokenSource.Token).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
+
+            this._logger.Verbose("Received Binance Stream Balances");
         }
 
         private async void _saveBinanceStreamBalanceUpdate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
@@ -220,6 +207,8 @@ namespace trape.cli.trader.Account
             var database = Pool.DatabasePool.Get();
             await database.Insert(binanceStreamBalanceUpdate, this._cancellationTokenSource.Token).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
+
+            this._logger.Verbose("Received Binance Stream Balance Update");
         }
 
         public void Stop()

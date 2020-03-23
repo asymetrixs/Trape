@@ -8,7 +8,7 @@ using trape.cli.trader.Cache.Models;
 
 namespace trape.cli.trader.Analyze
 {
-    public class Recommender : IDisposable, IRecommender
+    public class Recommender : IRecommender
     {
         #region Fields
 
@@ -145,7 +145,7 @@ namespace trape.cli.trader.Analyze
             return $"{recommendation.Symbol}: {reco} | S1h: {Math.Round(stat10m.Slope1h, 4)} | S2h: {Math.Round(stat10m.Slope2h, 4)} | MA1h: {Math.Round(stat10m.MovingAverage1h, 4)} | MA2h: {Math.Round(stat10m.MovingAverage2h, 4)} | MA6h: {Math.Round(stat2Hours.MovingAverage6h, 4)}";
         }
 
-        public Recommendation GetDecision(string symbol)
+        public Recommendation GetRecommendation(string symbol)
         {
             if (this._lastRecommendation.TryGetValue(symbol, out Recommendation decision))
             {
@@ -155,16 +155,6 @@ namespace trape.cli.trader.Analyze
             return null;
         }
 
-
-        public void ConfirmBuy(string symbol)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int Recommendation(string symbol)
-        {
-            throw new NotImplementedException();
-        }
 
         #region Start / Stop
 

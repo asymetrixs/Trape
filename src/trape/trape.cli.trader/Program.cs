@@ -1,4 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Binance.Net;
+using Binance.Net.Interfaces;
+using Binance.Net.Objects;
+using CryptoExchange.Net.Authentication;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using System;
@@ -51,7 +55,19 @@ namespace trape.cli.trader
                     services.AddSingleton<IRecommender, Recommender>();
                     services.AddSingleton<ITrader, Trader>();
                     services.AddSingleton<IAccountant, Accountant>();
-                                        
+                    services.AddSingleton<IBinanceClient>(new BinanceClient(new BinanceClientOptions()
+                    {
+                        ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
+                                                        Configuration.GetValue("binance:secretkey"))
+                    }));
+                    services.AddSingleton<IBinanceSocketClient>(new BinanceSocketClient(new BinanceSocketClientOptions()
+                    {
+                        ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
+                                                        Configuration.GetValue("binance:secretkey")),
+                        AutoReconnect = true
+                    }));
+
+
                     services.AddHostedService<Engine>();
                 });
         }

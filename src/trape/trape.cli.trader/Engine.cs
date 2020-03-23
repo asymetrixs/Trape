@@ -4,14 +4,16 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Account;
-using trape.cli.trader.Cache;
 using trape.cli.trader.Analyze;
+using trape.cli.trader.Cache;
 using trape.cli.trader.trade;
 
 namespace trape.cli.trader
 {
     public class Engine : BackgroundService
     {
+        #region Fields
+
         private ILogger _logger;
 
         private IBuffer _buffer;
@@ -22,9 +24,13 @@ namespace trape.cli.trader
 
         private IAccountant _accountant;
 
+        private bool _disposed;
+
+        #endregion
+
         public Engine(ILogger logger, IBuffer buffer, IRecommender recommender, ITrader trader, IAccountant accountant)
         {
-            if(null == logger || null == buffer || null == recommender || null == trader)
+            if (null == logger || null == buffer || null == recommender || null == trader)
             {
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
@@ -46,6 +52,8 @@ namespace trape.cli.trader
 
             await this._accountant.Start().ConfigureAwait(false);
 
+            this._trader.Start();
+
             this._logger.Information("Engine is started");
         }
 
@@ -53,15 +61,52 @@ namespace trape.cli.trader
         {
             this._logger.Information("Engine is stopping");
 
+            this._trader.Stop();
+
             this._accountant.Stop();
 
             this._recommender.Stop();
-                       
+
             this._buffer.Stop();
 
             this._logger.Information("Engine is stopped");
 
             return Task.CompletedTask;
         }
+
+        #region Dispose
+
+        /// <summary>
+        /// Public implementation of Dispose pattern callable by consumers.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Protected implementation of Dispose pattern.
+        /// </summary>
+        /// <param name="disposing"></param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (this._disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                this._buffer.Dispose();
+                this._accountant.Dispose();
+                this._recommender.Dispose();
+                this._trader.Dispose();
+            }
+
+            this._disposed = true;
+        }
+
+        #endregion
     }
 }

@@ -1,13 +1,13 @@
-﻿namespace trape.cli.trader.Analyze
+﻿using System;
+
+namespace trape.cli.trader.Analyze
 {
-	public interface IRecommender
-	{
-		void ConfirmBuy(string symbol);
+    public interface IRecommender : IDisposable
+    {
+        Recommendation GetRecommendation(string symbol);
 
-		int Recommendation(string symbol);
+        void Start();
 
-		void Start();
-
-		void Stop();
-	}
+        void Stop();
+    }
 }
