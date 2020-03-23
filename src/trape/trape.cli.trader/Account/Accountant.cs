@@ -194,9 +194,11 @@ namespace trape.cli.trader.Account
             this._binanceStreamAccountInfo = binanceStreamAccountInfo;
         }
 
-        private void _saveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
+        private async void _saveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
         {
-            //binanceStreamOrderUpdate.
+            var database = Pool.DatabasePool.Get();
+            await database.Insert(binanceStreamOrderUpdate, this._cancellationTokenSource.Token).ConfigureAwait(false);
+            Pool.DatabasePool.Put(database);
         }
 
         private async void _saveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)

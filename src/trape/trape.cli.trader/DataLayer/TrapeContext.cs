@@ -844,5 +844,86 @@ namespace trape.cli.trader.DataLayer
                 }
             }
         }
+
+        public async Task Insert(BinanceStreamOrderUpdate binanceStreamOrderUpdate, CancellationToken cancellationToken)
+
+        {
+            if (null == binanceStreamOrderUpdate)
+            {
+                return;
+            }
+
+            var pushedProperties = new List<IDisposable>();
+
+            using (var con = new NpgsqlConnection(this._connectionString))
+            {
+                using (var com = new NpgsqlCommand("insert_binance_stream_order_update", con))
+                {
+                    try
+                    {
+                        this._logger.Verbose($"Executing {com.CommandText}");
+
+                        pushedProperties.Add(LogContext.PushProperty("binanceStreamOrderUpdate", binanceStreamOrderUpdate));
+
+                        com.CommandType = CommandType.StoredProcedure;
+
+                        com.Parameters.Add("p_event_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = binanceStreamOrderUpdate.EventTime;
+                        com.Parameters.Add("p_event", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.Event;
+                        com.Parameters.Add("p_last_quote_transacted_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.LastQuoteTransactedQuantity;
+                        com.Parameters.Add("p_quote_order_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.QuoteOrderQuantity;
+                        com.Parameters.Add("p_cummulative_quote_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.CummulativeQuoteQuantity;
+                        com.Parameters.Add("p_order_creation_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = binanceStreamOrderUpdate.OrderCreationTime;
+                        com.Parameters.Add("p_buyer_is_maker", NpgsqlTypes.NpgsqlDbType.Boolean).Value = binanceStreamOrderUpdate.BuyerIsMaker;
+                        com.Parameters.Add("p_is_working", NpgsqlTypes.NpgsqlDbType.Boolean).Value = binanceStreamOrderUpdate.IsWorking;
+                        com.Parameters.Add("p_trade_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binanceStreamOrderUpdate.TradeId;
+                        com.Parameters.Add("p_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = binanceStreamOrderUpdate.Time;
+                        com.Parameters.Add("p_commission_asset", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.CommissionAsset;
+                        com.Parameters.Add("p_commission", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.Commission;
+                        com.Parameters.Add("p_price_last_filled_trade", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.PriceLastFilledTrade;
+                        com.Parameters.Add("p_accumulated_quantity_of_filled_trades", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.AccumulatedQuantityOfFilledTrades;
+                        com.Parameters.Add("p_quantity_of_last_filled_trade", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.QuantityOfLastFilledTrade;
+                        com.Parameters.Add("p_order_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binanceStreamOrderUpdate.OrderId;
+                        com.Parameters.Add("p_reject_reason", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.RejectReason.ToString();
+                        com.Parameters.Add("p_status", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.Status.ToString();
+                        com.Parameters.Add("p_execution_type", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.ExecutionType.ToString();
+                        com.Parameters.Add("p_original_client_order_id", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.OriginalClientOrderId;
+                        com.Parameters.Add("p_iceberg_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.IcebergQuantity;
+                        com.Parameters.Add("p_stop_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.StopPrice;
+                        com.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.Price;
+                        com.Parameters.Add("p_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.Quantity;
+                        com.Parameters.Add("p_time_in_force", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.TimeInForce;
+                        com.Parameters.Add("p_type", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.Type;
+                        com.Parameters.Add("p_side", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.Side;
+                        com.Parameters.Add("p_client_order_id", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.ClientOrderId;
+                        com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.Symbol;
+                        com.Parameters.Add("p_order_list_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binanceStreamOrderUpdate.OrderListId;
+                        com.Parameters.Add("p_unused_i", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binanceStreamOrderUpdate.I;
+
+                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+                        await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!cancellationToken.IsCancellationRequested)
+                        {
+                            this._logger.Fatal(ex.Message, ex);
+                        }
+#if DEBUG
+                        throw;
+#endif
+                    }
+                    finally
+                    {
+                        con.Close();
+
+                        foreach (var pp in pushedProperties)
+                        {
+                            pp.Dispose();
+                        }
+                    }
+                }
+            }
+        }
     }
 }

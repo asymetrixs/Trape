@@ -1,13 +1,11 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
-using Serilog.Exceptions;
 using System;
 using System.Threading.Tasks;
 using trape.cli.trader.Account;
-using trape.cli.trader.Cache;
-using trape.cli.trader.DataLayer;
 using trape.cli.trader.Analyze;
+using trape.cli.trader.Cache;
 using trape.cli.trader.trade;
 
 namespace trape.cli.trader

@@ -781,3 +781,163 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql VOLATILE STRICT;
+
+
+
+
+
+
+
+CREATE TABLE binance_stream_order_update
+(
+	id BIGSERIAL NOT NULL,
+	event TEXT NOT NULL,
+	event_time TIMESTAMPTZ NOT NULL,
+	last_quote_transacted_quantity NUMERIC NOT NULL,
+	quote_order_quantity NUMERIC NOT NULL,
+	cummulative_quote_quantity NUMERIC NOT NULL,
+	order_creation_time TIMESTAMPTZ NOT NULL,
+	buyer_is_maker BOOLEAN NOT NULL,
+	is_working BOOLEAN NOT NULL,
+	trade_id INT8 NOT NULL,
+	time TIMESTAMPTZ NOT NULL,
+	commission_asset TEXT NOT NULL,
+	commission NUMERIC NOT NULL,
+	price_last_filled_trade NUMERIC NOT NULL,
+	accumulated_quantity_of_filled_trades NUMERIC NOT NULL,
+	quantity_of_last_filled_trade NUMERIC NOT NULL,
+	order_id INT8 NOT NULL,
+	reject_reason TEXT NOT NULL,
+	status TEXT NOT NULL,
+	execution_type TEXT NOT NULL,
+	original_client_order_id TEXT,
+	iceberg_quantity NUMERIC NOT NULL,
+	stop_price NUMERIC NOT NULL,
+	price NUMERIC NOT NULL,
+	quantity NUMERIC NOT NULL,
+	time_in_force TEXT NOT NULL,
+	type TEXT NOT NULL,
+	side TEXT NOT NULL,
+	client_order_id TEXT NOT NULL,
+	symbol TEXT NOT NULL,
+	order_list_id INT8 NOT NULL,
+	unused_i INT8 NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE INDEX ix_bsou_ets ON binance_stream_order_update USING BRIN (event_time, symbol);
+CREATE INDEX ix_bsou_ti ON binance_stream_order_update (trade_id);
+CREATE INDEX ix_bsou_oi ON binance_stream_order_update (order_id);
+CREATE INDEX ix_bsou_ocoi ON binance_stream_order_update (original_client_order_id);
+CREATE INDEX ix_bsou_coi ON binance_stream_order_update (client_order_id);
+CREATE INDEX ix_bsou_oli ON binance_stream_order_update (order_list_id);
+
+CREATE OR REPLACE FUNCTION insert_binance_stream_order_update
+(
+	p_event TEXT,
+	p_event_time TIMESTAMPTZ,
+	p_last_quote_transacted_quantity NUMERIC,
+	p_quote_order_quantity NUMERIC,
+	p_cummulative_quote_quantity NUMERIC,
+	p_order_creation_time TIMESTAMPTZ,
+	p_buyer_is_maker BOOLEAN,
+	p_is_working BOOLEAN,
+	p_trade_id INT8,
+	p_time TIMESTAMPTZ,
+	p_commission_asset TEXT,
+	p_commission NUMERIC,
+	p_price_last_filled_trade NUMERIC,
+	p_accumulated_quantity_of_filled_trades NUMERIC,
+	p_quantity_of_last_filled_trade NUMERIC,
+	p_order_id INT8,
+	p_reject_reason TEXT,
+	p_status TEXT,
+	p_execution_type TEXT,
+	p_original_client_order_id TEXT,
+	p_iceberg_quantity NUMERIC,
+	p_stop_price NUMERIC,
+	p_price NUMERIC,
+	p_quantity NUMERIC,
+	p_time_in_force TEXT,
+	p_type TEXT,
+	p_side TEXT,
+	p_client_order_id TEXT,
+	p_symbol TEXT,
+	p_order_list_id INT8,
+	p_unused_i INT8
+)
+RETURNS VOID AS
+$$
+BEGIN
+	INSERT INTO binance_stream_order_update
+	(
+		event,
+		event_time,
+		last_quote_transacted_quantity,
+		quote_order_quantity,
+		cummulative_quote_quantity,
+		order_creation_time,
+		buyer_is_maker,
+		is_working,
+		trade_id,
+		time,
+		commission_asset,
+		commission,
+		price_last_filled_trade,
+		accumulated_quantity_of_filled_trades,
+		quantity_of_last_filled_trade,
+		order_id,
+		reject_reason,
+		status,
+		execution_type,
+		original_client_order_id,
+		iceberg_quantity,
+		stop_price,
+		price,
+		quantity,
+		time_in_force,
+		type,
+		side,
+		client_order_id,
+		symbol,
+		order_list_id,
+		unused_i
+	)
+	VALUES
+	(
+		p_event,
+		p_event_time,
+		p_last_quote_transacted_quantity,
+		p_quote_order_quantity,
+		p_cummulative_quote_quantity,
+		p_order_creation_time,
+		p_buyer_is_maker,
+		p_is_working,
+		p_trade_id,
+		p_time,
+		p_commission_asset,
+		p_commission,
+		p_price_last_filled_trade,
+		p_accumulated_quantity_of_filled_trades,
+		p_quantity_of_last_filled_trade,
+		p_order_id,
+		p_reject_reason,
+		p_status,
+		p_execution_type,
+		p_original_client_order_id,
+		p_iceberg_quantity,
+		p_stop_price,
+		p_price,
+		p_quantity,
+		p_time_in_force,
+		p_type,
+		p_side,
+		p_client_order_id,
+		p_symbol,
+		p_order_list_id,
+		p_unused_i
+	);
+
+END;
+$$
+LANGUAGE plpgsql VOLATILE STRICT;

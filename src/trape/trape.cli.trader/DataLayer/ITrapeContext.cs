@@ -31,5 +31,7 @@ namespace trape.cli.trader.DataLayer
         Task Insert(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate, CancellationToken cancellationToken);
 
         Task Insert(BinanceStreamOrderList binanceStreamOrderList, CancellationToken cancellationToken);
+
+        Task Insert(BinanceStreamOrderUpdate binanceStreamOrderUpdate, CancellationToken cancellationToken);
     }
 }
