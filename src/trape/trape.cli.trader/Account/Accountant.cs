@@ -178,7 +178,7 @@ namespace trape.cli.trader.Account
         private async void _saveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
         {
             var database = Pool.DatabasePool.Get();
-            await database.Insert(binanceStreamOrderUpdate, this._cancellationTokenSource.Token).ConfigureAwait(false);
+            await database.InsertAsync(binanceStreamOrderUpdate, this._cancellationTokenSource.Token).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Received Binance Stream Order Update");
@@ -187,7 +187,7 @@ namespace trape.cli.trader.Account
         private async void _saveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)
         {
             var database = Pool.DatabasePool.Get();
-            await database.Insert(binanceStreamOrderList, this._cancellationTokenSource.Token).ConfigureAwait(false);
+            await database.InsertAsync(binanceStreamOrderList, this._cancellationTokenSource.Token).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Received Binance Stream Order List");
@@ -196,7 +196,7 @@ namespace trape.cli.trader.Account
         private async void _saveBinanceStreamBalance(IEnumerable<BinanceStreamBalance> binanceStreamBalances)
         {
             var database = Pool.DatabasePool.Get();
-            await database.Insert(binanceStreamBalances, this._cancellationTokenSource.Token).ConfigureAwait(false);
+            await database.InsertAsync(binanceStreamBalances, this._cancellationTokenSource.Token).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Received Binance Stream Balances");
@@ -205,7 +205,7 @@ namespace trape.cli.trader.Account
         private async void _saveBinanceStreamBalanceUpdate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
         {
             var database = Pool.DatabasePool.Get();
-            await database.Insert(binanceStreamBalanceUpdate, this._cancellationTokenSource.Token).ConfigureAwait(false);
+            await database.InsertAsync(binanceStreamBalanceUpdate, this._cancellationTokenSource.Token).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Received Binance Stream Balance Update");

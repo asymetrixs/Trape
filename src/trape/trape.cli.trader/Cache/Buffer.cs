@@ -2,6 +2,7 @@
 using Binance.Net.Objects;
 using Serilog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -19,6 +20,10 @@ namespace trape.cli.trader.Cache
         private bool _disposed;
 
         private CancellationTokenSource _cancellationTokenSource;
+
+        private ConcurrentDictionary<string, BestPrice> _bestAskPrices;
+
+        private ConcurrentDictionary<string, BestPrice> _bestBidPrices;
 
         #region Timers
 
@@ -66,6 +71,8 @@ namespace trape.cli.trader.Cache
             this._logger = logger;
             this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
             this._disposed = false;
+            this._bestAskPrices = new ConcurrentDictionary<string, BestPrice>();
+            this._bestBidPrices = new ConcurrentDictionary<string, BestPrice>();
 
             #region Timer setup
 
@@ -122,7 +129,7 @@ namespace trape.cli.trader.Cache
         private async void _timerCurrentPrice_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var database = Pool.DatabasePool.Get();
-            this.CurrentPrices = await database.GetCurrentPrice(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.CurrentPrices = await database.GetCurrentPriceAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Updated current price");
@@ -131,7 +138,7 @@ namespace trape.cli.trader.Cache
         private async void _timerTrend3Seconds_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var database = Pool.DatabasePool.Get();
-            this.Stats3s = await database.Get3SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.Stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Updated 3 seconds trend");
@@ -140,7 +147,7 @@ namespace trape.cli.trader.Cache
         private async void _timerTrend15Seconds_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var database = Pool.DatabasePool.Get();
-            this.Stats15s = await database.Get15SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.Stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Updated 15 seconds trend");
@@ -149,7 +156,7 @@ namespace trape.cli.trader.Cache
         private async void _timerTrend2Minutes_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var database = Pool.DatabasePool.Get();
-            this.Stats2m = await database.Get2MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.Stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Updated 2 minutes trend");
@@ -158,7 +165,7 @@ namespace trape.cli.trader.Cache
         private async void _timerTrend10Minutes_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var database = Pool.DatabasePool.Get();
-            this.Stats10m = await database.Get10MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.Stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Updated 10 minutes trend");
@@ -167,7 +174,7 @@ namespace trape.cli.trader.Cache
         private async void _timerTrend2Hours_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var database = Pool.DatabasePool.Get();
-            this.Stats2h = await database.Get2HoursTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.Stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Updated 2 hours trend");
@@ -186,6 +193,30 @@ namespace trape.cli.trader.Cache
             return this.Stats2h.Where(t => t.IsValid()).Select(t => t.Symbol);
         }
 
+        public decimal GetAskPrice(string symbol)
+        {
+            if(!this._bestAskPrices.ContainsKey(symbol))
+            {
+                return -1;
+            }
+            else
+            {
+                return this._bestAskPrices[symbol].GetAverage();
+            }
+        }
+
+        public decimal GetBidPrice(string symbol)
+        {
+            if (!this._bestBidPrices.ContainsKey(symbol))
+            {
+                return -1;
+            }
+            else
+            {
+                return this._bestBidPrices[symbol].GetAverage();
+            }
+        }
+
         #region Start / Stop
 
         public async Task Start()
@@ -195,12 +226,12 @@ namespace trape.cli.trader.Cache
             // Initial loading
             this._logger.Debug("Preloading buffer");
             var database = Pool.DatabasePool.Get();
-            this.Stats3s = await database.Get3SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this.Stats15s = await database.Get15SecondsTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this.Stats2m = await database.Get2MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this.Stats10m = await database.Get10MinutesTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this.Stats2h = await database.Get2HoursTrend(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this.CurrentPrices = await database.GetCurrentPrice(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.Stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.Stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.Stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.Stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.Stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this.CurrentPrices = await database.GetCurrentPriceAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
             Pool.DatabasePool.Put(database);
             database = null;
@@ -211,14 +242,30 @@ namespace trape.cli.trader.Cache
 
             await binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.GetSymbols(), (BinanceBookTick bbt) =>
             {
-                if (!this._currentAskingPrice.ContainsKey(bbt.Symbol))
+                lock (this)
                 {
-                    if (!this._currentAskingPrice.TryAdd(bbt.Symbol, new decimal[20]))
+                    if (this._bestAskPrices.ContainsKey(bbt.Symbol))
                     {
-                        
+                        this._bestAskPrices[bbt.Symbol].Add(bbt.BestAskPrice);
+                    }
+                    else
+                    {
+                        var bestAskPrice = new BestPrice(bbt.Symbol);
+                        bestAskPrice.Add(bbt.BestAskPrice);
+                        this._bestAskPrices.TryAdd(bbt.Symbol, bestAskPrice);
+                    }
+
+                    if (this._bestBidPrices.ContainsKey(bbt.Symbol))
+                    {
+                        this._bestBidPrices[bbt.Symbol].Add(bbt.BestBidPrice);
+                    }
+                    else
+                    {
+                        var bestBidPrice = new BestPrice(bbt.Symbol);
+                        bestBidPrice.Add(bbt.BestBidPrice);
+                        this._bestBidPrices.TryAdd(bbt.Symbol, bestBidPrice);
                     }
                 }
-
             }).ConfigureAwait(true);
 
             this._logger.Debug($"Subscribed to Book Ticker");

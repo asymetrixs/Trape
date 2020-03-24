@@ -26,6 +26,8 @@ namespace trape.cli.trader.Analyze
 
         #endregion
 
+        #region Constructor
+
         public Recommender(ILogger logger, IBuffer buffer)
         {
             if (null == logger || null == buffer)
@@ -46,6 +48,8 @@ namespace trape.cli.trader.Analyze
             };
             this._timerRecommender.Elapsed += _makeDecision_Elapsed;
         }
+
+        #endregion
 
         private async void _makeDecision_Elapsed(object sender, ElapsedEventArgs e)
         {
@@ -82,7 +86,7 @@ namespace trape.cli.trader.Analyze
             }
 
             var database = Pool.DatabasePool.Get();
-            var currentPrice = await database.GetCurrentPrice(symbol, this._cancellationTokenSource.Token).ConfigureAwait(false);
+            var currentPrice = await database.GetCurrentPriceAsync(symbol, this._cancellationTokenSource.Token).ConfigureAwait(false);
 
             Action action;
             // Buy
@@ -124,15 +128,11 @@ namespace trape.cli.trader.Analyze
                 this._lastRecommendation.Add(symbol, newRecommendation);
             }
 
-            if(null == lastRecommendation || lastRecommendation.Action != newRecommendation.Action)
-            
-                 
-            await database.Insert(newRecommendation, stat3s, stat15s, stat2m, stat10m, stat2h, this._cancellationTokenSource.Token).ConfigureAwait(false);
-
+            await database.InsertAsync(newRecommendation, stat3s, stat15s, stat2m, stat10m, stat2h, this._cancellationTokenSource.Token).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
             database = null;
 
-            if (DateTime.UtcNow.Second % 5 == 0)
+            if (DateTime.UtcNow.Second % 5 == 0 || newRecommendation.Action != lastRecommendation?.Action)
             {
                 this._logger.Debug(_GetTrend(newRecommendation, stat10m, stat2h));
             }

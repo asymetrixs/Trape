@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache.Models;
+using trape.cli.trader.DataLayer.Models;
 
 namespace trape.cli.trader.DataLayer
 {
@@ -37,7 +38,7 @@ namespace trape.cli.trader.DataLayer
         }
 
 
-        public async Task Insert(Analyze.Recommendation recommendation, Stats3s stat3s, Stats15s stat15s, Stats2m stat2m,
+        public async Task InsertAsync(Analyze.Recommendation recommendation, Stats3s stat3s, Stats15s stat15s, Stats2m stat2m,
             Stats10m stat10m, Stats2h stat2h, CancellationToken cancellationToken)
 
         {
@@ -136,7 +137,7 @@ namespace trape.cli.trader.DataLayer
             }
         }
 
-        public async Task<IEnumerable<Stats3s>> Get3SecondsTrend(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats3s>> Get3SecondsTrendAsync(CancellationToken cancellationToken)
         {
             var trends = new List<Stats3s>();
             IDisposable pushedProperty = null;
@@ -211,7 +212,7 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<IEnumerable<Stats15s>> Get15SecondsTrend(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats15s>> Get15SecondsTrendAsync(CancellationToken cancellationToken)
         {
             var trends = new List<Stats15s>();
             IDisposable pushedProperty = null;
@@ -286,7 +287,7 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<IEnumerable<Stats2m>> Get2MinutesTrend(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats2m>> Get2MinutesTrendAsync(CancellationToken cancellationToken)
         {
             var trends = new List<Stats2m>();
             IDisposable pushedProperty = null;
@@ -361,7 +362,7 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<IEnumerable<Stats10m>> Get10MinutesTrend(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats10m>> Get10MinutesTrendAsync(CancellationToken cancellationToken)
         {
             var trends = new List<Stats10m>();
             IDisposable pushedProperty = null;
@@ -436,7 +437,7 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<IEnumerable<Stats2h>> Get2HoursTrend(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats2h>> Get2HoursTrendAsync(CancellationToken cancellationToken)
         {
             var trends = new List<Stats2h>();
             IDisposable pushedProperty = null;
@@ -511,7 +512,7 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<decimal> GetCurrentPrice(string symbol, CancellationToken cancellationToken)
+        public async Task<decimal> GetCurrentPriceAsync(string symbol, CancellationToken cancellationToken)
         {
             var price = default(decimal);
             IDisposable pushedProperty = null;
@@ -562,7 +563,7 @@ namespace trape.cli.trader.DataLayer
             return price;
         }
 
-        public async Task<IEnumerable<CurrentPrice>> GetCurrentPrice(CancellationToken cancellationToken)
+        public async Task<IEnumerable<CurrentPrice>> GetCurrentPriceAsync(CancellationToken cancellationToken)
         {
             var currentPrices = new List<CurrentPrice>();
             IDisposable pushedProperty = null;
@@ -633,7 +634,7 @@ namespace trape.cli.trader.DataLayer
             return currentPrices;
         }
 
-        public async Task Insert(IEnumerable<BinanceStreamBalance> binanceStreamBalances, CancellationToken cancellationToken)
+        public async Task InsertAsync(IEnumerable<BinanceStreamBalance> binanceStreamBalances, CancellationToken cancellationToken)
         {
             if (null == binanceStreamBalances || !binanceStreamBalances.Any())
             {
@@ -698,7 +699,7 @@ namespace trape.cli.trader.DataLayer
             }
         }
 
-        public async Task Insert(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate, CancellationToken cancellationToken)
+        public async Task InsertAsync(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate, CancellationToken cancellationToken)
 
         {
             if (null == binanceStreamBalanceUpdate)
@@ -754,7 +755,7 @@ namespace trape.cli.trader.DataLayer
         }
 
 
-        public async Task Insert(BinanceStreamOrderList binanceStreamOrderList, CancellationToken cancellationToken)
+        public async Task InsertAsync(BinanceStreamOrderList binanceStreamOrderList, CancellationToken cancellationToken)
 
         {
             if (null == binanceStreamOrderList)
@@ -768,7 +769,7 @@ namespace trape.cli.trader.DataLayer
             {
                 await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-                using (var transaction = await con.BeginTransactionAsync(cancellationToken))
+                using (var transaction = await con.BeginTransactionAsync(cancellationToken).ConfigureAwait(false))
                 {
                     using (var com = new NpgsqlCommand("insert_binance_stream_order_list", con))
                     {
@@ -800,7 +801,6 @@ namespace trape.cli.trader.DataLayer
 
                                 com.CommandType = CommandType.StoredProcedure;
 
-                                // p_symbol TEXT, p_free NUMERIC, p_locked NUMERIC, p_total NUMERIC
                                 var pSymbol = com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text);
                                 var pOrderId = com.Parameters.Add("p_order_id", NpgsqlTypes.NpgsqlDbType.Bigint);
                                 var pClientOrderId = com.Parameters.Add("p_client_order_id", NpgsqlTypes.NpgsqlDbType.Text);
@@ -845,7 +845,7 @@ namespace trape.cli.trader.DataLayer
             }
         }
 
-        public async Task Insert(BinanceStreamOrderUpdate binanceStreamOrderUpdate, CancellationToken cancellationToken)
+        public async Task InsertAsync(BinanceStreamOrderUpdate binanceStreamOrderUpdate, CancellationToken cancellationToken)
 
         {
             if (null == binanceStreamOrderUpdate)
@@ -924,6 +924,259 @@ namespace trape.cli.trader.DataLayer
                     }
                 }
             }
+        }
+
+        public async Task InsertAsync(Order order, CancellationToken cancellationToken)
+        {
+            if (null == order)
+            {
+                return;
+            }
+
+            var pushedProperties = new List<IDisposable>();
+
+            using (var con = new NpgsqlConnection(this._connectionString))
+            {
+                using (var com = new NpgsqlCommand("insert_order", con))
+                {
+                    try
+                    {
+                        this._logger.Verbose($"Executing {com.CommandText}");
+
+                        pushedProperties.Add(LogContext.PushProperty("order", order));
+
+                        com.CommandType = CommandType.StoredProcedure;
+
+                        com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = order.Symbol;
+                        com.Parameters.Add("p_side", NpgsqlTypes.NpgsqlDbType.Text).Value = order.Side.ToString();
+                        com.Parameters.Add("p_type", NpgsqlTypes.NpgsqlDbType.Numeric).Value = order.Type.ToString();
+                        com.Parameters.Add("p_quote_order_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = order.QuoteOrderQuantity;
+                        com.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = order.Price;
+                        com.Parameters.Add("p_new_client_order_id", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = order.NewClientOrderId;
+                        com.Parameters.Add("p_order_response", NpgsqlTypes.NpgsqlDbType.Boolean).Value = order.OrderResponseType.ToString();
+                        com.Parameters.Add("p_time_in_force", NpgsqlTypes.NpgsqlDbType.Boolean).Value = order.TimeInForce.ToString();
+
+
+                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+                        await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!cancellationToken.IsCancellationRequested)
+                        {
+                            this._logger.Fatal(ex.Message, ex);
+                        }
+#if DEBUG
+                        throw;
+#endif
+                    }
+                    finally
+                    {
+                        con.Close();
+
+                        foreach (var pp in pushedProperties)
+                        {
+                            pp.Dispose();
+                        }
+                    }
+                }
+            }
+        }
+
+        public async Task InsertAsync(BinancePlacedOrder binancePlacedOrder, CancellationToken cancellationToken)
+        {
+            if (null == binancePlacedOrder)
+            {
+                return;
+            }
+
+            var pushedProperties = new List<IDisposable>();
+
+            using (var con = new NpgsqlConnection(this._connectionString))
+            {
+                using (var transaction = await con.BeginTransactionAsync().ConfigureAwait(false))
+                {
+                    using (var com = new NpgsqlCommand("insert_binance_placed_order", con))
+                    {
+                        try
+                        {
+                            this._logger.Verbose($"Executing {com.CommandText}");
+
+                            pushedProperties.Add(LogContext.PushProperty("binancePlacedOrder", binancePlacedOrder));
+
+                            com.CommandType = CommandType.StoredProcedure;
+
+                            if (!string.IsNullOrEmpty(binancePlacedOrder.MarginBuyBorrowAsset))
+                            {
+                                com.Parameters.Add("p_margin_buy_borrow_asset", NpgsqlTypes.NpgsqlDbType.Text).Value = binancePlacedOrder.MarginBuyBorrowAsset;
+                            }
+                            else
+                            {
+                                com.Parameters.Add("p_margin_buy_borrow_asset", NpgsqlTypes.NpgsqlDbType.Text).Value = DBNull.Value;
+                            }
+
+                            if (binancePlacedOrder.MarginBuyBorrowAmount.HasValue)
+                            {
+                                com.Parameters.Add("p_margin_buy_borrow_amount", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.MarginBuyBorrowAmount.Value;
+                            }
+                            else
+                            {
+                                com.Parameters.Add("p_margin_buy_borrow_amount", NpgsqlTypes.NpgsqlDbType.Numeric).Value = DBNull.Value;
+                            }
+
+                            if (binancePlacedOrder.StopPrice.HasValue)
+                            {
+                                com.Parameters.Add("p_stop_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.StopPrice.Value;
+                            }
+                            else
+                            {
+                                com.Parameters.Add("p_stop_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = DBNull.Value;
+                            }
+
+                            com.Parameters.Add("p_side", NpgsqlTypes.NpgsqlDbType.Text).Value = binancePlacedOrder.Side.ToString();
+                            com.Parameters.Add("p_type", NpgsqlTypes.NpgsqlDbType.Text).Value = binancePlacedOrder.Type.ToString();
+                            com.Parameters.Add("p_time_in_force", NpgsqlTypes.NpgsqlDbType.Text).Value = binancePlacedOrder.TimeInForce.ToString();
+                            com.Parameters.Add("p_status", NpgsqlTypes.NpgsqlDbType.Text).Value = binancePlacedOrder.Status.ToString();
+                            com.Parameters.Add("p_original_quote_order_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.OriginalQuoteOrderQuantity;
+                            com.Parameters.Add("p_cummulative_quote_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.CummulativeQuoteQuantity;
+                            com.Parameters.Add("p_executed_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.ExecutedQuantity;
+                            com.Parameters.Add("p_original_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.OriginalQuantity;
+                            com.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.Price;
+                            com.Parameters.Add("p_transaction_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = binancePlacedOrder.TransactTime;
+                            com.Parameters.Add("p_original_client_order_id", NpgsqlTypes.NpgsqlDbType.Text).Value = binancePlacedOrder.OriginalClientOrderId;
+                            com.Parameters.Add("p_client_order_id", NpgsqlTypes.NpgsqlDbType.Text).Value = binancePlacedOrder.ClientOrderId;
+                            com.Parameters.Add("p_order_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binancePlacedOrder.OrderId;
+                            com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = binancePlacedOrder.Symbol;
+
+                            if (binancePlacedOrder.OrderListId.HasValue)
+                            {
+                                com.Parameters.Add("p_order_list_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binancePlacedOrder.OrderListId.Value;
+                            }
+                            else
+                            {
+                                com.Parameters.Add("p_order_list_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = DBNull.Value;
+                            }
+
+
+                            await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+                            var obj = await com.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+
+                            var newId = (long)obj;
+
+                            using (var com2 = new NpgsqlCommand("binance_order_trade", con))
+                            {
+                                this._logger.Verbose($"Executing {com2.CommandText}");
+
+
+                                com.CommandType = CommandType.StoredProcedure;
+
+
+                                var pBinancePlacedOrderId = com.Parameters.Add("p_binance_placed_order_id", NpgsqlTypes.NpgsqlDbType.Bigint);
+                                var pTradeId = com.Parameters.Add("p_trade_id", NpgsqlTypes.NpgsqlDbType.Bigint);
+                                var pPrice = com.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric);
+                                var pQuantity = com.Parameters.Add("p_quantity", NpgsqlTypes.NpgsqlDbType.Numeric);
+                                var pCommission = com.Parameters.Add("p_commission", NpgsqlTypes.NpgsqlDbType.Numeric);
+                                var pCommissionAsset = com.Parameters.Add("p_commission_asset", NpgsqlTypes.NpgsqlDbType.Text);
+
+                                await com2.PrepareAsync().ConfigureAwait(false);
+
+                                foreach (var orderTrade in binancePlacedOrder.Fills)
+                                {
+                                    pBinancePlacedOrderId.Value = newId;
+                                    pTradeId.Value = orderTrade.TradeId;
+                                    pPrice.Value = orderTrade.Price;
+                                    pQuantity.Value = orderTrade.Quantity;
+                                    pCommission.Value = orderTrade.Commission;
+                                    pCommissionAsset.Value = orderTrade.CommissionAsset;
+
+                                    await com2.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                                }
+                            }
+
+                            await transaction.CommitAsync().ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            await transaction.RollbackAsync().ConfigureAwait(false);
+
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                this._logger.Fatal(ex.Message, ex);
+                            }
+#if DEBUG
+                            throw;
+#endif
+                        }
+                        finally
+                        {
+                            con.Close();
+
+                            foreach (var pp in pushedProperties)
+                            {
+                                pp.Dispose();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        public async Task<Order> GetLastOrderAsync(string symbol, CancellationToken cancellationToken)
+        {
+            using (var con = new NpgsqlConnection(this._connectionString))
+            {
+                using (var com = new NpgsqlCommand("select_last_order", con))
+                {
+                    try
+                    {
+                        this._logger.Verbose($"Executing {com.CommandText}");
+
+                        com.CommandType = CommandType.StoredProcedure;
+
+                        com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = symbol;
+
+                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+                        using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
+                        {
+                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                            {
+                                return new Order()
+                                {
+                                    Id = reader.GetInt64(0),
+                                    EventTime = reader.GetTimeStamp(1).ToDateTime(),
+                                    Symbol = reader.GetString(2),
+                                    Side = (OrderSide)Enum.Parse(typeof(OrderSide), reader.GetString(3)),
+                                    Type = (OrderType)Enum.Parse(typeof(OrderType), reader.GetString(4)),
+                                    QuoteOrderQuantity = reader.GetDecimal(5),
+                                    Price = reader.GetDecimal(6),
+                                    NewClientOrderId = reader.GetString(7),
+                                    OrderResponseType = (OrderResponseType)Enum.Parse(typeof(OrderResponseType), reader.GetString(8)),
+                                    TimeInForce = (TimeInForce)Enum.Parse(typeof(TimeInForce), reader.GetString(9))
+                                };
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!cancellationToken.IsCancellationRequested)
+                        {
+                            this._logger.Fatal(ex.Message, ex);
+                        }
+#if DEBUG
+                        throw;
+#endif
+                    }
+                    finally
+                    {
+                        con.Close();
+                    }
+                }
+            }
+
+            return null;
         }
     }
 }

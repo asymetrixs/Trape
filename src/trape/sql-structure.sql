@@ -632,23 +632,23 @@ LANGUAGE plpgsql STRICT;
 CREATE OR REPLACE FUNCTION get_recommendation_history(p_symbol TEXT) RETURNS SETOF recommendation AS
 $BODY$
 DECLARE
-    r recommendation%rowtype;
+	r recommendation%rowtype;
 	action TEXT;
 	last_action TEXT;
 BEGIN
 	--CREATE TEMPORARY TABLE recommendation_change ON COMMIT DROP AS SELECT * FROM recommendation ORDER BY id DESC LIMIT 1;
 	
-    FOR r IN SELECT * FROM recommendation WHERE symbol = p_symbol ORDER BY id DESC
-    LOOP
+	FOR r IN SELECT * FROM recommendation WHERE symbol = p_symbol ORDER BY id DESC
+	LOOP
 		action := SUBSTRING(r.decision FROM 0 FOR 4);
 		
 		IF (action != last_action) THEN
-        	RETURN NEXT r;
+			RETURN NEXT r;
 		END IF;
 		
 		last_action := action;
-    END LOOP;
-    RETURN;
+	END LOOP;
+	RETURN;
 END
 $BODY$
 LANGUAGE plpgsql;
@@ -924,3 +924,219 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql VOLATILE STRICT;
+
+
+CREATE TABLE "order"
+(
+	id BIGSERIAL NOT NULL,
+	event_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	symbol TEXT NOT NULL,
+	side TEXT NOT NULL,
+	type TEXT NOT NULL,
+	quote_order_quantity NUMERIC NOT NULL,
+	price NUMERIC NOT NULL,
+	new_client_order_id TEXT NOT NULL,
+	order_response_type TEXT NOT NULL,
+	time_in_force TEXT NOT NULL,
+	PRIMARY KEY(id)
+);
+
+CREATE INDEX ix_o_ets ON "order" USING BRIN (event_time, symbol);
+CREATE INDEX ix_o_ncoi ON "order" (new_client_order_id);
+
+CREATE OR REPLACE FUNCTION insert_order
+(
+	p_symbol TEXT,
+	p_side TEXT,
+	p_type TEXT,
+	p_quote_order_quantity NUMERIC,
+	p_price NUMERIC,
+	p_new_client_order_id TEXT,
+	p_order_response_type TEXT,
+	p_time_in_force TEXT
+)
+RETURNS VOID AS
+$$
+BEGIN
+	INSERT INTO "order"
+	(
+		symbol,
+		side,
+		type,
+		quote_order_quantity,
+		price,
+		new_client_order_id,
+		order_response_type,
+		time_in_force
+	)
+	VALUES
+	(
+		p_symbol,
+		p_side,
+		p_type,
+		p_quote_order_quantity,
+		p_price,
+		p_new_client_order_id,
+		p_order_response_type,
+		p_time_in_force
+	);
+
+END;
+$$
+LANGUAGE plpgsql VOLATILE STRICT;
+
+
+CREATE OR REPLACE FUNCTION select_last_order (p_symbol TEXT)
+RETURNS SETOF "order"
+AS
+$$
+BEGIN
+	RETURN QUERY SELECT * FROM "order"
+			WHERE symbol = p_symbol
+			ORDER BY id DESC LIMIT 1;
+END;
+$$
+LANGUAGE plpgsql STRICT;
+
+
+CREATE TABLE binance_placed_order
+(
+	id BIGSERIAL NOT NULL,
+	margin_buy_borrow_asset TEXT,
+	margin_buy_borrow_amount NUMERIC,
+	stop_price NUMERIC,
+	side TEXT NOT NULL,
+	type TEXT NOT NULL,
+	time_in_force TEXT NOT NULL,
+	status TEXT NOT NULL,
+	original_quote_order_quantity NUMERIC NOT NULL,
+	cummulative_quote_quantity NUMERIC NOT NULL,
+	executed_quantity NUMERIC NOT NULL,
+	original_quantity NUMERIC NOT NULL,
+	price NUMERIC NOT NULL,
+	transaction_time TIMESTAMPTZ NOT NULL,
+	original_client_order_id TEXT NOT NULL,
+	client_order_id TEXT NOT NULL,
+	order_id INT8 NOT NULL,
+	symbol TEXT NOT NULL,
+	order_list_id INT8,
+	PRIMARY KEY (id)
+);
+CREATE INDEX ix_bpo_ocoi ON binance_placed_order (original_client_order_id);
+CREATE INDEX ix_bpo_cli ON binance_placed_order (client_order_id);
+CREATE INDEX ix_bpo_oi ON binance_placed_order (order_id);
+
+CREATE OR REPLACE FUNCTION insert_binance_placed_order
+(
+	p_margin_buy_borrow_asset TEXT,
+	p_margin_buy_borrow_amount NUMERIC,
+	p_stop_price NUMERIC,
+	p_side TEXT,
+	p_type TEXT,
+	p_time_in_force TEXT,
+	p_status TEXT,
+	p_original_quote_order_quantity NUMERIC,
+	p_cummulative_quote_quantity NUMERIC,
+	p_executed_quantity NUMERIC,
+	p_original_quantity NUMERIC,
+	p_price NUMERIC,
+	p_transaction_time TIMESTAMPTZ,
+	p_original_client_order_id TEXT,
+	p_client_order_id TEXT,
+	p_order_id INT8,
+	p_symbol TEXT,
+	p_order_list_id INT8
+)
+RETURNS INT8 AS
+$$
+BEGIN
+	INSERT INTO binance_placed_order
+	(
+		margin_buy_borrow_asset,
+		margin_buy_borrow_amount,
+		stop_price,
+		side,
+		type,
+		time_in_force,
+		status,
+		original_quote_order_quantity,
+		cummulative_quote_quantity,
+		executed_quantity,
+		original_quantity,
+		price,
+		transaction_time,
+		original_client_order_id,
+		client_order_id,
+		order_id,
+		symbol,
+		order_list_id
+	)
+	VALUES
+	(
+		p_margin_buy_borrow_asset,
+		p_margin_buy_borrow_amount,
+		p_stop_price,
+		p_side,
+		p_type,
+		p_time_in_force,
+		p_status,
+		p_original_quote_order_quantity,
+		p_cummulative_quote_quantity,
+		p_executed_quantity,
+		p_original_quantity,
+		p_price,
+		p_transaction_time,
+		p_original_client_order_id,
+		p_client_order_id,
+		p_order_id,
+		p_symbol,
+		p_order_list_id
+	) RETURNING id;
+END;
+$$
+LANGUAGE plpgsql VOLATILE;
+
+CREATE TABLE binance_order_trade
+(
+	binance_placed_order_id INT8 NOT NULL,
+	trade_id INT8 NOT NULL,
+	price NUMERIC NOT NULL,
+	quantity NUMERIC NOT NULL,
+	commission NUMERIC NOT NULL,
+	commission_asset TEXT NOT NULL
+);
+CREATE INDEX ix_bot_bpoi ON binance_order_trade (binance_placed_order_id);
+
+CREATE OR REPLACE FUNCTION insert_binance_order_trade
+(
+	p_binance_placed_order_id INT8,
+	p_trade_id INT8,
+	p_price NUMERIC,
+	p_quantity NUMERIC,
+	p_commission NUMERIC,
+	p_commission_asset TEXT
+)
+RETURNS VOID AS
+$$
+BEGIN
+	INSERT INTO binance_order_trade
+	(
+		binance_placed_order_id,
+		trade_id,
+		price,
+		quantity,
+		commission,
+		commission_asset
+	)
+	VALUES
+	(
+		p_binance_placed_order_id,
+		p_trade_id,
+		p_price,
+		p_quantity,
+		p_commission,
+		p_commission_asset
+	);
+END;
+$$
+LANGUAGE plpgsql VOLATILE;

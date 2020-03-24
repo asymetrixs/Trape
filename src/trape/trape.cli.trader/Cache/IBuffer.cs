@@ -24,5 +24,9 @@ namespace trape.cli.trader.Cache
         void Stop();
 
         IEnumerable<string> GetSymbols();
+
+        decimal GetAskPrice(string symbol);
+
+        decimal GetBidPrice(string symbol);
     }
 }

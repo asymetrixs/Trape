@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading;
 
 namespace trape.cli.trader.Cache
 {
-    public class LatestPrice
+    public class BestPrice
     {
         #region Fields
 
@@ -16,17 +14,14 @@ namespace trape.cli.trader.Cache
         private decimal[] _prices;
 
         public string Symbol { get; private set; }
-
-        public Analyze.Action Action { get; private set; }
-
+        
         #endregion
 
         #region Constructor
 
-        public LatestPrice(string symbol, Analyze.Action action)
+        public BestPrice(string symbol)
         {
             this.Symbol = symbol;
-            this.Action = action;
             this._position = 0;
             this._prices = new decimal[_bufferSize];
         }
