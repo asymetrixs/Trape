@@ -114,19 +114,40 @@ namespace trape.cli.trader.Account
 
         #endregion
 
-        private async Task Order(string symbol)
-        {
-            this._logger.Information("Placing test order");
 
-            
-        }
-        
-        public BinanceBalance GetBalance(string asset)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="asset"></param>
+        /// <returns>Returns the balance or null if no balance available for the asset</returns>
+        public async Task<BinanceBalance> GetBalance(string asset)
         {
             // Take reference to original instance in case _binanceAccountInfo is updated
             var bac = this._binanceAccountInfo;
 
-            return bac.Balances.SingleOrDefault(b => b.Asset == asset);
+            if (null == bac)
+            {
+                var accountInfoRequest = await this._binanceClient.GetAccountInfoAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(true);
+
+                if (accountInfoRequest.Success)
+                {
+                    bac = accountInfoRequest.Data;
+
+                    this._logger.Debug($"Requested account info");
+                }
+                else
+                {
+                    // Something is oddly wrong, wait a bit
+                    this._logger.Debug("Cannot retrieve account info");
+                }
+            }
+
+            return bac?.Balances.SingleOrDefault(b => b.Asset == asset);
+        }
+
+        public IEnumerable<decimal> GetAvailablePricesAndQuantities(string asset)
+        {
+            throw new NotImplementedException("Get amount that can be traded from accountant");
         }
 
         #region Start / Stop
@@ -139,7 +160,7 @@ namespace trape.cli.trader.Account
             this._binanceClient = Program.Services.GetService(typeof(IBinanceClient)) as IBinanceClient;
 
             // Connect to user stream
-            var result = await this._binanceClient.StartUserStreamAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
+            var result = await this._binanceClient.StartUserStreamAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(true);
             if (result.Success)
             {
                 this._binanceListenKey = result.Data;
@@ -159,7 +180,7 @@ namespace trape.cli.trader.Account
                 (bsol) => _saveBinanceStreamOrderList(bsol),
                 (bsbs) => _saveBinanceStreamBalance(bsbs),
                 (bsbu) => _saveBinanceStreamBalanceUpdate(bsbu)
-                ).ConfigureAwait(false);
+                ).ConfigureAwait(true);
 
             this._logger.Information("Binance Client is online");
 
@@ -211,12 +232,17 @@ namespace trape.cli.trader.Account
             this._logger.Verbose("Received Binance Stream Balance Update");
         }
 
-        public void Stop()
+        public async Task Stop()
         {
             this._logger.Verbose("Stopping accountant");
 
             // Stop timer
             this._timerSynchronizeAccountInfo.Stop();
+
+            // Wait until timer elapsed event finishes
+            await Task.Delay(1000).ConfigureAwait(true);
+
+            this._cancellationTokenSource.Cancel();
 
             this._logger.Debug("Accountant stopped");
         }

@@ -46,32 +46,30 @@ namespace trape.cli.trader
         {
             this._logger.Information("Engine is starting");
 
-            await this._buffer.Start().ConfigureAwait(false);
+            await this._buffer.Start().ConfigureAwait(true);
 
             this._recommender.Start();
 
-            await this._accountant.Start().ConfigureAwait(false);
+            await this._accountant.Start().ConfigureAwait(true);
 
             this._trader.Start();
 
             this._logger.Information("Engine is started");
         }
 
-        public override Task StopAsync(CancellationToken cancellationToken)
+        public async override Task StopAsync(CancellationToken cancellationToken)
         {
             this._logger.Information("Engine is stopping");
 
-            this._trader.Stop();
+            await this._trader.Stop().ConfigureAwait(true);
 
-            this._accountant.Stop();
+            await this._accountant.Stop().ConfigureAwait(true);
 
             this._recommender.Stop();
 
             this._buffer.Stop();
 
             this._logger.Information("Engine is stopped");
-
-            return Task.CompletedTask;
         }
 
         #region Dispose

@@ -2,15 +2,15 @@
 using Binance.Net.Objects;
 using CryptoExchange.Net.Objects;
 using Serilog;
+using Serilog.Context;
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
-using trape.cli.trader.DataLayer.Models;
 
 namespace trape.cli.trader.trade
 {
@@ -20,7 +20,7 @@ namespace trape.cli.trader.trade
 
         private bool _disposed;
 
-        private ILogger _logger;
+        private readonly ILogger _logger;
 
         private IAccountant _accountant;
 
@@ -74,20 +74,30 @@ namespace trape.cli.trader.trade
                     continue;
                 }
 
-
                 // Get prices
                 var bestAskPrice = this._buffer.GetAskPrice(symbol);
                 var bestBidPrice = this._buffer.GetBidPrice(symbol);
 
-                var assetBalance = this._accountant.GetBalance(symbol.Replace("USDT", string.Empty));
+                var assetBalance = await this._accountant.GetBalance(symbol.Replace("USDT", string.Empty)).ConfigureAwait(false);
+
+                // Get remaining USDT balance for trading
+                var usdt = await this._accountant.GetBalance("USDT").ConfigureAwait(false);
+
+                var binanceClient = Program.Services.GetService(typeof(IBinanceClient)) as IBinanceClient;
+                if (null == assetBalance || null == usdt)
+                {
+                    // Something is oddly wrong, wait a bit
+                    this._logger.Debug("Cannot retrieve account info");
+                    await Task.Delay(1000).ConfigureAwait(true);
+                    continue;
+                }
 
                 // Sell 66% of the asset
-                var assetBalanceForSale = assetBalance.Free * 0.65M;
+                var assetBalanceForSale = assetBalance?.Free * 0.65M;
+                var sellQuoteOrderQuantity = assetBalanceForSale.HasValue ? assetBalanceForSale * bestAskPrice : null;
 
-                var sellQuoteOrderQuantity = assetBalanceForSale * bestAskPrice;
-
+                // New client order id
                 var newClientOrderId = Guid.NewGuid().ToString("N");
-                var binanceClient = Program.Services.GetService(typeof(IBinanceClient)) as IBinanceClient;
 
                 // asking price, selling
                 var askingFactor = 0.9998M;
@@ -97,8 +107,6 @@ namespace trape.cli.trader.trade
 
                 var lastOrder = await database.GetLastOrderAsync(symbol, this._cancellationTokenSource.Token).ConfigureAwait(false);
 
-                // Get remaining USDT balance for trading
-                var usdt = this._accountant.GetBalance("USDT");
 
                 // Only take half of what is available to buy assets
                 var availableAmount = usdt?.Free / 2;
@@ -112,10 +120,13 @@ namespace trape.cli.trader.trade
                  On the BUY side, the order will buy as many BTC as quoteOrderQty USDT can.
                  On the SELL side, the order will sell as much BTC as needed to receive quoteOrderQty USDT.
                 */
+#if !DEBUG
+                var canDo = this._accountant.GetAvailablePricesAndQuantities(symbol);
+#endif
 
-                throw new NotImplementedException("Get amount that can be traded from accountant");
-
+                var traded = false;
                 WebCallResult<BinancePlacedOrder> placedOrder = null;
+
                 // Buy
                 if (recommendation.Action == Analyze.Action.Buy)
                 {
@@ -125,26 +136,30 @@ namespace trape.cli.trader.trade
                     // Check if no order has been issued yet or order was SELL
                     if ((null == lastOrder || lastOrder.Side == OrderSide.Sell
                         || lastOrder.Side == OrderSide.Buy && lastOrder.Price > bestBidPrice && lastOrder.EventTime.AddMinutes(15) < DateTime.UtcNow)
-                        && availableAmount.HasValue)
+                        && availableAmount.HasValue
+                        && bestBidPrice > 0)
                     {
-                        placedOrder = await binanceClient.PlaceOrderAsync(symbol, OrderSide.Buy, OrderType.Limit,
-                            quoteOrderQuantity: availableAmount, price: price, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
-                            timeInForce: TimeInForce.ImmediateOrCancel, ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
+                        //placedOrder = await binanceClient.PlaceOrderAsync(symbol, OrderSide.Buy, OrderType.Limit,
+                        //    quoteOrderQuantity: availableAmount, price: price, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
+                        //    timeInForce: TimeInForce.ImmediateOrCancel, ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
 
-                        await database.InsertAsync(new Order()
-                        {
-                            Symbol = symbol,
-                            Side = OrderSide.Buy,
-                            Type = OrderType.Limit,
-                            QuoteOrderQuantity = availableAmount.Value,
-                            Price = price,
-                            NewClientOrderId = newClientOrderId,
-                            OrderResponseType = OrderResponseType.Full,
-                            TimeInForce = TimeInForce.ImmediateOrCancel
-                        }, this._cancellationTokenSource.Token).ConfigureAwait(false);
+                        //await database.InsertAsync(new Order()
+                        //{
+                        //    Symbol = symbol,
+                        //    Side = OrderSide.Buy,
+                        //    Type = OrderType.Limit,
+                        //    QuoteOrderQuantity = availableAmount.Value,
+                        //    Price = price,
+                        //    NewClientOrderId = newClientOrderId,
+                        //    OrderResponseType = OrderResponseType.Full,
+                        //    TimeInForce = TimeInForce.ImmediateOrCancel
+                        //}, this._cancellationTokenSource.Token).ConfigureAwait(false);
 
-                        this._logger.Information($"Issued order to buy {symbol} ");
+                        this._logger.Debug($"symbol:{symbol};price:{price};quantity:{availableAmount}");
 
+                        this._logger.Information($"Issued order to buy {symbol}");
+
+                        traded = true;
                     }
                 }
                 // Sell
@@ -153,36 +168,46 @@ namespace trape.cli.trader.trade
                     // Check if no order has been issued yet or order was BUY
                     if ((null == lastOrder || lastOrder.Side == OrderSide.Buy
                         || lastOrder.Side == OrderSide.Sell && lastOrder.Price < bestAskPrice && lastOrder.EventTime.AddMinutes(15) < DateTime.UtcNow)
-                        && sellQuoteOrderQuantity > 0)
+                        && sellQuoteOrderQuantity.HasValue && sellQuoteOrderQuantity > 0
+                        /* implicit checking bestAskPrice > 0 by checking sellQuoteOrderQuantity > 0*/)
                     {
                         // Calculate price to sell
                         var price = bestAskPrice * askingFactor;
 
-                        if ((null == lastOrder))
+                        //placedOrder = await binanceClient.PlaceOrderAsync(symbol, OrderSide.Sell, OrderType.Limit,
+                        //    quoteOrderQuantity: sellQuoteOrderQuantity, price: price, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
+                        //    timeInForce: TimeInForce.ImmediateOrCancel, ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
 
-                            placedOrder = await binanceClient.PlaceOrderAsync(symbol, OrderSide.Sell, OrderType.Limit,
-                                quoteOrderQuantity: sellQuoteOrderQuantity, price: price, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
-                                timeInForce: TimeInForce.ImmediateOrCancel, ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
+                        //await database.InsertAsync(new Order()
+                        //{
+                        //    Symbol = symbol,
+                        //    Side = OrderSide.Sell,
+                        //    Type = OrderType.Limit,
+                        //    QuoteOrderQuantity = sellQuoteOrderQuantity,
+                        //    Price = price,
+                        //    NewClientOrderId = newClientOrderId,
+                        //    OrderResponseType = OrderResponseType.Full,
+                        //    TimeInForce = TimeInForce.ImmediateOrCancel
+                        //}, this._cancellationTokenSource.Token).ConfigureAwait(false);
 
-                        await database.InsertAsync(new Order()
-                        {
-                            Symbol = symbol,
-                            Side = OrderSide.Sell,
-                            Type = OrderType.Limit,
-                            QuoteOrderQuantity = sellQuoteOrderQuantity,
-                            Price = price,
-                            NewClientOrderId = newClientOrderId,
-                            OrderResponseType = OrderResponseType.Full,
-                            TimeInForce = TimeInForce.ImmediateOrCancel
-                        }, this._cancellationTokenSource.Token).ConfigureAwait(false);
+                        this._logger.Debug($"symbol:{symbol};price:{price};quantity:{sellQuoteOrderQuantity}");
 
-                        this._logger.Information($"Issued order to sell {symbol} ");
+                        this._logger.Information($"Issued order to sell {symbol}");
+
+                        traded = true;
                     }
                 }
-                // Nothing
-                else
+
+                if (recommendation.Action == Analyze.Action.Buy || recommendation.Action == Analyze.Action.Sell)
                 {
-                    this._logger.Information($"Waiting for recommendation {symbol} ");
+                    this._logger.Debug($"bestAskPrice:{bestAskPrice};bestBidPrice:{bestBidPrice};assetBalance:{assetBalance?.Asset};assetBalance.Free:{assetBalance?.Free};assetBalanceForSale:{assetBalanceForSale};" +
+                    $"sellQuoteOrderQuantity:{sellQuoteOrderQuantity};newClientOrderId:{newClientOrderId};usdt?.Free:{usdt?.Free};availableAmount:{availableAmount}");
+                }
+
+
+                if (!traded)
+                {
+                    this._logger.Debug($"Waiting for recommendation {symbol} ");
                 }
 
                 // Check if order placed
@@ -210,26 +235,25 @@ namespace trape.cli.trader.trade
 
         #region Start / Stop
 
-        public async Task Start()
+        public void Start()
         {
             this._logger.Information("Starting Trader");
-
-            throw new NotImplementedException();
-
-
 
             this._timerTrading.Start();
 
             this._logger.Information("Trader started");
         }
 
-        public void Stop()
+        public async Task Stop()
         {
             this._logger.Information("Stopping Trader");
 
             this._timerTrading.Stop();
 
-            throw new NotImplementedException();
+            // Give time for running task to end
+            await Task.Delay(1000).ConfigureAwait(false);
+
+            this._cancellationTokenSource.Cancel();
 
             this._logger.Information("Trader stopped");
         }

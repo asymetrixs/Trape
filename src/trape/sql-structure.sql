@@ -1103,7 +1103,9 @@ CREATE TABLE binance_order_trade
 	price NUMERIC NOT NULL,
 	quantity NUMERIC NOT NULL,
 	commission NUMERIC NOT NULL,
-	commission_asset TEXT NOT NULL
+	commission_asset TEXT NOT NULL,
+	consumed NUMERIC NOT NULL DEFAULT 0,
+	consumed_price NUMERIC NOT NULL DEFAULT 0
 );
 CREATE INDEX ix_bot_bpoi ON binance_order_trade (binance_placed_order_id);
 

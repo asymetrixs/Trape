@@ -1,4 +1,5 @@
 ﻿using Serilog;
+using Serilog.Context;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -63,6 +64,11 @@ namespace trape.cli.trader.Analyze
 
         private async System.Threading.Tasks.Task _decide(string symbol)
         {
+            if(string.IsNullOrEmpty(symbol))
+            {
+                return;
+            }
+
             var s3s = this._buffer.Stats3s;
             var s15s = this._buffer.Stats15s;
             var s2m = this._buffer.Stats2m;
@@ -120,7 +126,7 @@ namespace trape.cli.trader.Analyze
             Recommendation lastRecommendation = null;
             if (this._lastRecommendation.ContainsKey(symbol))
             {
-                lastRecommendation = this._lastRecommendation[symbol];
+                lastRecommendation = this._lastRecommendation.GetValueOrDefault(symbol);
                 this._lastRecommendation[symbol] = newRecommendation;
             }
             else

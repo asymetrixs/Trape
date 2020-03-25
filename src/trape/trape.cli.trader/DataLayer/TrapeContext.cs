@@ -1065,13 +1065,11 @@ namespace trape.cli.trader.DataLayer
 
                             var newId = (long)obj;
 
-                            using (var com2 = new NpgsqlCommand("binance_order_trade", con))
+                            using (var com2 = new NpgsqlCommand("insert_binance_order_trade", con))
                             {
                                 this._logger.Verbose($"Executing {com2.CommandText}");
-
-
+                                
                                 com.CommandType = CommandType.StoredProcedure;
-
 
                                 var pBinancePlacedOrderId = com.Parameters.Add("p_binance_placed_order_id", NpgsqlTypes.NpgsqlDbType.Bigint);
                                 var pTradeId = com.Parameters.Add("p_trade_id", NpgsqlTypes.NpgsqlDbType.Bigint);

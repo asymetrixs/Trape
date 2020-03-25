@@ -7,8 +7,8 @@ namespace trape.cli.trader.trade
 {
     public interface ITrader : IDisposable
     {
-        Task Start();
+        void Start();
 
-        void Stop();
+        Task Stop();
     }
 }
