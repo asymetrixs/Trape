@@ -32,6 +32,8 @@ namespace trape.cli.trader.trade
 
         private CancellationTokenSource _cancellationTokenSource;
 
+        private Dictionary<string, DateTime> _lastTrade;
+
         #endregion
 
         #region Constructor
@@ -48,11 +50,12 @@ namespace trape.cli.trader.trade
             this._recommender = recommender;
             this._buffer = buffer;
             this._cancellationTokenSource = new CancellationTokenSource();
+            this._lastTrade = new Dictionary<string, DateTime>();
 
             this._timerTrading = new System.Timers.Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 0, 1).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 5).TotalMilliseconds
             };
             this._timerTrading.Elapsed += _timerTrading_Elapsed;
         }
@@ -77,7 +80,7 @@ namespace trape.cli.trader.trade
                 // Get prices
                 var bestAskPrice = this._buffer.GetAskPrice(symbol);
                 var bestBidPrice = this._buffer.GetBidPrice(symbol);
-
+                    
                 var assetBalance = await this._accountant.GetBalance(symbol.Replace("USDT", string.Empty)).ConfigureAwait(false);
 
                 // Get remaining USDT balance for trading
@@ -127,6 +130,22 @@ namespace trape.cli.trader.trade
                 var traded = false;
                 WebCallResult<BinancePlacedOrder> placedOrder = null;
 
+                var authorizedTrade = false;
+                var authorizedTradeKey = symbol + "---" + recommendation.Action.ToString();
+                if (this._lastTrade.ContainsKey(authorizedTradeKey))
+                {
+                    if (this._lastTrade[authorizedTradeKey] < DateTime.UtcNow.AddMinutes(15))
+                    {
+                        authorizedTrade = true;
+                    }
+                }
+                else
+                {
+                    authorizedTrade = true;
+                    // Pseudoinitial value
+                    this._lastTrade.Add(authorizedTradeKey, DateTime.UtcNow.AddMinutes(-20));
+                }
+
                 // Buy
                 if (recommendation.Action == Analyze.Action.Buy)
                 {
@@ -137,7 +156,8 @@ namespace trape.cli.trader.trade
                     if ((null == lastOrder || lastOrder.Side == OrderSide.Sell
                         || lastOrder.Side == OrderSide.Buy && lastOrder.Price > bestBidPrice && lastOrder.EventTime.AddMinutes(15) < DateTime.UtcNow)
                         && availableAmount.HasValue
-                        && bestBidPrice > 0)
+                        && bestBidPrice > 0
+                        && authorizedTrade)
                     {
                         //placedOrder = await binanceClient.PlaceOrderAsync(symbol, OrderSide.Buy, OrderType.Limit,
                         //    quoteOrderQuantity: availableAmount, price: price, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
@@ -169,6 +189,7 @@ namespace trape.cli.trader.trade
                     if ((null == lastOrder || lastOrder.Side == OrderSide.Buy
                         || lastOrder.Side == OrderSide.Sell && lastOrder.Price < bestAskPrice && lastOrder.EventTime.AddMinutes(15) < DateTime.UtcNow)
                         && sellQuoteOrderQuantity.HasValue && sellQuoteOrderQuantity > 0
+                        && authorizedTrade
                         /* implicit checking bestAskPrice > 0 by checking sellQuoteOrderQuantity > 0*/)
                     {
                         // Calculate price to sell
@@ -198,9 +219,9 @@ namespace trape.cli.trader.trade
                     }
                 }
 
-                if (recommendation.Action == Analyze.Action.Buy || recommendation.Action == Analyze.Action.Sell)
+                if (recommendation.Action == Analyze.Action.Buy || recommendation.Action == Analyze.Action.Sell && authorizedTrade)
                 {
-                    this._logger.Debug($"bestAskPrice:{bestAskPrice};bestBidPrice:{bestBidPrice};assetBalance:{assetBalance?.Asset};assetBalance.Free:{assetBalance?.Free};assetBalanceForSale:{assetBalanceForSale};" +
+                    this._logger.Debug($"recommendation:{recommendation.Action};traded:{traded};bestAskPrice:{bestAskPrice};bestBidPrice:{bestBidPrice};assetBalance:{assetBalance?.Asset};assetBalance.Free:{assetBalance?.Free};assetBalanceForSale:{assetBalanceForSale};" +
                     $"sellQuoteOrderQuantity:{sellQuoteOrderQuantity};newClientOrderId:{newClientOrderId};usdt?.Free:{usdt?.Free};availableAmount:{availableAmount}");
                 }
 
@@ -208,6 +229,10 @@ namespace trape.cli.trader.trade
                 if (!traded)
                 {
                     this._logger.Debug($"Waiting for recommendation {symbol} ");
+                }
+                else
+                {
+                    this._lastTrade[authorizedTradeKey] = DateTime.UtcNow;
                 }
 
                 // Check if order placed
