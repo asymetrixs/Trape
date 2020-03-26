@@ -140,7 +140,7 @@ namespace trape.cli.trader.Analyze
 
             if (DateTime.UtcNow.Second % 5 == 0 || newRecommendation.Action != lastRecommendation?.Action)
             {
-                this._logger.Debug(_GetTrend(newRecommendation, stat10m, stat2h));
+                this._logger.Verbose(_GetTrend(newRecommendation, stat10m, stat2h));
             }
         }
 

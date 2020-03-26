@@ -195,7 +195,7 @@ namespace trape.cli.trader.Cache
 
         public decimal GetAskPrice(string symbol)
         {
-            if(!this._bestAskPrices.ContainsKey(symbol))
+            if (!this._bestAskPrices.ContainsKey(symbol))
             {
                 return -1;
             }
@@ -242,28 +242,36 @@ namespace trape.cli.trader.Cache
 
             await binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.GetSymbols(), (BinanceBookTick bbt) =>
             {
-                lock (this)
+                var askPriceAdded = false;
+                var bidPriceAdded = false;
+
+                while (!askPriceAdded)
                 {
                     if (this._bestAskPrices.ContainsKey(bbt.Symbol))
                     {
                         this._bestAskPrices[bbt.Symbol].Add(bbt.BestAskPrice);
+                        askPriceAdded = true;
                     }
                     else
                     {
                         var bestAskPrice = new BestPrice(bbt.Symbol);
-                        bestAskPrice.Add(bbt.BestAskPrice);
-                        this._bestAskPrices.TryAdd(bbt.Symbol, bestAskPrice);
+                        askPriceAdded = this._bestAskPrices.TryAdd(bbt.Symbol, bestAskPrice);
+                        bestAskPrice.Add(bbt.BestAskPrice);                        
                     }
+                }
 
+                while (!bidPriceAdded)
+                {
                     if (this._bestBidPrices.ContainsKey(bbt.Symbol))
                     {
                         this._bestBidPrices[bbt.Symbol].Add(bbt.BestBidPrice);
+                        bidPriceAdded = true;
                     }
                     else
                     {
                         var bestBidPrice = new BestPrice(bbt.Symbol);
-                        bestBidPrice.Add(bbt.BestBidPrice);
-                        this._bestBidPrices.TryAdd(bbt.Symbol, bestBidPrice);
+                        bidPriceAdded = this._bestBidPrices.TryAdd(bbt.Symbol, bestBidPrice);
+                        bestBidPrice.Add(bbt.BestBidPrice);                        
                     }
                 }
             }).ConfigureAwait(true);

@@ -1142,3 +1142,29 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql VOLATILE;
+
+
+
+
+
+
+CREATE OR REPLACE FUNCTION select_last_orders(p_symbol TEXT)
+RETURNS TABLE
+(
+	r_binance_placed_order_id BIGINT,
+	r_symbol TEXT,
+	r_price NUMERIC,
+	r_quantity NUMERIC,
+	r_consumed NUMERIC,
+	r_consumed_price NUMERIC
+)
+AS
+$$
+BEGIN
+	RETURN QUERY SELECT binance_placed_order_id, symbol, bot.price, quantity, consumed, consumed_price FROM binance_order_trade bot
+		INNER JOIN binance_placed_order bpo ON bpo.order_id = bot.binance_placed_order_id
+		WHERE symbol = bpo.symbol AND consumed < quantity;
+END;
+$$
+LANGUAGE plpgsql VOLATILE STRICT;
+

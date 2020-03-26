@@ -39,6 +39,6 @@ namespace trape.cli.trader.DataLayer
 
         Task InsertAsync(BinancePlacedOrder binancePlacedOrder, CancellationToken cancellationToken);
 
-        Task<Order> GetLastOrderAsync(string symbol, CancellationToken cancellationToken);
+        Task<IEnumerable<LastOrder>> GetLastOrdersAsync(string symbol, CancellationToken cancellationToken);
     }
 }

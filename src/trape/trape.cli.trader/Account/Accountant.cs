@@ -109,7 +109,7 @@ namespace trape.cli.trader.Account
                 this._binanceAccountInfo = accountInfo.Data;
             }
 
-            this._logger.Debug("Account info synchronized");
+            this._logger.Verbose("Account info synchronized");
         }
 
         #endregion

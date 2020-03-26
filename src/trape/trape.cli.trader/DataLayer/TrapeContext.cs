@@ -1068,7 +1068,7 @@ namespace trape.cli.trader.DataLayer
                             using (var com2 = new NpgsqlCommand("insert_binance_order_trade", con))
                             {
                                 this._logger.Verbose($"Executing {com2.CommandText}");
-                                
+
                                 com.CommandType = CommandType.StoredProcedure;
 
                                 var pBinancePlacedOrderId = com.Parameters.Add("p_binance_placed_order_id", NpgsqlTypes.NpgsqlDbType.Bigint);
@@ -1121,11 +1121,13 @@ namespace trape.cli.trader.DataLayer
             }
         }
 
-        public async Task<Order> GetLastOrderAsync(string symbol, CancellationToken cancellationToken)
+        public async Task<IEnumerable<LastOrder>> GetLastOrdersAsync(string symbol, CancellationToken cancellationToken)
         {
+            var list = new List<LastOrder>();
+
             using (var con = new NpgsqlConnection(this._connectionString))
             {
-                using (var com = new NpgsqlCommand("select_last_order", con))
+                using (var com = new NpgsqlCommand("select_last_orders", con))
                 {
                     try
                     {
@@ -1141,19 +1143,17 @@ namespace trape.cli.trader.DataLayer
                         {
                             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                             {
-                                return new Order()
+                                list.Add(new LastOrder()
                                 {
-                                    Id = reader.GetInt64(0),
-                                    EventTime = reader.GetTimeStamp(1).ToDateTime(),
+                                    BinancePlacedOrderId = reader.GetInt64(0),
+                                    TransactionTime = reader.GetTimeStamp(1).ToDateTime(),
                                     Symbol = reader.GetString(2),
                                     Side = (OrderSide)Enum.Parse(typeof(OrderSide), reader.GetString(3)),
-                                    Type = (OrderType)Enum.Parse(typeof(OrderType), reader.GetString(4)),
-                                    QuoteOrderQuantity = reader.GetDecimal(5),
-                                    Price = reader.GetDecimal(6),
-                                    NewClientOrderId = reader.GetString(7),
-                                    OrderResponseType = (OrderResponseType)Enum.Parse(typeof(OrderResponseType), reader.GetString(8)),
-                                    TimeInForce = (TimeInForce)Enum.Parse(typeof(TimeInForce), reader.GetString(9))
-                                };
+                                    Price = reader.GetDecimal(4),
+                                    Quantity = reader.GetDecimal(5),
+                                    Consumed = reader.GetDecimal(6),
+                                    ConsumedPrice = reader.GetDecimal(7)
+                                });
                             }
                         }
                     }
@@ -1174,7 +1174,7 @@ namespace trape.cli.trader.DataLayer
                 }
             }
 
-            return null;
+            return list;
         }
     }
 }

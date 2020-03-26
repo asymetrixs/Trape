@@ -12,6 +12,8 @@ namespace trape.cli.trader.Cache
 
         private long _position;
 
+        private object _syncAdd;
+
         private decimal[] _prices;
 
         private long _lastUpdate;
@@ -19,7 +21,7 @@ namespace trape.cli.trader.Cache
         private static readonly long _3secondsInTicks = new TimeSpan(0, 0, 3).Ticks;
 
         public string Symbol { get; private set; }
-        
+
         #endregion
 
         #region Constructor
@@ -27,8 +29,9 @@ namespace trape.cli.trader.Cache
         public BestPrice(string symbol)
         {
             this.Symbol = symbol;
-            this._position = 0;
+            this._position = -1;
             this._prices = new decimal[_bufferSize];
+            this._syncAdd = new object();
 
             // Initialize with an obsolete value
             this._lastUpdate = DateTime.UtcNow.AddMinutes(-1).Ticks;
@@ -40,18 +43,18 @@ namespace trape.cli.trader.Cache
 
         public void Add(decimal price)
         {
-            Monitor.Enter(this._position);
+            Monitor.Enter(this._syncAdd);
 
-            // May overflow at some point
+            // variable _position overflows at some point
             unchecked
             {
-                _prices[_position % _bufferSize] = price;
                 // Move cursor ahead
-                ++_position;
-                this._lastUpdate = DateTime.UtcNow.Ticks;
+                this._prices[++this._position % _bufferSize] = price;
             }
 
-            Monitor.Exit(this._position);
+            this._lastUpdate = DateTime.UtcNow.Ticks;
+
+            Monitor.Exit(this._syncAdd);
         }
 
         /// <summary>
@@ -63,16 +66,12 @@ namespace trape.cli.trader.Cache
             decimal average;
 
             // Check if last value is more recent than 3 seconds ago
-            if(this._lastUpdate < (DateTime.UtcNow.Ticks - _3secondsInTicks))
+            if (this._lastUpdate < (DateTime.UtcNow.Ticks - _3secondsInTicks))
             {
                 return -1;
             }
 
-            Monitor.Enter(this._position);
-
             average = this._prices.Average();
-
-            Monitor.Exit(this._position);
 
             return average;
         }
