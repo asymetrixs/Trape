@@ -1025,7 +1025,6 @@ CREATE TABLE binance_placed_order
 CREATE INDEX ix_bpo_ocoi ON binance_placed_order (original_client_order_id);
 CREATE INDEX ix_bpo_cli ON binance_placed_order (client_order_id);
 CREATE INDEX ix_bpo_oi ON binance_placed_order (order_id);
-
 CREATE OR REPLACE FUNCTION insert_binance_placed_order
 (
 	p_margin_buy_borrow_asset TEXT,
@@ -1049,6 +1048,7 @@ CREATE OR REPLACE FUNCTION insert_binance_placed_order
 )
 RETURNS INT8 AS
 $$
+	DECLARE r_id INT8;
 BEGIN
 	INSERT INTO binance_placed_order
 	(
@@ -1091,7 +1091,9 @@ BEGIN
 		p_order_id,
 		p_symbol,
 		p_order_list_id
-	) RETURNING id;
+	) RETURNING id INTO r_id;
+	
+	RETURN QUERY SELECT r_id;
 END;
 $$
 LANGUAGE plpgsql VOLATILE;
@@ -1147,12 +1149,13 @@ LANGUAGE plpgsql VOLATILE;
 
 
 
-
 CREATE OR REPLACE FUNCTION select_last_orders(p_symbol TEXT)
 RETURNS TABLE
 (
 	r_binance_placed_order_id BIGINT,
+	r_transaction_time TIMESTAMPTZ,	
 	r_symbol TEXT,
+	r_side TEXT,
 	r_price NUMERIC,
 	r_quantity NUMERIC,
 	r_consumed NUMERIC,
@@ -1161,10 +1164,75 @@ RETURNS TABLE
 AS
 $$
 BEGIN
-	RETURN QUERY SELECT binance_placed_order_id, symbol, bot.price, quantity, consumed, consumed_price FROM binance_order_trade bot
-		INNER JOIN binance_placed_order bpo ON bpo.order_id = bot.binance_placed_order_id
-		WHERE symbol = bpo.symbol AND consumed < quantity;
+	RETURN QUERY SELECT binance_placed_order_id, transaction_time, symbol, bpo.side, bot.price, quantity, consumed, consumed_price FROM binance_order_trade bot
+		INNER JOIN binance_placed_order bpo ON bpo.id = bot.binance_placed_order_id
+		WHERE 'BTCUSDT' = bpo.symbol AND consumed < quantity;
 END;
 $$
 LANGUAGE plpgsql VOLATILE STRICT;
 
+CREATE TRIGGER insert_trade ON 
+
+
+
+CREATE TRIGGER tr_update_traded_quantity
+    AFTER INSERT ON binance_order_trade
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_traded_quantity();
+
+CREATE OR REPLACE FUNCTION update_traded_quantity ()
+RETURNS TRIGGER AS
+$$
+	DECLARE i_trade binance_order_trade%ROWTYPE;
+			i_side TEXT;
+			i_quantity NUMERIC;
+BEGIN
+	-- Check if new lines come from Buy or Sell
+	SELECT side INTO i_side FROM binance_placed_order WHERE id = NEW.binance_placed_order_id;
+	-- Modify the other one, as this has to be consumed
+	
+	i_quantity := NEW.quantity;
+	
+	IF (i_side == 'Sell') THEN
+		
+		FOR i_trade IN SELECT bot.* FROM binance_placed_order bpo
+						INNER JOIN binance_order_trade bot ON bot.binance_placed_order_id = bpo.id
+						WHERE bpo.side = 'Buy' 
+							AND bot.consumed < bot.quantity
+							AND bot.price < NEW.price;
+		LOOP
+			IF (i_quantity >= 0) THEN
+				UPDATE quantity
+					SET consumed = 
+					WHERE binance_order_trade.binance_placed_order_id = i_trade.binance_placed_order_id
+			END IF;
+		END LOOP;
+	ELSE
+		FOR i_trade IN SELECT bot.* FROM binance_placed_order bpo
+						INNER JOIN binance_order_trade bot ON bot.binance_placed_order_id = bpo.id
+						WHERE bpo.side = 'Sell' 
+							AND bot.consumed < bot.quantity
+							AND bot.price > NEW.price;
+		LOOP
+	
+		END LOOP;
+	END IF;
+
+	
+	LOOP
+		action := SUBSTRING(r.decision FROM 0 FOR 4);
+		
+		IF (action != last_action) THEN
+			RETURN NEXT r;
+		END IF;
+		
+		last_action := action;
+	END LOOP;
+
+END;
+$$
+LANGUAGE plpgsql VOLATILE STRICT;
+
+SELECT bot.* FROM binance_placed_order bpo
+INNER JOIN binance_order_trade bot ON bot.binance_placed_order_id = bpo.id
+WHERE bpo.side = 'Buy' AND bot.consumed < bot.quantity

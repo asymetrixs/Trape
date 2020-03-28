@@ -1,8 +1,6 @@
-﻿using Binance.Net;
-using Binance.Net.Interfaces;
+﻿using Binance.Net.Interfaces;
 using Binance.Net.Objects;
 using Binance.Net.Objects.Sockets;
-using CryptoExchange.Net.Authentication;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -37,17 +35,24 @@ namespace trape.cli.trader.Account
 
         private string _binanceListenKey;
 
-        private IRecommender _recommender;
+        private readonly IRecommender _recommender;
 
         #endregion
 
         #region Constructor
 
-        public Accountant(ILogger logger, IRecommender recommender)
+        public Accountant(ILogger logger, IRecommender recommender, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
         {
+            if (null == logger || null == recommender || null == binanceClient || null == binanceSocketClient)
+            {
+                throw new ArgumentNullException("Parameter cannot be NULL");
+            }
+
             this._logger = logger;
             this._cancellationTokenSource = new CancellationTokenSource();
             this._recommender = recommender;
+            this._binanceClient = binanceClient;
+            this._binanceSocketClient = binanceSocketClient;
 
             #region Timer Setup
 
@@ -125,7 +130,7 @@ namespace trape.cli.trader.Account
             // Take reference to original instance in case _binanceAccountInfo is updated
             var bac = this._binanceAccountInfo;
 
-            if (null == bac)
+            if (null == bac || this._binanceAccountInfo.UpdateTime < DateTime.UtcNow.AddSeconds(-3))
             {
                 var accountInfoRequest = await this._binanceClient.GetAccountInfoAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(true);
 
@@ -139,15 +144,11 @@ namespace trape.cli.trader.Account
                 {
                     // Something is oddly wrong, wait a bit
                     this._logger.Debug("Cannot retrieve account info");
+                    await Task.Delay(200).ConfigureAwait(false);
                 }
             }
 
             return bac?.Balances.SingleOrDefault(b => b.Asset == asset);
-        }
-
-        public IEnumerable<decimal> GetAvailablePricesAndQuantities(string asset)
-        {
-            throw new NotImplementedException("Get amount that can be traded from accountant");
         }
 
         #region Start / Stop
@@ -155,9 +156,6 @@ namespace trape.cli.trader.Account
         public async System.Threading.Tasks.Task Start()
         {
             this._logger.Verbose("Starting Accountant");
-
-            // Create new binance client
-            this._binanceClient = Program.Services.GetService(typeof(IBinanceClient)) as IBinanceClient;
 
             // Connect to user stream
             var result = await this._binanceClient.StartUserStreamAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(true);
@@ -168,10 +166,7 @@ namespace trape.cli.trader.Account
             }
 
             // Run initial timer elapsed event
-            _timerConnectionKeepAlive_Elapsed(null, null);
-
-            // Create new binance socket client
-            this._binanceSocketClient = Program.Services.GetService(typeof(IBinanceSocketClient)) as IBinanceSocketClient;
+            this._timerConnectionKeepAlive_Elapsed(null, null);
 
             // Subscribe to socket events
             await this._binanceSocketClient.SubscribeToUserDataUpdatesAsync(this._binanceListenKey,

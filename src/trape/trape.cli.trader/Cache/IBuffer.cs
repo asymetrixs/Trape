@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Binance.Net.Objects;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache.Models;
@@ -28,5 +29,7 @@ namespace trape.cli.trader.Cache
         decimal GetAskPrice(string symbol);
 
         decimal GetBidPrice(string symbol);
+
+        BinanceSymbol GetExchangeInfoFor(string symbol);
     }
 }

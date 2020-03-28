@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
-using trape.cli.trader.trade;
+using trape.cli.trader.Trading;
 
 namespace trape.cli.trader
 {
@@ -35,6 +35,7 @@ namespace trape.cli.trader
             catch (Exception e)
             {
                 logger.Error(e, e.Message);
+                throw;
             }
 
             logger.Information("Shut down complete");
@@ -50,23 +51,29 @@ namespace trape.cli.trader
                 .UseSystemd()
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services.AddSingleton<ILogger>(Log.Logger);
+                    services.AddSingleton(Log.Logger);
                     services.AddSingleton<IBuffer, Cache.Buffer>();
                     services.AddSingleton<IRecommender, Recommender>();
-                    services.AddSingleton<ITrader, Trader>();
+                    services.AddTransient<ITrader, Trader>();
+                    services.AddSingleton<ITradingTeam, TradingTeam>();
                     services.AddSingleton<IAccountant, Accountant>();
+
                     services.AddSingleton<IBinanceClient>(new BinanceClient(new BinanceClientOptions()
                     {
                         ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
-                                                        Configuration.GetValue("binance:secretkey"))
+                                                        Configuration.GetValue("binance:secretkey")),
+                        LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
+                        LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new BinanceLogger(Log.Logger) }
                     }));
+
                     services.AddSingleton<IBinanceSocketClient>(new BinanceSocketClient(new BinanceSocketClientOptions()
                     {
                         ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
                                                         Configuration.GetValue("binance:secretkey")),
-                        AutoReconnect = true
+                        AutoReconnect = true,
+                        LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
+                        LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new BinanceLogger(Log.Logger) }
                     }));
-
 
                     services.AddHostedService<Engine>();
                 });

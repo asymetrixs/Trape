@@ -118,6 +118,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG
@@ -194,6 +195,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG
@@ -269,6 +271,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG
@@ -344,6 +347,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG
@@ -419,6 +423,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG
@@ -494,6 +499,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG
@@ -545,6 +551,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG
@@ -616,6 +623,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG
@@ -680,6 +688,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG
@@ -735,6 +744,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG
@@ -767,7 +777,19 @@ namespace trape.cli.trader.DataLayer
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
-                await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    var prop = LogContext.PushProperty("binanceStreamOrderList", binanceStreamOrderList);
+                    this._logger.Error("Could not open connection to database!");
+
+                    await Task.Delay(500).ConfigureAwait(false);
+
+                    return;
+                }
 
                 using (var transaction = await con.BeginTransactionAsync(cancellationToken).ConfigureAwait(false))
                 {
@@ -787,8 +809,8 @@ namespace trape.cli.trader.DataLayer
                             com.Parameters.Add("p_transaction_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = binanceStreamOrderList.TransactionTime;
                             com.Parameters.Add("p_order_list_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binanceStreamOrderList.OrderListId;
                             com.Parameters.Add("p_contingency_type", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderList.ContingencyType;
-                            com.Parameters.Add("p_list_status_type", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderList.ListStatusType;
-                            com.Parameters.Add("p_list_order_status", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderList.ListOrderStatus;
+                            com.Parameters.Add("p_list_status_type", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderList.ListStatusType.ToString();
+                            com.Parameters.Add("p_list_order_status", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderList.ListOrderStatus.ToString();
                             com.Parameters.Add("p_list_client_order_id", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderList.ListClientOrderId;
 
                             await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -825,6 +847,7 @@ namespace trape.cli.trader.DataLayer
 
                             if (!cancellationToken.IsCancellationRequested)
                             {
+                                this._logger.Fatal($"Problem in {com.CommandText}");
                                 this._logger.Fatal(ex.Message, ex);
                             }
 #if DEBUG
@@ -891,9 +914,9 @@ namespace trape.cli.trader.DataLayer
                         com.Parameters.Add("p_stop_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.StopPrice;
                         com.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.Price;
                         com.Parameters.Add("p_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.Quantity;
-                        com.Parameters.Add("p_time_in_force", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.TimeInForce;
-                        com.Parameters.Add("p_type", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.Type;
-                        com.Parameters.Add("p_side", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.Side;
+                        com.Parameters.Add("p_time_in_force", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.TimeInForce.ToString();
+                        com.Parameters.Add("p_type", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.Type.ToString();
+                        com.Parameters.Add("p_side", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.Side.ToString();
                         com.Parameters.Add("p_client_order_id", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.ClientOrderId;
                         com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.Symbol;
                         com.Parameters.Add("p_order_list_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binanceStreamOrderUpdate.OrderListId;
@@ -907,6 +930,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG
@@ -947,14 +971,14 @@ namespace trape.cli.trader.DataLayer
 
                         com.CommandType = CommandType.StoredProcedure;
 
-                        com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = order.Symbol;
+                        com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = order.Symbol;
                         com.Parameters.Add("p_side", NpgsqlTypes.NpgsqlDbType.Text).Value = order.Side.ToString();
-                        com.Parameters.Add("p_type", NpgsqlTypes.NpgsqlDbType.Numeric).Value = order.Type.ToString();
+                        com.Parameters.Add("p_type", NpgsqlTypes.NpgsqlDbType.Text).Value = order.Type.ToString();
                         com.Parameters.Add("p_quote_order_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = order.QuoteOrderQuantity;
                         com.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = order.Price;
-                        com.Parameters.Add("p_new_client_order_id", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = order.NewClientOrderId;
-                        com.Parameters.Add("p_order_response", NpgsqlTypes.NpgsqlDbType.Boolean).Value = order.OrderResponseType.ToString();
-                        com.Parameters.Add("p_time_in_force", NpgsqlTypes.NpgsqlDbType.Boolean).Value = order.TimeInForce.ToString();
+                        com.Parameters.Add("p_new_client_order_id", NpgsqlTypes.NpgsqlDbType.Text).Value = order.NewClientOrderId;
+                        com.Parameters.Add("p_order_response_type", NpgsqlTypes.NpgsqlDbType.Text).Value = order.OrderResponseType.ToString();
+                        com.Parameters.Add("p_time_in_force", NpgsqlTypes.NpgsqlDbType.Text).Value = order.TimeInForce.ToString();
 
 
                         await con.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -965,6 +989,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG
@@ -995,6 +1020,22 @@ namespace trape.cli.trader.DataLayer
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
+                try
+                {
+                    await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    var prop = LogContext.PushProperty("binancePlacedOrder", binancePlacedOrder);
+                    this._logger.Error("Could not open connection to database!");
+
+                    await Task.Delay(500).ConfigureAwait(false);
+
+                    prop.Dispose();
+
+                    return;
+                }
+
                 using (var transaction = await con.BeginTransactionAsync().ConfigureAwait(false))
                 {
                     using (var com = new NpgsqlCommand("insert_binance_placed_order", con))
@@ -1058,41 +1099,40 @@ namespace trape.cli.trader.DataLayer
                                 com.Parameters.Add("p_order_list_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = DBNull.Value;
                             }
 
-
-                            await con.OpenAsync(cancellationToken).ConfigureAwait(false);
-
-                            var obj = await com.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+                            var obj = await com.ExecuteScalarAsync(cancellationToken).ConfigureAwait(true);
 
                             var newId = (long)obj;
 
-                            using (var com2 = new NpgsqlCommand("insert_binance_order_trade", con))
+                            if (null != binancePlacedOrder.Fills)
                             {
-                                this._logger.Verbose($"Executing {com2.CommandText}");
-
-                                com.CommandType = CommandType.StoredProcedure;
-
-                                var pBinancePlacedOrderId = com.Parameters.Add("p_binance_placed_order_id", NpgsqlTypes.NpgsqlDbType.Bigint);
-                                var pTradeId = com.Parameters.Add("p_trade_id", NpgsqlTypes.NpgsqlDbType.Bigint);
-                                var pPrice = com.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric);
-                                var pQuantity = com.Parameters.Add("p_quantity", NpgsqlTypes.NpgsqlDbType.Numeric);
-                                var pCommission = com.Parameters.Add("p_commission", NpgsqlTypes.NpgsqlDbType.Numeric);
-                                var pCommissionAsset = com.Parameters.Add("p_commission_asset", NpgsqlTypes.NpgsqlDbType.Text);
-
-                                await com2.PrepareAsync().ConfigureAwait(false);
-
-                                foreach (var orderTrade in binancePlacedOrder.Fills)
+                                using (var com2 = new NpgsqlCommand("insert_binance_order_trade", con))
                                 {
-                                    pBinancePlacedOrderId.Value = newId;
-                                    pTradeId.Value = orderTrade.TradeId;
-                                    pPrice.Value = orderTrade.Price;
-                                    pQuantity.Value = orderTrade.Quantity;
-                                    pCommission.Value = orderTrade.Commission;
-                                    pCommissionAsset.Value = orderTrade.CommissionAsset;
+                                    this._logger.Verbose($"Executing {com2.CommandText}");
 
-                                    await com2.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                                    com2.CommandType = CommandType.StoredProcedure;
+
+                                    var pBinancePlacedOrderId = com2.Parameters.Add("p_binance_placed_order_id", NpgsqlTypes.NpgsqlDbType.Bigint);
+                                    var pTradeId = com2.Parameters.Add("p_trade_id", NpgsqlTypes.NpgsqlDbType.Bigint);
+                                    var pPrice = com2.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric);
+                                    var pQuantity = com2.Parameters.Add("p_quantity", NpgsqlTypes.NpgsqlDbType.Numeric);
+                                    var pCommission = com2.Parameters.Add("p_commission", NpgsqlTypes.NpgsqlDbType.Numeric);
+                                    var pCommissionAsset = com2.Parameters.Add("p_commission_asset", NpgsqlTypes.NpgsqlDbType.Text);
+
+                                    await com2.PrepareAsync().ConfigureAwait(true);
+
+                                    foreach (var orderTrade in binancePlacedOrder.Fills)
+                                    {
+                                        pBinancePlacedOrderId.Value = newId;
+                                        pTradeId.Value = orderTrade.TradeId;
+                                        pPrice.Value = orderTrade.Price;
+                                        pQuantity.Value = orderTrade.Quantity;
+                                        pCommission.Value = orderTrade.Commission;
+                                        pCommissionAsset.Value = orderTrade.CommissionAsset;
+
+                                        await com2.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(true);
+                                    }
                                 }
                             }
-
                             await transaction.CommitAsync().ConfigureAwait(false);
                         }
                         catch (Exception ex)
@@ -1101,6 +1141,7 @@ namespace trape.cli.trader.DataLayer
 
                             if (!cancellationToken.IsCancellationRequested)
                             {
+                                this._logger.Fatal($"Problem in {com.CommandText}");
                                 this._logger.Fatal(ex.Message, ex);
                             }
 #if DEBUG
@@ -1161,6 +1202,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
+                            this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
 #if DEBUG

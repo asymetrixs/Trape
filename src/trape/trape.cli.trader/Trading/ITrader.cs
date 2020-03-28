@@ -1,13 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
-namespace trape.cli.trader.trade
+namespace trape.cli.trader.Trading
 {
     public interface ITrader : IDisposable
     {
-        void Start();
+        string Symbol { get; }
+
+        void Start(string symbolToTrade);
 
         Task Stop();
     }

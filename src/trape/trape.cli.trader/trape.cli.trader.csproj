@@ -6,12 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Trading\**" />
-    <EmbeddedResource Remove="Trading\**" />
-    <None Remove="Trading\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Binance.Net" Version="5.0.9" />
     <PackageReference Include="Microsoft.CodeQuality.Analyzers" Version="2.9.8">
       <PrivateAssets>all</PrivateAssets>

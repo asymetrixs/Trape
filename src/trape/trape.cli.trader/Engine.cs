@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
-using trape.cli.trader.trade;
+using trape.cli.trader.Trading;
 
 namespace trape.cli.trader
 {
@@ -20,7 +20,7 @@ namespace trape.cli.trader
 
         private IRecommender _recommender;
 
-        private ITrader _trader;
+        private ITradingTeam _tradingTeam;
 
         private IAccountant _accountant;
 
@@ -28,9 +28,11 @@ namespace trape.cli.trader
 
         #endregion
 
-        public Engine(ILogger logger, IBuffer buffer, IRecommender recommender, ITrader trader, IAccountant accountant)
+        #region Constructor
+
+        public Engine(ILogger logger, IBuffer buffer, IRecommender recommender, ITradingTeam tradingTeam, IAccountant accountant)
         {
-            if (null == logger || null == buffer || null == recommender || null == trader)
+            if (null == logger || null == buffer || null == recommender || null == tradingTeam)
             {
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
@@ -38,9 +40,13 @@ namespace trape.cli.trader
             this._logger = logger;
             this._buffer = buffer;
             this._recommender = recommender;
-            this._trader = trader;
+            this._tradingTeam = tradingTeam;
             this._accountant = accountant;
         }
+
+        #endregion
+
+        #region Start / Stop
 
         protected async override Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -52,7 +58,7 @@ namespace trape.cli.trader
 
             await this._accountant.Start().ConfigureAwait(true);
 
-            this._trader.Start();
+            this._tradingTeam.Start();
 
             this._logger.Information("Engine is started");
         }
@@ -61,7 +67,7 @@ namespace trape.cli.trader
         {
             this._logger.Information("Engine is stopping");
 
-            await this._trader.Stop().ConfigureAwait(true);
+            await this._tradingTeam.Stop().ConfigureAwait(true);
 
             await this._accountant.Stop().ConfigureAwait(true);
 
@@ -71,6 +77,8 @@ namespace trape.cli.trader
 
             this._logger.Information("Engine is stopped");
         }
+
+        #endregion
 
         #region Dispose
 
@@ -99,7 +107,7 @@ namespace trape.cli.trader
                 this._buffer.Dispose();
                 this._accountant.Dispose();
                 this._recommender.Dispose();
-                this._trader.Dispose();
+                this._tradingTeam.Dispose();
             }
 
             this._disposed = true;

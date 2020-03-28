@@ -25,6 +25,12 @@ namespace trape.cli.trader.Cache
 
         private ConcurrentDictionary<string, BestPrice> _bestBidPrices;
 
+        private IBinanceClient _binanceClient;
+
+        private IBinanceSocketClient _binanceSocketClient;
+
+        private BinanceExchangeInfo _binanceExchangeInfo;
+
         #region Timers
 
         private System.Timers.Timer _timerStats3s;
@@ -38,6 +44,8 @@ namespace trape.cli.trader.Cache
         private System.Timers.Timer _timerStats2h;
 
         private System.Timers.Timer _timerCurrentPrice;
+
+        private System.Timers.Timer _timerExchangeInfo;
 
         #endregion
 
@@ -61,18 +69,21 @@ namespace trape.cli.trader.Cache
 
         #region Constructor
 
-        public Buffer(ILogger logger)
+        public Buffer(ILogger logger, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
         {
-            if (null == logger)
+            if (null == logger || null == binanceClient || null == binanceSocketClient)
             {
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
             this._logger = logger;
+            this._binanceClient = binanceClient;
+            this._binanceSocketClient = binanceSocketClient;
             this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
             this._disposed = false;
             this._bestAskPrices = new ConcurrentDictionary<string, BestPrice>();
             this._bestBidPrices = new ConcurrentDictionary<string, BestPrice>();
+            this._binanceExchangeInfo = null;
 
             #region Timer setup
 
@@ -118,6 +129,13 @@ namespace trape.cli.trader.Cache
                 Interval = new TimeSpan(0, 0, 1).TotalMilliseconds
             };
             this._timerCurrentPrice.Elapsed += _timerCurrentPrice_Elapsed;
+
+            this._timerExchangeInfo = new System.Timers.Timer()
+            {
+                AutoReset = true,
+                Interval = new TimeSpan(0, 1, 0).TotalMilliseconds
+            };
+            this._timerExchangeInfo.Elapsed += _timerExchangeInfo_Elapsed;
 
             #endregion
         }
@@ -180,6 +198,16 @@ namespace trape.cli.trader.Cache
             this._logger.Verbose("Updated 2 hours trend");
         }
 
+        private async void _timerExchangeInfo_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            var result = await this._binanceClient.GetExchangeInfoAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+
+            if (result.Success)
+            {
+                this._binanceExchangeInfo = result.Data;
+            }
+        }
+
         #endregion
 
         public IEnumerable<string> GetSymbols()
@@ -217,6 +245,18 @@ namespace trape.cli.trader.Cache
             }
         }
 
+        public BinanceSymbol GetExchangeInfoFor(string symbol)
+        {
+            var symbolInfo = this._binanceExchangeInfo.Symbols.SingleOrDefault(s => s.Name == symbol);
+
+            if(null == symbolInfo || symbolInfo.Status != SymbolStatus.Trading)
+            {
+                return null;
+            }
+
+            return symbolInfo;
+        }
+
         #region Start / Stop
 
         public async Task Start()
@@ -238,9 +278,7 @@ namespace trape.cli.trader.Cache
 
             this._logger.Debug("Buffer preloaded");
 
-            var binanceSocketClient = Program.Services.GetService(typeof(IBinanceSocketClient)) as IBinanceSocketClient;
-
-            await binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.GetSymbols(), (BinanceBookTick bbt) =>
+            await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.GetSymbols(), (BinanceBookTick bbt) =>
             {
                 var askPriceAdded = false;
                 var bidPriceAdded = false;
@@ -256,7 +294,7 @@ namespace trape.cli.trader.Cache
                     {
                         var bestAskPrice = new BestPrice(bbt.Symbol);
                         askPriceAdded = this._bestAskPrices.TryAdd(bbt.Symbol, bestAskPrice);
-                        bestAskPrice.Add(bbt.BestAskPrice);                        
+                        bestAskPrice.Add(bbt.BestAskPrice);
                     }
                 }
 
@@ -271,7 +309,7 @@ namespace trape.cli.trader.Cache
                     {
                         var bestBidPrice = new BestPrice(bbt.Symbol);
                         bidPriceAdded = this._bestBidPrices.TryAdd(bbt.Symbol, bestBidPrice);
-                        bestBidPrice.Add(bbt.BestBidPrice);                        
+                        bestBidPrice.Add(bbt.BestBidPrice);
                     }
                 }
             }).ConfigureAwait(true);
@@ -285,6 +323,9 @@ namespace trape.cli.trader.Cache
             this._timerStats10m.Start();
             this._timerStats2h.Start();
             this._timerCurrentPrice.Start();
+
+            // Loading exchange information
+            this._timerExchangeInfo_Elapsed(null, null);
 
             this._logger.Information("Buffer started");
         }
