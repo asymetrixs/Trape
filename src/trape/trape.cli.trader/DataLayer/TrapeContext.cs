@@ -894,13 +894,13 @@ namespace trape.cli.trader.DataLayer
                         com.Parameters.Add("p_event", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.Event;
                         com.Parameters.Add("p_last_quote_transacted_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.LastQuoteTransactedQuantity;
                         com.Parameters.Add("p_quote_order_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.QuoteOrderQuantity;
-                        com.Parameters.Add("p_cummulative_quote_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.CummulativeQuoteQuantity;
+                        com.Parameters.Add("p_cumulative_quote_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.CummulativeQuoteQuantity;
                         com.Parameters.Add("p_order_creation_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = binanceStreamOrderUpdate.OrderCreationTime;
                         com.Parameters.Add("p_buyer_is_maker", NpgsqlTypes.NpgsqlDbType.Boolean).Value = binanceStreamOrderUpdate.BuyerIsMaker;
                         com.Parameters.Add("p_is_working", NpgsqlTypes.NpgsqlDbType.Boolean).Value = binanceStreamOrderUpdate.IsWorking;
                         com.Parameters.Add("p_trade_id", NpgsqlTypes.NpgsqlDbType.Bigint).Value = binanceStreamOrderUpdate.TradeId;
                         com.Parameters.Add("p_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = binanceStreamOrderUpdate.Time;
-                        com.Parameters.Add("p_commission_asset", NpgsqlTypes.NpgsqlDbType.Text).Value = binanceStreamOrderUpdate.CommissionAsset;
+                        com.Parameters.Add("p_commission_asset", NpgsqlTypes.NpgsqlDbType.Text).Value = string.IsNullOrEmpty(binanceStreamOrderUpdate.CommissionAsset) ? string.Empty : binanceStreamOrderUpdate.CommissionAsset;
                         com.Parameters.Add("p_commission", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.Commission;
                         com.Parameters.Add("p_price_last_filled_trade", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.PriceLastFilledTrade;
                         com.Parameters.Add("p_accumulated_quantity_of_filled_trades", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binanceStreamOrderUpdate.AccumulatedQuantityOfFilledTrades;
@@ -1080,7 +1080,7 @@ namespace trape.cli.trader.DataLayer
                             com.Parameters.Add("p_time_in_force", NpgsqlTypes.NpgsqlDbType.Text).Value = binancePlacedOrder.TimeInForce.ToString();
                             com.Parameters.Add("p_status", NpgsqlTypes.NpgsqlDbType.Text).Value = binancePlacedOrder.Status.ToString();
                             com.Parameters.Add("p_original_quote_order_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.OriginalQuoteOrderQuantity;
-                            com.Parameters.Add("p_cummulative_quote_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.CummulativeQuoteQuantity;
+                            com.Parameters.Add("p_cumulative_quote_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.CummulativeQuoteQuantity;
                             com.Parameters.Add("p_executed_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.ExecutedQuantity;
                             com.Parameters.Add("p_original_quantity", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.OriginalQuantity;
                             com.Parameters.Add("p_price", NpgsqlTypes.NpgsqlDbType.Numeric).Value = binancePlacedOrder.Price;
@@ -1127,7 +1127,7 @@ namespace trape.cli.trader.DataLayer
                                         pPrice.Value = orderTrade.Price;
                                         pQuantity.Value = orderTrade.Quantity;
                                         pCommission.Value = orderTrade.Commission;
-                                        pCommissionAsset.Value = orderTrade.CommissionAsset;
+                                        pCommissionAsset.Value = string.IsNullOrEmpty(orderTrade.CommissionAsset) ? string.Empty : orderTrade.CommissionAsset;
 
                                         await com2.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(true);
                                     }

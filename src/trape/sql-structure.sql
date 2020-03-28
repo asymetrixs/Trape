@@ -676,7 +676,7 @@ BEGIN
 
 END;
 $$
-LANGUAGE plpgsql VOLATILE STRICT;
+LANGUAGE plpgsql VOLATILE ;
 
 DROP TABLE binance_stream_balance_update;
 DROP FUNCTION insert_binance_stream_balance_update(timestamptz, text, text, numeric, timestamptz);
@@ -704,7 +704,7 @@ BEGIN
 
 END;
 $$
-LANGUAGE plpgsql VOLATILE STRICT;
+LANGUAGE plpgsql VOLATILE ;
 
 
 
@@ -752,7 +752,7 @@ BEGIN
 		VALUES(p_event_time, p_eventp_symbol, p_transaction_time, p_order_list_id, p_contingency_type, p_list_status_type, p_list_order_status, p_list_client_order_id);
 END;
 $$
-LANGUAGE plpgsql VOLATILE STRICT;
+LANGUAGE plpgsql VOLATILE ;
 
 CREATE OR REPLACE FUNCTION insert_binance_stream_order_id
 	(p_symbol TEXT, p_order_id INT8, client_order_id TEXT)
@@ -763,7 +763,7 @@ BEGIN
 		VALUES(p_symbol, p_order_id, p_client_order_id);
 END;
 $$
-LANGUAGE plpgsql VOLATILE STRICT;
+LANGUAGE plpgsql VOLATILE ;
 
 
 
@@ -778,13 +778,13 @@ CREATE TABLE binance_stream_order_update
 	event_time TIMESTAMPTZ NOT NULL,
 	last_quote_transacted_quantity NUMERIC NOT NULL,
 	quote_order_quantity NUMERIC NOT NULL,
-	cummulative_quote_quantity NUMERIC NOT NULL,
+	cumulative_quote_quantity NUMERIC NOT NULL,
 	order_creation_time TIMESTAMPTZ NOT NULL,
 	buyer_is_maker BOOLEAN NOT NULL,
 	is_working BOOLEAN NOT NULL,
 	trade_id INT8 NOT NULL,
 	time TIMESTAMPTZ NOT NULL,
-	commission_asset TEXT NOT NULL,
+	commission_asset TEXT,
 	commission NUMERIC NOT NULL,
 	price_last_filled_trade NUMERIC NOT NULL,
 	accumulated_quantity_of_filled_trades NUMERIC NOT NULL,
@@ -821,7 +821,7 @@ CREATE OR REPLACE FUNCTION insert_binance_stream_order_update
 	p_event_time TIMESTAMPTZ,
 	p_last_quote_transacted_quantity NUMERIC,
 	p_quote_order_quantity NUMERIC,
-	p_cummulative_quote_quantity NUMERIC,
+	p_cumulative_quote_quantity NUMERIC,
 	p_order_creation_time TIMESTAMPTZ,
 	p_buyer_is_maker BOOLEAN,
 	p_is_working BOOLEAN,
@@ -858,7 +858,7 @@ BEGIN
 		event_time,
 		last_quote_transacted_quantity,
 		quote_order_quantity,
-		cummulative_quote_quantity,
+		cumulative_quote_quantity,
 		order_creation_time,
 		buyer_is_maker,
 		is_working,
@@ -892,7 +892,7 @@ BEGIN
 		p_event_time,
 		p_last_quote_transacted_quantity,
 		p_quote_order_quantity,
-		p_cummulative_quote_quantity,
+		p_cumulative_quote_quantity,
 		p_order_creation_time,
 		p_buyer_is_maker,
 		p_is_working,
@@ -923,7 +923,7 @@ BEGIN
 
 END;
 $$
-LANGUAGE plpgsql VOLATILE STRICT;
+LANGUAGE plpgsql VOLATILE ;
 
 
 CREATE TABLE "order"
@@ -1010,7 +1010,7 @@ CREATE TABLE binance_placed_order
 	time_in_force TEXT NOT NULL,
 	status TEXT NOT NULL,
 	original_quote_order_quantity NUMERIC NOT NULL,
-	cummulative_quote_quantity NUMERIC NOT NULL,
+	cumulative_quote_quantity NUMERIC NOT NULL,
 	executed_quantity NUMERIC NOT NULL,
 	original_quantity NUMERIC NOT NULL,
 	price NUMERIC NOT NULL,
@@ -1035,7 +1035,7 @@ CREATE OR REPLACE FUNCTION insert_binance_placed_order
 	p_time_in_force TEXT,
 	p_status TEXT,
 	p_original_quote_order_quantity NUMERIC,
-	p_cummulative_quote_quantity NUMERIC,
+	p_cumulative_quote_quantity NUMERIC,
 	p_executed_quantity NUMERIC,
 	p_original_quantity NUMERIC,
 	p_price NUMERIC,
@@ -1060,7 +1060,7 @@ BEGIN
 		time_in_force,
 		status,
 		original_quote_order_quantity,
-		cummulative_quote_quantity,
+		cumulative_quote_quantity,
 		executed_quantity,
 		original_quantity,
 		price,
@@ -1081,7 +1081,7 @@ BEGIN
 		p_time_in_force,
 		p_status,
 		p_original_quote_order_quantity,
-		p_cummulative_quote_quantity,
+		p_cumulative_quote_quantity,
 		p_executed_quantity,
 		p_original_quantity,
 		p_price,
@@ -1093,13 +1093,14 @@ BEGIN
 		p_order_list_id
 	) RETURNING id INTO r_id;
 	
-	RETURN QUERY SELECT r_id;
+	RETURN r_id;
 END;
 $$
 LANGUAGE plpgsql VOLATILE;
 
 CREATE TABLE binance_order_trade
 (
+	id BIGSERIAL NOT NULL,
 	binance_placed_order_id INT8 NOT NULL,
 	trade_id INT8 NOT NULL,
 	price NUMERIC NOT NULL,
@@ -1107,7 +1108,8 @@ CREATE TABLE binance_order_trade
 	commission NUMERIC NOT NULL,
 	commission_asset TEXT NOT NULL,
 	consumed NUMERIC NOT NULL DEFAULT 0,
-	consumed_price NUMERIC NOT NULL DEFAULT 0
+	consumed_price NUMERIC NOT NULL DEFAULT 0,
+	PRIMARY KEY (id)
 );
 CREATE INDEX ix_bot_bpoi ON binance_order_trade (binance_placed_order_id);
 
@@ -1175,64 +1177,104 @@ CREATE TRIGGER insert_trade ON
 
 
 
-CREATE TRIGGER tr_update_traded_quantity
-    AFTER INSERT ON binance_order_trade
-    FOR EACH ROW
-    EXECUTE PROCEDURE update_traded_quantity();
 
+DROP TRIGGER tr_update_traded_quantity ON binance_order_trade;
+DROP FUNCTION update_traded_quantity;
 CREATE OR REPLACE FUNCTION update_traded_quantity ()
 RETURNS TRIGGER AS
 $$
 	DECLARE i_trade binance_order_trade%ROWTYPE;
 			i_side TEXT;
 			i_quantity NUMERIC;
+			i_free_quantity NUMERIC;
+			i_consume_quantity NUMERIC;
+			i_consume_price NUMERIC;
+			i_new_consumed_total NUMERIC;	
+			i_part_consumed NUMERIC;
+			i_part_consume NUMERIC;
+			i_new_consumed_price NUMERIC;
+			i_price NUMERIC;
 BEGIN
 	-- Check if new lines come from Buy or Sell
 	SELECT side INTO i_side FROM binance_placed_order WHERE id = NEW.binance_placed_order_id;
 	-- Modify the other one, as this has to be consumed
 	
 	i_quantity := NEW.quantity;
+	i_price := NEW.price;
 	
-	IF (i_side == 'Sell') THEN
+	IF (i_side = 'Sell') THEN
 		
 		FOR i_trade IN SELECT bot.* FROM binance_placed_order bpo
 						INNER JOIN binance_order_trade bot ON bot.binance_placed_order_id = bpo.id
-						WHERE bpo.side = 'Buy' 
+						WHERE bpo.side = 'Buy'
 							AND bot.consumed < bot.quantity
-							AND bot.price < NEW.price;
+							AND bot.price <= NEW.price
+						ORDER BY bot.price DESC
 		LOOP
-			IF (i_quantity >= 0) THEN
-				UPDATE quantity
-					SET consumed = 
-					WHERE binance_order_trade.binance_placed_order_id = i_trade.binance_placed_order_id
+			IF (i_quantity > 0) THEN
+				i_free_quantity := i_trade.quantity - i_trade.consumed;
+
+				IF (i_quantity > i_free_quantity) THEN
+					i_quantity := i_quantity - i_free_quantity;
+					i_consume_quantity := i_free_quantity;
+				ELSE
+					i_consume_quantity := i_quantity;
+					i_quantity := 0;
+				END IF;
+				
+				i_new_consumed_total := i_trade.consumed + i_consume_quantity;
+				i_part_consumed := i_trade.consumed / i_new_consumed_total;
+				i_part_consume := i_consume_quantity / i_new_consumed_total;				
+				i_new_consumed_price := i_part_consumed * i_trade.price + i_part_consume * i_price;
+				
+				UPDATE binance_order_trade
+					SET consumed = i_new_consumed_total, consumed_price = i_new_consumed_price
+					WHERE binance_order_trade.id = i_trade.id;
+				
 			END IF;
 		END LOOP;
+
 	ELSE
+	
 		FOR i_trade IN SELECT bot.* FROM binance_placed_order bpo
 						INNER JOIN binance_order_trade bot ON bot.binance_placed_order_id = bpo.id
 						WHERE bpo.side = 'Sell' 
 							AND bot.consumed < bot.quantity
-							AND bot.price > NEW.price;
+							AND bot.price >= NEW.price
+						ORDER BY bot.price DESC
 		LOOP
-	
+			
+			IF (i_quantity > 0) THEN
+				i_free_quantity := i_trade.quantity - i_trade.consumed;
+				
+				IF (i_quantity > i_free_quantity) THEN
+					i_quantity := i_quantity - i_free_quantity;
+					i_consume_quantity := i_free_quantity;
+				ELSE
+					i_consume_quantity := i_quantity;
+					i_quantity := 0;
+				END IF;
+				
+				i_new_consumed_total := i_trade.consumed + i_consume_quantity;
+				i_part_consumed := i_trade.consumed / i_new_consumed_total;
+				i_part_consume := i_consume_quantity / i_new_consumed_total;				
+				i_new_consumed_price := i_part_consumed * i_trade.price + i_part_consume * i_price;
+				
+				UPDATE binance_order_trade
+					SET consumed = i_new_consumed_total, consumed_price = i_new_consumed_price
+					WHERE binance_order_trade.id = i_trade.id;
+				
+			END IF;
 		END LOOP;
 	END IF;
 
-	
-	LOOP
-		action := SUBSTRING(r.decision FROM 0 FOR 4);
-		
-		IF (action != last_action) THEN
-			RETURN NEXT r;
-		END IF;
-		
-		last_action := action;
-	END LOOP;
-
+	RETURN NEW;
 END;
 $$
 LANGUAGE plpgsql VOLATILE STRICT;
 
-SELECT bot.* FROM binance_placed_order bpo
-INNER JOIN binance_order_trade bot ON bot.binance_placed_order_id = bpo.id
-WHERE bpo.side = 'Buy' AND bot.consumed < bot.quantity
+
+CREATE TRIGGER tr_update_traded_quantity
+    AFTER INSERT ON binance_order_trade
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_traded_quantity();

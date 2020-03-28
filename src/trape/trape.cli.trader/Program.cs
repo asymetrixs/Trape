@@ -63,7 +63,11 @@ namespace trape.cli.trader
                         ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
                                                         Configuration.GetValue("binance:secretkey")),
                         LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
-                        LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new BinanceLogger(Log.Logger) }
+                        LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new BinanceLogger(Log.Logger) },
+                        AutoTimestamp = true,
+                        AutoTimestampRecalculationInterval = new TimeSpan(0, 5, 0),
+                        TradeRulesBehaviour = TradeRulesBehaviour.AutoComply,
+                        TradeRulesUpdateInterval = new TimeSpan(0, 5, 0)
                     }));
 
                     services.AddSingleton<IBinanceSocketClient>(new BinanceSocketClient(new BinanceSocketClientOptions()

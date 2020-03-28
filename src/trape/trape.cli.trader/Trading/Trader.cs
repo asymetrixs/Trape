@@ -76,6 +76,7 @@ namespace trape.cli.trader.Trading
 
             // Get recommendation what to do
             var recommendation = this._recommender.GetRecommendation(this.Symbol);
+            
             if (null == recommendation || recommendation.Action == Analyze.Action.Wait)
             {
                 this._logger.Verbose($"{this.Symbol}: Waiting for recommendation");
@@ -83,7 +84,8 @@ namespace trape.cli.trader.Trading
             }
 
             // Get min notional
-            var minNotional = this._getExchangeInfo().MinNotionalFilter.MinNotional;
+            var exchangeInfo = this._getExchangeInfo();
+            var minNotional = exchangeInfo.MinNotionalFilter.MinNotional;
 
             // Generate new client order id
             var newClientOrderId = Guid.NewGuid().ToString("N");
@@ -130,7 +132,7 @@ namespace trape.cli.trader.Trading
                 // Get ask price
                 var bestAskPrice = this._buffer.GetAskPrice(this.Symbol);
 
-                this._logger.Debug($"{this.Symbol}: bestAskPrice:{bestAskPrice};availableAmount:{availableAmount}");
+                this._logger.Debug($"{this.Symbol}: {recommendation.Action} -bestAskPrice:{bestAskPrice};availableAmount:{availableAmount}");
 
                 // Check if no order has been issued yet or order was SELL
                 if ((null == lastOrder
@@ -142,9 +144,11 @@ namespace trape.cli.trader.Trading
                     this._logger.Debug($"{this.Symbol}: Issuing order to buy");
                     this._logger.Debug($"symbol:{this.Symbol};bestAskPrice:{bestAskPrice};quantity:{availableAmount}");
 
-                    //placedOrder = await binanceClient.PlaceOrderAsync(this.Symbol, OrderSide.Buy, OrderType.Market,
-                    //    quoteOrderQuantity: availableAmount, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
-                    //    ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
+                    availableAmount = Math.Round(availableAmount.Value, exchangeInfo.BaseAssetPrecision, MidpointRounding.ToZero);
+
+                    placedOrder = await binanceClient.PlaceOrderAsync(this.Symbol, OrderSide.Buy, OrderType.Market,
+                        quoteOrderQuantity: availableAmount.Value, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
+                        ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
 
                     await database.InsertAsync(new Order()
                     {
@@ -182,7 +186,7 @@ namespace trape.cli.trader.Trading
                 // Sell what is maximal possible (max or what was bought for less than it will be sold)
                 sellQuoteOrderQuantity = sellQuoteOrderQuantity < availableQuantity ? sellQuoteOrderQuantity : availableQuantity;
 
-                this._logger.Debug($"{this.Symbol}: bestBidPrice:{bestBidPrice};assetBalanceForSale:{assetBalanceForSale};sellQuoteOrderQuantity:{sellQuoteOrderQuantity}");
+                this._logger.Debug($"{this.Symbol}: {recommendation.Action} - bestBidPrice:{bestBidPrice};assetBalanceForSale:{assetBalanceForSale};sellQuoteOrderQuantity:{sellQuoteOrderQuantity}");
 
                 // Check if no order has been issued yet or order was BUY
                 if ((null == lastOrder
@@ -191,11 +195,13 @@ namespace trape.cli.trader.Trading
                     && sellQuoteOrderQuantity.HasValue && sellQuoteOrderQuantity > 0 && sellQuoteOrderQuantity >= minNotional
                     /* implicit checking bestAskPrice > 0 by checking sellQuoteOrderQuantity > 0*/)
                 {
-                    this._logger.Debug($"{this.Symbol}: Issuing order to sell");                    
+                    this._logger.Debug($"{this.Symbol}: Issuing order to sell");
 
-                    //placedOrder = await binanceClient.PlaceOrderAsync(this.Symbol, OrderSide.Sell, OrderType.Market,
-                    //    quoteOrderQuantity: sellQuoteOrderQuantity, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
-                    //    ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
+                    sellQuoteOrderQuantity = Math.Round(sellQuoteOrderQuantity.Value, exchangeInfo.BaseAssetPrecision, MidpointRounding.ToZero);
+
+                    placedOrder = await binanceClient.PlaceOrderAsync(this.Symbol, OrderSide.Sell, OrderType.Market,
+                        quoteOrderQuantity: sellQuoteOrderQuantity.Value, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
+                        ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
 
                     await database.InsertAsync(new Order()
                     {
@@ -222,7 +228,7 @@ namespace trape.cli.trader.Trading
                     this._logger.Error($"Order {newClientOrderId} was malformed.");
                     this._logger.Error(placedOrder.Error?.Code.ToString());
                     this._logger.Error(placedOrder.Error?.Message);
-                    this._logger.Error(placedOrder.Error?.Data.ToString());
+                    this._logger.Error(placedOrder.Error?.Data?.ToString());
                 }
                 else
                 {

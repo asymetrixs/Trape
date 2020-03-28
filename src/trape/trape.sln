@@ -5,28 +5,35 @@ VisualStudioVersion = 16.0.29728.190
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "trape.cli.collector", "trape.cli.collector\trape.cli.collector.csproj", "{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "trape.jobs", "trape.jobs\trape.jobs.csproj", "{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "trape.jobs", "trape.jobs\trape.jobs.csproj", "{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "trape.cli.trader", "trape.cli.trader\trape.cli.trader.csproj", "{6139DDFD-63C6-4331-BBA7-FF250ECB3879}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "trape.cli.trader", "trape.cli.trader\trape.cli.trader.csproj", "{6139DDFD-63C6-4331-BBA7-FF250ECB3879}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
+		Test|Any CPU = Test|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}.Test|Any CPU.Build.0 = Test|Any CPU
 		{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}.Test|Any CPU.Build.0 = Test|Any CPU
 		{6139DDFD-63C6-4331-BBA7-FF250ECB3879}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6139DDFD-63C6-4331-BBA7-FF250ECB3879}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6139DDFD-63C6-4331-BBA7-FF250ECB3879}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6139DDFD-63C6-4331-BBA7-FF250ECB3879}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6139DDFD-63C6-4331-BBA7-FF250ECB3879}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{6139DDFD-63C6-4331-BBA7-FF250ECB3879}.Test|Any CPU.Build.0 = Test|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
