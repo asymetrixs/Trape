@@ -218,7 +218,7 @@ namespace trape.cli.trader.Trading
                 this._logger.Verbose($"{this.Symbol} Sell: aimToGetUSDT has value {aimToGetUSDT.HasValue} -> {aimToGetUSDT.Value}");
                 if (aimToGetUSDT.HasValue)
                 {
-                    this._logger.Verbose($"Value {aimToGetUSDT} > 0: {aimToGetUSDT > 0}");
+                    this._logger.Verbose($"Value {aimToGetUSDT} > 0: {aimToGetUSDT > 0} and higher than {exchangeInfo.MinNotionalFilter.MinNotional}: {aimToGetUSDT >= exchangeInfo.MinNotionalFilter.MinNotional}");
                 }
                 
                 this._logger.Verbose($"Sell X to get {aimToGetUSDT}");
@@ -228,7 +228,7 @@ namespace trape.cli.trader.Trading
                 if ((null == lastOrder
                     || lastOrder.Side == OrderSide.Buy
                     || lastOrder.Side == OrderSide.Sell && lastOrder.Price * minIncreaseRequired < bestBidPrice && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow)
-                    && aimToGetUSDT.HasValue && aimToGetUSDT > 0
+                    && aimToGetUSDT.HasValue && aimToGetUSDT > exchangeInfo.MinNotionalFilter.MinNotional
                     /* implicit checking bestAskPrice > 0 by checking sellQuoteOrderQuantity > 0*/)
                 {
                     this._logger.Debug($"{this.Symbol}: Issuing order to sell");
