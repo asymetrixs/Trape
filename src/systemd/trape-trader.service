@@ -1,0 +1,26 @@
+[Unit]
+Description=Trape Trader
+
+[Service]
+Type=notify
+# will set the Current Working Directory (CWD). Worker service will have issues without this setting
+WorkingDirectory=/opt/trape/trape-trader
+# systemd will run this executable to start the service
+ExecStart=/opt/trape/trape-trader/trape.cli.trader
+# to query logs using journalctl, set a logical name here
+SyslogIdentifier=Trape.Trader
+
+# Use your username to keep things simple.
+User=trape
+
+# ensure the service restarts after crashing
+Restart=always
+# amount of time to wait before restarting the service
+RestartSec=3
+
+# This environment variable is necessary when dotnet isn't loaded for the specified user.
+# To figure out this value, run 'env | grep DOTNET_ROOT' when dotnet has been loaded into your shell.
+#Environment=DOTNET_ROOT=/opt/rh/rh-dotnet31/root/usr/lib64/dotnet
+
+[Install]
+WantedBy=multi-user.target
