@@ -2,7 +2,7 @@
 
 namespace trape.cli.trader.Analyze
 {
-    public interface IRecommender : IDisposable
+    public interface IAnalyst : IDisposable
     {
         Recommendation GetRecommendation(string symbol);
 

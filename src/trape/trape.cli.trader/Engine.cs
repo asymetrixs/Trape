@@ -18,7 +18,7 @@ namespace trape.cli.trader
 
         private IBuffer _buffer;
 
-        private IRecommender _recommender;
+        private IAnalyst _recommender;
 
         private ITradingTeam _tradingTeam;
 
@@ -30,7 +30,7 @@ namespace trape.cli.trader
 
         #region Constructor
 
-        public Engine(ILogger logger, IBuffer buffer, IRecommender recommender, ITradingTeam tradingTeam, IAccountant accountant)
+        public Engine(ILogger logger, IBuffer buffer, IAnalyst recommender, ITradingTeam tradingTeam, IAccountant accountant)
         {
             if (null == logger || null == buffer || null == recommender || null == tradingTeam)
             {

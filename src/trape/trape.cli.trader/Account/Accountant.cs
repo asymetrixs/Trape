@@ -35,13 +35,13 @@ namespace trape.cli.trader.Account
 
         private string _binanceListenKey;
 
-        private readonly IRecommender _recommender;
+        private readonly IAnalyst _recommender;
 
         #endregion
 
         #region Constructor
 
-        public Accountant(ILogger logger, IRecommender recommender, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
+        public Accountant(ILogger logger, IAnalyst recommender, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
         {
             if (null == logger || null == recommender || null == binanceClient || null == binanceSocketClient)
             {

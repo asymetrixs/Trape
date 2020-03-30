@@ -23,7 +23,7 @@ namespace trape.cli.trader.Trading
 
         private IAccountant _accountant;
 
-        private IRecommender _recommender;
+        private IAnalyst _recommender;
 
         private IBuffer _buffer;
 
@@ -41,7 +41,7 @@ namespace trape.cli.trader.Trading
 
         #region Constructor
 
-        public Trader(ILogger logger, IAccountant accountant, IRecommender recommender, IBuffer buffer)
+        public Trader(ILogger logger, IAccountant accountant, IAnalyst recommender, IBuffer buffer)
         {
             if (null == logger || null == accountant || null == recommender || null == buffer)
             {

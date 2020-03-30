@@ -1,5 +1,4 @@
 ﻿using Serilog;
-using Serilog.Context;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +8,7 @@ using trape.cli.trader.Cache.Models;
 
 namespace trape.cli.trader.Analyze
 {
-    public class Recommender : IRecommender
+    public class Analyst : IAnalyst
     {
         #region Fields
 
@@ -29,7 +28,7 @@ namespace trape.cli.trader.Analyze
 
         #region Constructor
 
-        public Recommender(ILogger logger, IBuffer buffer)
+        public Analyst(ILogger logger, IBuffer buffer)
         {
             if (null == logger || null == buffer)
             {

@@ -63,7 +63,7 @@ namespace trape.cli.trader
                 {
                     services.AddSingleton(Log.Logger);
                     services.AddSingleton<IBuffer, Cache.Buffer>();
-                    services.AddSingleton<IRecommender, Recommender>();
+                    services.AddSingleton<IAnalyst, Analyst>();
                     services.AddTransient<ITrader, Trader>();
                     services.AddSingleton<ITradingTeam, TradingTeam>();
                     services.AddSingleton<IAccountant, Accountant>();
