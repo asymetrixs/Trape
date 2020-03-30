@@ -35,6 +35,16 @@ namespace trape.cli.trader
             catch (Exception e)
             {
                 logger.Error(e, e.Message);
+
+                Console.Beep(700, 300);
+                Console.Beep(300, 300);
+                Console.Beep(700, 300);
+                Console.Beep(300, 300);
+                Console.Beep(700, 300);
+                Console.Beep(300, 300);
+
+                await Task.Delay(2000).ConfigureAwait(true);
+
                 throw;
             }
 

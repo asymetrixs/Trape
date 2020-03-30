@@ -1168,12 +1168,12 @@ $$
 BEGIN
 	RETURN QUERY SELECT binance_placed_order_id, transaction_time, symbol, bpo.side, bot.price, quantity, consumed, consumed_price FROM binance_order_trade bot
 		INNER JOIN binance_placed_order bpo ON bpo.id = bot.binance_placed_order_id
-		WHERE 'BTCUSDT' = bpo.symbol AND consumed < quantity;
+		WHERE bpo.symbol = p_symbol AND consumed < quantity;
 END;
 $$
 LANGUAGE plpgsql VOLATILE STRICT;
 
-CREATE TRIGGER insert_trade ON 
+
 
 
 

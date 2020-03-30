@@ -29,6 +29,10 @@ namespace trape.cli.trader.Trading
 
         private System.Timers.Timer _timerTrading;
 
+        private const decimal minIncreaseRequired = 1.002M;
+
+        private const decimal minDecreaseRequired = 0.998M;
+
         public string Symbol { get; private set; }
 
         private CancellationTokenSource _cancellationTokenSource;
@@ -76,7 +80,7 @@ namespace trape.cli.trader.Trading
 
             // Get recommendation what to do
             var recommendation = this._recommender.GetRecommendation(this.Symbol);
-            
+
             if (null == recommendation || recommendation.Action == Analyze.Action.Wait)
             {
                 this._logger.Verbose($"{this.Symbol}: Waiting for recommendation");
@@ -95,7 +99,7 @@ namespace trape.cli.trader.Trading
 
             // Get last orders
             var lastOrders = await database.GetLastOrdersAsync(this.Symbol, this._cancellationTokenSource.Token).ConfigureAwait(false);
-            var lastOrder = lastOrders.OrderByDescending(l => l.TransactionTime).FirstOrDefault();
+            var lastOrder = lastOrders.Where(l => l.Symbol == this.Symbol).OrderByDescending(l => l.TransactionTime).FirstOrDefault();
 
             /*
              * Rules
@@ -132,23 +136,37 @@ namespace trape.cli.trader.Trading
                 // Get ask price
                 var bestAskPrice = this._buffer.GetAskPrice(this.Symbol);
 
-                this._logger.Debug($"{this.Symbol}: {recommendation.Action} -bestAskPrice:{bestAskPrice};availableAmount:{availableAmount}");
+                this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestAskPrice:{bestAskPrice};availableAmount:{availableAmount}");
+
+                // Round to a valid value
+                availableAmount = Math.Round(availableAmount.Value, exchangeInfo.BaseAssetPrecision, MidpointRounding.ToZero);
+
+                this._logger.Verbose($"{this.Symbol} Buy : Checking conditions");
+                this._logger.Verbose($"{this.Symbol} Buy : lastOrder is null: {null == lastOrder}");
+                this._logger.Verbose($"{this.Symbol} Buy : lastOrder side: {lastOrder?.Side.ToString()}");
+                this._logger.Verbose($"{this.Symbol} Buy : lastOrder Price: {lastOrder?.Price} * {minDecreaseRequired} > {bestAskPrice}: {lastOrder?.Price * minDecreaseRequired > bestAskPrice}");
+                this._logger.Verbose($"{this.Symbol} Buy : Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(15)}) < {DateTime.UtcNow}: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow}");
+                this._logger.Verbose($"{this.Symbol} Buy : availableAmount has value {availableAmount.HasValue}");
+                if (availableAmount.HasValue)
+                {
+                    this._logger.Verbose($"Value {availableAmount} > 0: {availableAmount > 0} and higher than minNotional {minNotional}: {availableAmount >= minNotional}");
+                }
 
                 // Check if no order has been issued yet or order was SELL
                 if ((null == lastOrder
                     || lastOrder.Side == OrderSide.Sell
-                    || lastOrder.Side == OrderSide.Buy && lastOrder.Price * 0.99M > bestAskPrice && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow)
+                    || lastOrder.Side == OrderSide.Buy && lastOrder.Price * minDecreaseRequired > bestAskPrice && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow)
                     && availableAmount.HasValue && availableAmount.Value >= minNotional
                     && bestAskPrice > 0)
                 {
                     this._logger.Debug($"{this.Symbol}: Issuing order to buy");
                     this._logger.Debug($"symbol:{this.Symbol};bestAskPrice:{bestAskPrice};quantity:{availableAmount}");
 
-                    availableAmount = Math.Round(availableAmount.Value, exchangeInfo.BaseAssetPrecision, MidpointRounding.ToZero);
-
                     placedOrder = await binanceClient.PlaceOrderAsync(this.Symbol, OrderSide.Buy, OrderType.Market,
                         quoteOrderQuantity: availableAmount.Value, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
                         ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
+
+                    Console.Beep(1000, 1500);
 
                     await database.InsertAsync(new Order()
                     {
@@ -163,6 +181,10 @@ namespace trape.cli.trader.Trading
                     }, this._cancellationTokenSource.Token).ConfigureAwait(false);
 
                     this._logger.Debug($"{this.Symbol}: Issued order to buy");
+                }
+                else
+                {
+                    this._logger.Debug($"{this.Symbol}: Skipping ,final conditions not met");
                 }
             }
             // Sell
@@ -183,32 +205,56 @@ namespace trape.cli.trader.Trading
                 var availableQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy && l.Price < (bestBidPrice * 0.999M) /*0.1% less*/ && l.Quantity > l.Consumed)
                     .Sum(l => (l.Quantity - l.Consumed));
 
-                // Sell what is maximal possible (max or what was bought for less than it will be sold)
-                sellQuoteOrderQuantity = sellQuoteOrderQuantity < availableQuantity ? sellQuoteOrderQuantity : availableQuantity;
+                // Sell what is maximal possible (max or what was bought for less than it will be sold), because of rounding and commission reduct 1% from availableQuantity
+                sellQuoteOrderQuantity = sellQuoteOrderQuantity < (availableQuantity * 0.99M) ? sellQuoteOrderQuantity : (availableQuantity * 0.99M);
 
-                this._logger.Debug($"{this.Symbol}: {recommendation.Action} - bestBidPrice:{bestBidPrice};assetBalanceForSale:{assetBalanceForSale};sellQuoteOrderQuantity:{sellQuoteOrderQuantity}");
+                // Sell as much USDT to get this price
+                var sellToGetUSDT = sellQuoteOrderQuantity * bestBidPrice;
+                // Round to a valid value
+                sellToGetUSDT = Math.Round(sellToGetUSDT.Value, exchangeInfo.BaseAssetPrecision, MidpointRounding.ToZero);
+
+                this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestBidPrice:{bestBidPrice};assetBalanceForSale:{assetBalanceForSale};sellQuoteOrderQuantity:{sellQuoteOrderQuantity};sellToGetUSDT:{sellToGetUSDT}");
 
                 // Check if no order has been issued yet or order was BUY
+                this._logger.Verbose($"{this.Symbol} Sell: Checking conditions");
+                this._logger.Verbose($"{this.Symbol} Sell: lastOrder is null: {null == lastOrder}");
+                this._logger.Verbose($"{this.Symbol} Sell: lastOrder side: {lastOrder?.Side.ToString()}");
+                this._logger.Verbose($"{this.Symbol} Sell: lastOrder Price: {lastOrder?.Price} * {minIncreaseRequired} < {bestBidPrice}: {lastOrder?.Price * minIncreaseRequired < bestBidPrice}");
+                this._logger.Verbose($"{this.Symbol} Sell: Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(15)}) < {DateTime.UtcNow}: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow}");
+                this._logger.Verbose($"{this.Symbol} Sell: sellToGetUSDT has value {sellToGetUSDT.HasValue} -> {sellToGetUSDT.Value}");
+                if (sellToGetUSDT.HasValue)
+                {
+                    this._logger.Verbose($"Value {sellToGetUSDT} > 0: {sellToGetUSDT > 0}");
+                }
+                
+                this._logger.Verbose($"Sell X to get {sellToGetUSDT}");
+
+                
+
                 if ((null == lastOrder
                     || lastOrder.Side == OrderSide.Buy
-                    || lastOrder.Side == OrderSide.Sell && lastOrder.Price * 1.01M < bestBidPrice && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow)
-                    && sellQuoteOrderQuantity.HasValue && sellQuoteOrderQuantity > 0 && sellQuoteOrderQuantity >= minNotional
+                    || lastOrder.Side == OrderSide.Sell && lastOrder.Price * minIncreaseRequired < bestBidPrice && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow)
+                    && sellToGetUSDT.HasValue && sellToGetUSDT > 0
                     /* implicit checking bestAskPrice > 0 by checking sellQuoteOrderQuantity > 0*/)
                 {
                     this._logger.Debug($"{this.Symbol}: Issuing order to sell");
 
-                    sellQuoteOrderQuantity = Math.Round(sellQuoteOrderQuantity.Value, exchangeInfo.BaseAssetPrecision, MidpointRounding.ToZero);
-
                     placedOrder = await binanceClient.PlaceOrderAsync(this.Symbol, OrderSide.Sell, OrderType.Market,
-                        quoteOrderQuantity: sellQuoteOrderQuantity.Value, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
+                        quoteOrderQuantity: sellToGetUSDT.Value, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
                         ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
+
+                    Console.Beep(1000, 500);
+                    await Task.Delay(200).ConfigureAwait(true);
+                    Console.Beep(1000, 500);
+                    await Task.Delay(200).ConfigureAwait(true);
+                    Console.Beep(1000, 500);
 
                     await database.InsertAsync(new Order()
                     {
                         Symbol = this.Symbol,
                         Side = OrderSide.Sell,
                         Type = OrderType.Limit,
-                        QuoteOrderQuantity = sellQuoteOrderQuantity.Value,
+                        QuoteOrderQuantity = sellToGetUSDT.Value,
                         Price = bestBidPrice,
                         NewClientOrderId = newClientOrderId,
                         OrderResponseType = OrderResponseType.Full,
@@ -216,6 +262,10 @@ namespace trape.cli.trader.Trading
                     }, this._cancellationTokenSource.Token).ConfigureAwait(false);
 
                     this._logger.Debug($"{this.Symbol}: Issued order to sell");
+                }
+                else
+                {
+                    this._logger.Debug($"{this.Symbol}: Skipping ,final conditions not met");
                 }
             }
 
