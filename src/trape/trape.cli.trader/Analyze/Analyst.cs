@@ -88,6 +88,8 @@ namespace trape.cli.trader.Analyze
                 || null == stat2h || !stat2h.IsValid())
             {
                 this._logger.Warning($"Skipped {symbol} due to old or incomplete data");
+                this._lastRecommendation.Remove(symbol);
+                return;
             }
 
             var database = Pool.DatabasePool.Get();

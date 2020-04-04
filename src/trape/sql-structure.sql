@@ -1278,3 +1278,30 @@ CREATE TRIGGER tr_update_traded_quantity
     AFTER INSERT ON binance_order_trade
     FOR EACH ROW
     EXECUTE PROCEDURE update_traded_quantity();
+
+
+
+CREATE OR REPLACE FUNCTION select_asset_status()
+RETURNS TABLE (r_symbol TEXT, r_bought NUMERIC, r_sold NUMERIC, r_remaining NUMERIC)
+AS
+$$
+BEGIN
+	RETURN QUERY SELECT sell.symbol, buy.quantity as bought, sell.quantity as sold, (buy.quantity-sell.quantity) as remains FROM
+	(
+		SELECT  bpo.symbol, bpo.side, SUM(quantity) quantity, SUM(consumed) consumed, SUM(quantity-consumed) remaining FROM binance_order_trade bot
+		LEFT JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
+		WHERE consumed != quantity AND side = 'Sell'
+		GROUP BY bpo.symbol, bpo.side
+		ORDER BY bpo.symbol
+	) sell,
+	(
+		SELECT  bpo.symbol, bpo.side, SUM(quantity) quantity, SUM(consumed) consumed, SUM(quantity-consumed) remaining FROM binance_order_trade bot
+			LEFT JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
+			WHERE consumed != quantity AND side = 'Buy'
+			GROUP BY bpo.symbol, bpo.side
+			ORDER BY bpo.symbol
+	) buy
+	WHERE sell.symbol = buy.symbol;
+END;
+$$
+LANGUAGE plpgsql STRICT;

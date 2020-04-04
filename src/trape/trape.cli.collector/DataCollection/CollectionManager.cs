@@ -1,6 +1,6 @@
 ﻿using Binance.Net;
+using Binance.Net.Interfaces;
 using Binance.Net.Objects;
-using CryptoExchange.Net.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -20,7 +20,7 @@ namespace trape.cli.collector.DataCollection
 
         private ILogger _logger;
 
-        private Dictionary<string, BinanceSocketClient> _binanceSocketClients;
+        private IBinanceSocketClient _binanceSocketClient;
 
         private ActionBlock<BinanceStreamTick> _binanceStreamTickBuffer;
 
@@ -40,15 +40,15 @@ namespace trape.cli.collector.DataCollection
 
         #region Constructor
 
-        public CollectionManager(ILogger logger)
+        public CollectionManager(ILogger logger, IBinanceSocketClient binanceSocketClient)
         {
-            if (null == logger)
+            if (logger == null || binanceSocketClient == null)
             {
-                throw new ArgumentNullException("Paramter cannot be null");
+                throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
             this._logger = logger;
-            this._binanceSocketClients = new Dictionary<string, BinanceSocketClient>();
+            this._binanceSocketClient = binanceSocketClient;
             this._disposed = false;
             this._cancellationTokenSource = new CancellationTokenSource();
             this._startStop = new SemaphoreSlim(1, 1);
@@ -108,7 +108,7 @@ namespace trape.cli.collector.DataCollection
             await database.Insert(bbt, cancellationToken).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
         }
-        
+
         #endregion
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -126,7 +126,7 @@ namespace trape.cli.collector.DataCollection
                 // Register cleanup job
                 Program.Services.GetService<IJobManager>().Start(new CleanUp());
 
-                this._logger.Information($"Collection Mangager is online with {this._binanceSocketClients.Count} clients.");
+                this._logger.Information($"Collection Mangager is online");
             }
             finally
             {
@@ -147,19 +147,15 @@ namespace trape.cli.collector.DataCollection
                 var terminateClients = new List<Task>();
 
                 this._logger.Debug($"Waiting for subscribers to terminate.");
-                foreach (var binanceSocketClient in this._binanceSocketClients)
-                {
-                    await binanceSocketClient.Value.UnsubscribeAll().ConfigureAwait(true);
 
-                    this._logger.Debug($"{binanceSocketClient.Key} terminated.");
-                }
+                await this._binanceSocketClient.UnsubscribeAll().ConfigureAwait(true);
 
                 this._logger.Debug($"Subscribers terminated.");
 
                 this._binanceStreamTickBuffer.Complete();
                 this._binanceStreamKlineDataBuffer.Complete();
                 this._binanceBookTickBuffer.Complete();
-                
+
                 Program.Services.GetRequiredService<IJobManager>().TerminateAll();
 
                 this._cancellationTokenSource.Cancel();
@@ -183,124 +179,130 @@ namespace trape.cli.collector.DataCollection
         {
             foreach (var symbol in symbols)
             {
-                var socketClient = new BinanceSocketClient(new BinanceSocketClientOptions()
+                int countTillHardExit = 30;
+
+                while (countTillHardExit > 0)
                 {
-                    ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
-                                                        Configuration.GetValue("binance:secretkey")),
-                    AutoReconnect = true
-                });
+                    this._logger.Debug($"Starting collector for {symbol}");
 
-                this._binanceSocketClients.Add(symbol, socketClient);
-
-                this._logger.Debug($"Starting collector for {symbol}");
-
-                try
-                {
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToSymbolTickerUpdatesAsync(symbol, (BinanceStreamTick bst) =>
+                    try
                     {
-                        this._binanceStreamTickBuffer.Post(bst);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to Symbol Ticker Updates");
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToSymbolTickerUpdatesAsync(symbol, (BinanceStreamTick bst) =>
+                        {
+                            this._binanceStreamTickBuffer.Post(bst);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to Symbol Ticker Updates");
 
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneMinute, (BinanceStreamKlineData bskd) =>
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneMinute, (BinanceStreamKlineData bskd) =>
+                        {
+                            this._binanceStreamKlineDataBuffer.Post(bskd);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to KLine data 1 minute");
+
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeMinutes, (BinanceStreamKlineData bskd) =>
+                        {
+                            this._binanceStreamKlineDataBuffer.Post(bskd);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to KLine data 3 minutes");
+
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FiveMinutes, (BinanceStreamKlineData bskd) =>
+                        {
+                            this._binanceStreamKlineDataBuffer.Post(bskd);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to KLine data 5 minutes");
+
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FifteenMinutes, (BinanceStreamKlineData bskd) =>
+                        {
+                            this._binanceStreamKlineDataBuffer.Post(bskd);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to KLine data 15 minutes");
+
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThirtyMinutes, (BinanceStreamKlineData bskd) =>
+                        {
+                            this._binanceStreamKlineDataBuffer.Post(bskd);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to KLine data 30 minutes");
+
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneHour, (BinanceStreamKlineData bskd) =>
+                        {
+                            this._binanceStreamKlineDataBuffer.Post(bskd);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to KLine data 1 hour");
+
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwoHour, (BinanceStreamKlineData bskd) =>
+                        {
+                            this._binanceStreamKlineDataBuffer.Post(bskd);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to KLine data 2 hours");
+
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.SixHour, (BinanceStreamKlineData bskd) =>
+                        {
+                            this._binanceStreamKlineDataBuffer.Post(bskd);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to KLine data 6 hours");
+
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.EightHour, (BinanceStreamKlineData bskd) =>
+                        {
+                            this._binanceStreamKlineDataBuffer.Post(bskd);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to KLine data 8 hours");
+
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwelveHour, (BinanceStreamKlineData bskd) =>
+                        {
+                            this._binanceStreamKlineDataBuffer.Post(bskd);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to KLine data 12 hours");
+
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneDay, (BinanceStreamKlineData bskd) =>
+                        {
+                            this._binanceStreamKlineDataBuffer.Post(bskd);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to KLine data 1 day");
+
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeDay, (BinanceStreamKlineData bskd) =>
+                        {
+                            this._binanceStreamKlineDataBuffer.Post(bskd);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to KLine data 3 days");
+
+                        if (this._shutdown) return;
+                        await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(symbol, (BinanceBookTick bbt) =>
+                        {
+                            this._binanceBookTickBuffer.Post(bbt);
+                        }).ConfigureAwait(true);
+                        this._logger.Debug($"{symbol}: Subscribed to Book Ticker");
+
+                        countTillHardExit = -1;
+                    }
+                    catch (Exception e)
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to KLine data 1 minute");
+                        this._logger.Fatal($"Connecting to Binance failed, retrying, {31 - countTillHardExit}/30");
+                        this._logger.Fatal(e.Message, e);
 
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeMinutes, (BinanceStreamKlineData bskd) =>
-                    {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to KLine data 3 minutes");
+                        countTillHardExit--;
 
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FiveMinutes, (BinanceStreamKlineData bskd) =>
-                    {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to KLine data 5 minutes");
+                        if (countTillHardExit == 0)
+                        {
+                            this._logger.Fatal("Shutting down, relying on systemd to restart");
+                            Environment.Exit(1);
+                        }
+                    }
 
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FifteenMinutes, (BinanceStreamKlineData bskd) =>
-                    {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to KLine data 15 minutes");
-
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThirtyMinutes, (BinanceStreamKlineData bskd) =>
-                    {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to KLine data 30 minutes");
-
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneHour, (BinanceStreamKlineData bskd) =>
-                    {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to KLine data 1 hour");
-
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwoHour, (BinanceStreamKlineData bskd) =>
-                    {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to KLine data 2 hours");
-
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.SixHour, (BinanceStreamKlineData bskd) =>
-                    {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to KLine data 6 hours");
-
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.EightHour, (BinanceStreamKlineData bskd) =>
-                    {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to KLine data 8 hours");
-
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwelveHour, (BinanceStreamKlineData bskd) =>
-                    {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to KLine data 12 hours");
-
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneDay, (BinanceStreamKlineData bskd) =>
-                    {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to KLine data 1 day");
-
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeDay, (BinanceStreamKlineData bskd) =>
-                    {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to KLine data 3 days");
-
-                    if (this._shutdown) return;
-                    await socketClient.SubscribeToBookTickerUpdatesAsync(symbol, (BinanceBookTick bbt) =>
-                    {
-                        this._binanceBookTickBuffer.Post(bbt);
-                    }).ConfigureAwait(true);
-                    this._logger.Debug($"{symbol}: Subscribed to Book Ticker");
-
+                    this._logger.Debug($"Collectors online for {symbol}");
                 }
-                catch (Exception e)
-                {
-                    this._logger.Fatal(e.Message, e);
-                }
-
-                this._logger.Debug($"Collectors online for {symbol}");
             }
         }
 

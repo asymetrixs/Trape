@@ -11,6 +11,7 @@ using trape.cli.trader.Account;
 using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Trading;
+using Trape.BinanceNet.Logger;
 
 namespace trape.cli.trader
 {
@@ -73,7 +74,7 @@ namespace trape.cli.trader
                         ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
                                                         Configuration.GetValue("binance:secretkey")),
                         LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
-                        LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new BinanceLogger(Log.Logger) },
+                        LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) },
                         AutoTimestamp = true,
                         AutoTimestampRecalculationInterval = new TimeSpan(0, 5, 0),
                         TradeRulesBehaviour = TradeRulesBehaviour.AutoComply,
@@ -86,7 +87,7 @@ namespace trape.cli.trader
                                                         Configuration.GetValue("binance:secretkey")),
                         AutoReconnect = true,
                         LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
-                        LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new BinanceLogger(Log.Logger) }
+                        LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) }
                     }));
 
                     services.AddHostedService<Engine>();

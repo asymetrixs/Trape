@@ -79,7 +79,7 @@ namespace trape.cli.trader.Cache
             this._logger = logger;
             this._binanceClient = binanceClient;
             this._binanceSocketClient = binanceSocketClient;
-            this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
+            this._cancellationTokenSource = new CancellationTokenSource();
             this._disposed = false;
             this._bestAskPrices = new ConcurrentDictionary<string, BestPrice>();
             this._bestBidPrices = new ConcurrentDictionary<string, BestPrice>();
@@ -146,6 +146,8 @@ namespace trape.cli.trader.Cache
 
         private async void _timerCurrentPrice_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
+            this._logger.Verbose("Updating current price");
+
             var database = Pool.DatabasePool.Get();
             this.CurrentPrices = await database.GetCurrentPriceAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
@@ -155,6 +157,8 @@ namespace trape.cli.trader.Cache
 
         private async void _timerTrend3Seconds_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
+            this._logger.Verbose("Updating 3 seconds trend");
+
             var database = Pool.DatabasePool.Get();
             this.Stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
@@ -164,6 +168,8 @@ namespace trape.cli.trader.Cache
 
         private async void _timerTrend15Seconds_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
+            this._logger.Verbose("Updating 15 seconds trend");
+
             var database = Pool.DatabasePool.Get();
             this.Stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
@@ -173,6 +179,8 @@ namespace trape.cli.trader.Cache
 
         private async void _timerTrend2Minutes_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
+            this._logger.Verbose("Updating 2 minutes trend");
+
             var database = Pool.DatabasePool.Get();
             this.Stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
@@ -182,6 +190,8 @@ namespace trape.cli.trader.Cache
 
         private async void _timerTrend10Minutes_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
+            this._logger.Verbose("Updating 10 minutes trend");
+
             var database = Pool.DatabasePool.Get();
             this.Stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
@@ -191,6 +201,8 @@ namespace trape.cli.trader.Cache
 
         private async void _timerTrend2Hours_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
+            this._logger.Verbose("Updating 2 hours trend");
+
             var database = Pool.DatabasePool.Get();
             this.Stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
@@ -225,6 +237,7 @@ namespace trape.cli.trader.Cache
         {
             if (!this._bestAskPrices.ContainsKey(symbol))
             {
+                this._logger.Warning($"No ask price for {symbol}");
                 return -1;
             }
             else
@@ -237,6 +250,7 @@ namespace trape.cli.trader.Cache
         {
             if (!this._bestBidPrices.ContainsKey(symbol))
             {
+                this._logger.Warning($"No bid price for {symbol}");
                 return -1;
             }
             else
@@ -251,6 +265,7 @@ namespace trape.cli.trader.Cache
 
             if(null == symbolInfo || symbolInfo.Status != SymbolStatus.Trading)
             {
+                this._logger.Warning($"No exchange info for {symbol}");
                 return null;
             }
 
@@ -278,41 +293,73 @@ namespace trape.cli.trader.Cache
 
             this._logger.Debug("Buffer preloaded");
 
-            await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.GetSymbols(), (BinanceBookTick bbt) =>
+            int i = 0;
+            var waitingSince = DateTime.UtcNow;
+            while(!this.GetSymbols().Any())
             {
-                var askPriceAdded = false;
-                var bidPriceAdded = false;
+                this._logger.Warning($"No symbols to subscribe to, waiting since {waitingSince.ToShortTimeString()} - {++i}");
+                await Task.Delay(10000).ConfigureAwait(true);
+            }
+            
+            this._logger.Information($"Symbols to subscribe to are {String.Join(',', this.GetSymbols())}, starting the subscription process");
 
-                while (!askPriceAdded)
+            var countTillHardExit = 30;
+            while (countTillHardExit > 0)
+            {
+                try
                 {
-                    if (this._bestAskPrices.ContainsKey(bbt.Symbol))
+                    await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.GetSymbols(), (BinanceBookTick bbt) =>
                     {
-                        this._bestAskPrices[bbt.Symbol].Add(bbt.BestAskPrice);
-                        askPriceAdded = true;
-                    }
-                    else
+                        var askPriceAdded = false;
+                        var bidPriceAdded = false;
+
+                        while (!askPriceAdded)
+                        {
+                            if (this._bestAskPrices.ContainsKey(bbt.Symbol))
+                            {
+                                this._bestAskPrices[bbt.Symbol].Add(bbt.BestAskPrice);
+                                askPriceAdded = true;
+                            }
+                            else
+                            {
+                                var bestAskPrice = new BestPrice(bbt.Symbol);
+                                askPriceAdded = this._bestAskPrices.TryAdd(bbt.Symbol, bestAskPrice);
+                                bestAskPrice.Add(bbt.BestAskPrice);
+                            }
+                        }
+
+                        while (!bidPriceAdded)
+                        {
+                            if (this._bestBidPrices.ContainsKey(bbt.Symbol))
+                            {
+                                this._bestBidPrices[bbt.Symbol].Add(bbt.BestBidPrice);
+                                bidPriceAdded = true;
+                            }
+                            else
+                            {
+                                var bestBidPrice = new BestPrice(bbt.Symbol);
+                                bidPriceAdded = this._bestBidPrices.TryAdd(bbt.Symbol, bestBidPrice);
+                                bestBidPrice.Add(bbt.BestBidPrice);
+                            }
+                        }
+                    }).ConfigureAwait(true);
+
+                    countTillHardExit = -1;
+                }
+                catch (Exception e)
+                {
+                    this._logger.Fatal($"Connecting to Binance failed, retrying, {31 - countTillHardExit}/30");
+                    this._logger.Fatal(e.Message, e);
+
+                    countTillHardExit--;
+
+                    if (countTillHardExit == 0)
                     {
-                        var bestAskPrice = new BestPrice(bbt.Symbol);
-                        askPriceAdded = this._bestAskPrices.TryAdd(bbt.Symbol, bestAskPrice);
-                        bestAskPrice.Add(bbt.BestAskPrice);
+                        this._logger.Fatal("Shutting down, relying on systemd to restart");
+                        Environment.Exit(1);
                     }
                 }
-
-                while (!bidPriceAdded)
-                {
-                    if (this._bestBidPrices.ContainsKey(bbt.Symbol))
-                    {
-                        this._bestBidPrices[bbt.Symbol].Add(bbt.BestBidPrice);
-                        bidPriceAdded = true;
-                    }
-                    else
-                    {
-                        var bestBidPrice = new BestPrice(bbt.Symbol);
-                        bidPriceAdded = this._bestBidPrices.TryAdd(bbt.Symbol, bestBidPrice);
-                        bestBidPrice.Add(bbt.BestBidPrice);
-                    }
-                }
-            }).ConfigureAwait(true);
+            }
 
             this._logger.Debug($"Subscribed to Book Ticker");
 

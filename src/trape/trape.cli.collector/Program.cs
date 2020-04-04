@@ -1,10 +1,15 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Binance.Net;
+using Binance.Net.Interfaces;
+using Binance.Net.Objects;
+using CryptoExchange.Net.Authentication;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using System;
 using System.Threading.Tasks;
 using trape.cli.collector.DataCollection;
 using trape.jobs;
+using Trape.BinanceNet.Logger;
 
 namespace trape.cli.collector
 {
@@ -53,6 +58,15 @@ namespace trape.cli.collector
                     services.AddSingleton<ILogger>(Log.Logger);
                     services.AddSingleton<IJobManager, JobManager>();
                     services.AddHostedService<CollectionManager>();
+
+                    services.AddSingleton<IBinanceSocketClient>(new BinanceSocketClient(new BinanceSocketClientOptions()
+                    {
+                        ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
+                                                        Configuration.GetValue("binance:secretkey")),
+                        AutoReconnect = true,
+                        LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
+                        LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) }
+                    }));
                 });
         }
     }

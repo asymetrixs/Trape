@@ -160,9 +160,7 @@ namespace trape.cli.trader.Trading
 
                     placedOrder = await binanceClient.PlaceOrderAsync(this.Symbol, OrderSide.Buy, OrderType.Market,
                         quoteOrderQuantity: availableUSDT.Value, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
-                        ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
-
-                    Console.Beep(1000, 1500);
+                        ct: this._cancellationTokenSource.Token).ConfigureAwait(true);
 
                     await database.InsertAsync(new Order()
                     {
@@ -174,7 +172,7 @@ namespace trape.cli.trader.Trading
                         NewClientOrderId = newClientOrderId,
                         OrderResponseType = OrderResponseType.Full,
                         TimeInForce = TimeInForce.ImmediateOrCancel
-                    }, this._cancellationTokenSource.Token).ConfigureAwait(false);
+                    }, this._cancellationTokenSource.Token).ConfigureAwait(true);
 
                     this._logger.Debug($"{this.Symbol}: Issued order to buy");
                 }
@@ -190,15 +188,15 @@ namespace trape.cli.trader.Trading
 
                 var assetBalance = await this._accountant.GetBalance(this.Symbol.Replace("USDT", string.Empty)).ConfigureAwait(false);
                 var bestBidPrice = this._buffer.GetBidPrice(this.Symbol);
-                // Sell 66% of the asset
+                // Sell 70% of the asset
                 var assetBalanceFree = assetBalance?.Free;
-                var assetBalanceToSell = assetBalanceFree.HasValue ? assetBalanceFree * 0.66M : null;
+                var assetBalanceToSell = assetBalanceFree.HasValue ? assetBalanceFree * 0.70M : null;
 
                 // Do not sell below buying price
                 // Select trades where we bought
                 // And where buying price is smaller than selling price
                 // And where asset is available
-                var availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy && l.Price < (bestBidPrice * 0.999M) /*0.1% less*/ && l.Quantity > l.Consumed)
+                var availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy && l.Price < (bestBidPrice * 0.999M) /*0.001% less*/ && l.Quantity > l.Consumed)
                     .Sum(l => (l.Quantity - l.Consumed));
 
                 // Sell what is maximal possible (max or what was bought for less than it will be sold), because of rounding and commission reduct 1% from availableQuantity
@@ -220,7 +218,7 @@ namespace trape.cli.trader.Trading
                 {
                     this._logger.Verbose($"Value {aimToGetUSDT} > 0: {aimToGetUSDT > 0} and higher than {exchangeInfo.MinNotionalFilter.MinNotional}: {aimToGetUSDT >= exchangeInfo.MinNotionalFilter.MinNotional}");
                 }
-                
+
                 this._logger.Verbose($"Sell X to get {aimToGetUSDT}");
 
 
@@ -235,13 +233,7 @@ namespace trape.cli.trader.Trading
 
                     placedOrder = await binanceClient.PlaceOrderAsync(this.Symbol, OrderSide.Sell, OrderType.Market,
                         quoteOrderQuantity: aimToGetUSDT.Value, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
-                        ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
-
-                    Console.Beep(1000, 500);
-                    await Task.Delay(200).ConfigureAwait(true);
-                    Console.Beep(1000, 500);
-                    await Task.Delay(200).ConfigureAwait(true);
-                    Console.Beep(1000, 500);
+                        ct: this._cancellationTokenSource.Token).ConfigureAwait(true);
 
                     await database.InsertAsync(new Order()
                     {
@@ -253,7 +245,7 @@ namespace trape.cli.trader.Trading
                         NewClientOrderId = newClientOrderId,
                         OrderResponseType = OrderResponseType.Full,
                         TimeInForce = TimeInForce.ImmediateOrCancel
-                    }, this._cancellationTokenSource.Token).ConfigureAwait(false);
+                    }, this._cancellationTokenSource.Token).ConfigureAwait(true);
 
                     this._logger.Debug($"{this.Symbol}: Issued order to sell");
                 }
@@ -269,7 +261,7 @@ namespace trape.cli.trader.Trading
                 // Check if order is OK and log
                 if (placedOrder.ResponseStatusCode != System.Net.HttpStatusCode.OK || !placedOrder.Success)
                 {
-                    this._logger.Error($"Order {newClientOrderId} was malformed.");
+                    this._logger.Error($"Order {newClientOrderId} was malformed");
                     this._logger.Error(placedOrder.Error?.Code.ToString());
                     this._logger.Error(placedOrder.Error?.Message);
                     this._logger.Error(placedOrder.Error?.Data?.ToString());
@@ -277,6 +269,31 @@ namespace trape.cli.trader.Trading
                 else
                 {
                     await database.InsertAsync(placedOrder.Data, this._cancellationTokenSource.Token).ConfigureAwait(false);
+
+                    try
+                    {
+                        if (placedOrder.Data.Side == OrderSide.Sell)
+                        {
+                            Console.Beep(1000, 500);
+                            await Task.Delay(200).ConfigureAwait(true);
+                            Console.Beep(1000, 500);
+                            await Task.Delay(200).ConfigureAwait(true);
+                            Console.Beep(1000, 500);
+                        }
+                        else
+                        {
+                            Console.Beep(1000, 1500);
+                        }
+                    }
+                    catch (PlatformNotSupportedException)
+                    {
+                        // nothing
+                    }
+                    catch (ArgumentOutOfRangeException aofre)
+                    {
+                        this._logger.Error(aofre.Message, aofre);
+                        throw;
+                    }
                 }
             }
 
@@ -296,11 +313,11 @@ namespace trape.cli.trader.Trading
         {
             if (this._timerTrading.Enabled)
             {
-                this._logger.Warning($"Trader for {this.Symbol} is already active.");
+                this._logger.Warning($"Trader for {this.Symbol} is already active");
                 return;
             }
 
-            this._logger.Information("Starting Trader");
+            this._logger.Information($"Starting Trader for {this.Symbol}");
 
             if (this._buffer.GetSymbols().Contains(symbolToTrade))
             {
@@ -309,18 +326,18 @@ namespace trape.cli.trader.Trading
 
             this._timerTrading.Start();
 
-            this._logger.Information("Trader started");
+            this._logger.Information($"Trader for {this.Symbol} started");
         }
 
         public async Task Stop()
         {
             if (!this._timerTrading.Enabled)
             {
-                this._logger.Warning("Trader for {this.Symbol} is not active.");
+                this._logger.Warning($"Trader for {this.Symbol} is not active");
                 return;
             }
 
-            this._logger.Information("Stopping Trader");
+            this._logger.Information($"Stopping Trader for {this.Symbol}");
 
             this._timerTrading.Stop();
 
@@ -329,7 +346,7 @@ namespace trape.cli.trader.Trading
 
             this._cancellationTokenSource.Cancel();
 
-            this._logger.Information("Trader stopped");
+            this._logger.Information($"Trader for {this.Symbol} stopped");
         }
 
         #endregion

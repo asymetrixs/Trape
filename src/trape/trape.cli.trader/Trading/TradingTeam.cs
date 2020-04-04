@@ -43,7 +43,6 @@ namespace trape.cli.trader.Trading
             this._timerSymbolCheck.Elapsed += _timerSymbolCheck_Elapsed;
         }
 
-
         #endregion
 
         #region Timer Elapsed
@@ -56,9 +55,10 @@ namespace trape.cli.trader.Trading
 
             var obsoleteTraders = this._team.Where(t => !availableSymbols.Contains(t.Symbol));
 
+            // Remove obsolete traders
             foreach (var obsoleteTrader in obsoleteTraders)
             {
-                this._logger.Verbose($"Removing {obsoleteTrader.Symbol} from the trading team");
+                this._logger.Information($"Removing {obsoleteTrader.Symbol} from the trading team");
 
                 this._team.Remove(obsoleteTrader);
                 await obsoleteTrader.Stop().ConfigureAwait(true);
@@ -68,9 +68,16 @@ namespace trape.cli.trader.Trading
             var tradedSymbols = this._team.Select(t => t.Symbol);
             var missingSymbols = this._buffer.GetSymbols().Where(b => !tradedSymbols.Contains(b));
 
+            // Add new traders
             foreach (var missingSymbol in missingSymbols)
             {
-                this._startTrading(missingSymbol);
+                var trader = Program.Services.GetService(typeof(ITrader)) as ITrader;
+
+                this._logger.Information($"Adding {missingSymbol} to the trading team.");
+
+                this._team.Add(trader);
+
+                trader.Start(missingSymbol);
             }
         }
 
@@ -82,20 +89,13 @@ namespace trape.cli.trader.Trading
         {
             this._logger.Information("Starting trading team");
 
+            // Call once manually to set up the traders
+            _timerSymbolCheck_Elapsed(null, null);
+
+            // Start timer for regular checks
             this._timerSymbolCheck.Start();
 
             this._logger.Information("Trading team started");
-        }
-
-        private void _startTrading(string symbol)
-        {
-            var trader = Program.Services.GetService(typeof(ITrader)) as ITrader;
-
-            this._logger.Verbose($"Adding {symbol} to the trading team.");
-
-            this._team.Add(trader);
-
-            trader.Start(symbol);
         }
 
         public async Task Stop()
@@ -106,7 +106,7 @@ namespace trape.cli.trader.Trading
 
             foreach (var trader in this._team)
             {
-                await trader.Stop().ConfigureAwait(false);
+                await trader.Stop().ConfigureAwait(true);
             }
 
             this._logger.Information("Trading team stopped");
