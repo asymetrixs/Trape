@@ -178,7 +178,7 @@ namespace trape.cli.trader.Trading
                 }
                 else
                 {
-                    this._logger.Debug($"{this.Symbol}: Skipping ,final conditions not met");
+                    this._logger.Debug($"{this.Symbol}: Skipping, final conditions not met");
                 }
             }
             // Sell
@@ -251,7 +251,7 @@ namespace trape.cli.trader.Trading
                 }
                 else
                 {
-                    this._logger.Debug($"{this.Symbol}: Skipping ,final conditions not met");
+                    this._logger.Debug($"{this.Symbol}: Skipping, final conditions not met");
                 }
             }
 
