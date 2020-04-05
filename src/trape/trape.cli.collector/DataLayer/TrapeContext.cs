@@ -30,7 +30,7 @@ namespace trape.cli.collector.DataLayer
             }
 
             this._logger = logger.ForContext<TrapeContext>();
-            this._connectionString = Configuration.GetConnectionString("CoinTradeDB");
+            this._connectionString = Config.GetConnectionString("CoinTradeDB");
             this._disposed = false;
         }
 
@@ -86,9 +86,6 @@ namespace trape.cli.collector.DataLayer
                         {
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -144,9 +141,6 @@ namespace trape.cli.collector.DataLayer
                         {
                             this._logger.Fatal(ex.Message, ex);                            
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -191,9 +185,6 @@ namespace trape.cli.collector.DataLayer
                         {
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -227,9 +218,6 @@ namespace trape.cli.collector.DataLayer
                         {
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {

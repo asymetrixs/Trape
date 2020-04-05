@@ -7,6 +7,6 @@ namespace trape.cli.trader.Trading
     {
         void Start();
 
-        Task Stop();
+        Task Finish();
     }
 }

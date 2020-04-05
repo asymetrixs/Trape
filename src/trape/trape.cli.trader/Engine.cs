@@ -67,13 +67,13 @@ namespace trape.cli.trader
         {
             this._logger.Information("Engine is stopping");
 
-            await this._tradingTeam.Stop().ConfigureAwait(true);
+            await this._tradingTeam.Finish().ConfigureAwait(true);
 
-            await this._accountant.Stop().ConfigureAwait(true);
+            await this._accountant.Finish().ConfigureAwait(true);
 
-            this._recommender.Stop();
+            this._recommender.Finish();
 
-            this._buffer.Stop();
+            this._buffer.Finish();
 
             this._logger.Information("Engine is stopped");
         }
@@ -85,7 +85,7 @@ namespace trape.cli.trader
         /// <summary>
         /// Public implementation of Dispose pattern callable by consumers.
         /// </summary>
-        public void Dispose()
+        public override void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);

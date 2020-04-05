@@ -22,7 +22,7 @@ namespace trape.cli.trader.Cache
 
         Task Start();
 
-        void Stop();
+        void Finish();
 
         IEnumerable<string> GetSymbols();
 

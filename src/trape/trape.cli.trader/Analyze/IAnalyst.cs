@@ -8,6 +8,6 @@ namespace trape.cli.trader.Analyze
 
         void Start();
 
-        void Stop();
+        void Finish();
     }
 }

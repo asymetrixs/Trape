@@ -377,7 +377,7 @@ namespace trape.cli.trader.Cache
             this._logger.Information("Buffer started");
         }
 
-        public void Stop()
+        public void Finish()
         {
             this._logger.Information("Stopping buffer");
 

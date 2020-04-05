@@ -119,7 +119,7 @@ namespace trape.cli.collector.DataCollection
             {
                 this._logger.Information("Setting up Collection Manager");
 
-                var symbols = Configuration.GetValue("binance:symbols").Split(';', ',');
+                var symbols = Config.GetValue("binance:symbols").Split(';', ',');
 
                 await this._setupClients(symbols).ConfigureAwait(true);
 

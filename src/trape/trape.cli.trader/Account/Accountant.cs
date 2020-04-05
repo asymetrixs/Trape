@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Analyze;
+using trape.cli.trader.Cache;
 
 namespace trape.cli.trader.Account
 {
@@ -16,6 +17,8 @@ namespace trape.cli.trader.Account
         #region Fields
 
         private bool _disposed;
+
+        private IBuffer _buffer;
 
         private System.Timers.Timer _timerSynchronizeAccountInfo;
 
@@ -41,9 +44,9 @@ namespace trape.cli.trader.Account
 
         #region Constructor
 
-        public Accountant(ILogger logger, IAnalyst recommender, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
+        public Accountant(ILogger logger, IAnalyst recommender, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient, IBuffer buffer)
         {
-            if (null == logger || null == recommender || null == binanceClient || null == binanceSocketClient)
+            if (logger == null || recommender == null || binanceClient == null || binanceSocketClient == null || buffer == null)
             {
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
@@ -53,6 +56,7 @@ namespace trape.cli.trader.Account
             this._recommender = recommender;
             this._binanceClient = binanceClient;
             this._binanceSocketClient = binanceSocketClient;
+            this._buffer = buffer;
 
             #region Timer Setup
 
@@ -119,15 +123,23 @@ namespace trape.cli.trader.Account
 
         #endregion
 
+        #region Methods
 
         /// <summary>
-        /// 
+        /// Returns the balance of an asset
         /// </summary>
         /// <param name="asset"></param>
         /// <returns>Returns the balance or null if no balance available for the asset</returns>
         public async Task<BinanceBalance> GetBalance(string asset)
         {
             // Take reference to original instance in case _binanceAccountInfo is updated
+            var bac = await this.GetAccountInfo().ConfigureAwait(true);
+
+            return bac?.Balances.SingleOrDefault(b => b.Asset == asset);
+        }
+
+        public async Task<BinanceAccountInfo> GetAccountInfo()
+        {
             var bac = this._binanceAccountInfo;
 
             if (null == bac || this._binanceAccountInfo.UpdateTime < DateTime.UtcNow.AddSeconds(-3))
@@ -136,7 +148,7 @@ namespace trape.cli.trader.Account
 
                 if (accountInfoRequest.Success)
                 {
-                    bac = accountInfoRequest.Data;
+                    this._binanceAccountInfo = accountInfoRequest.Data;
 
                     this._logger.Debug($"Requested account info");
                 }
@@ -148,8 +160,10 @@ namespace trape.cli.trader.Account
                 }
             }
 
-            return bac?.Balances.SingleOrDefault(b => b.Asset == asset);
+            return this._binanceAccountInfo;
         }
+
+        #endregion
 
         #region Start / Stop
 
@@ -227,7 +241,7 @@ namespace trape.cli.trader.Account
             this._logger.Verbose("Received Binance Stream Balance Update");
         }
 
-        public async Task Stop()
+        public async Task Finish()
         {
             this._logger.Verbose("Stopping accountant");
 

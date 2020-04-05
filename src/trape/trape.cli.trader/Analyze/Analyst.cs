@@ -172,7 +172,7 @@ namespace trape.cli.trader.Analyze
             this._logger.Information("Recommender started");
         }
 
-        public void Stop()
+        public void Finish()
         {
             this._timerRecommender.Stop();
 

@@ -19,7 +19,7 @@ namespace trape.cli.collector
 
         static async Task Main(string[] args)
         {
-            Configuration.SetUp();
+            Config.SetUp();
 
             var app = CreateHostBuilder(args).Build();
             Services = app.Services;
@@ -47,7 +47,7 @@ namespace trape.cli.collector
         public static IHostBuilder CreateHostBuilder(string[] args)
         {
             Log.Logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(Configuration.Config).CreateLogger();
+                .ReadFrom.Configuration(Config.Current).CreateLogger();
 
             return Host.CreateDefaultBuilder(args)
                 .ConfigureLogging(configure => configure.AddSerilog())
@@ -60,8 +60,8 @@ namespace trape.cli.collector
 
                     services.AddSingleton<IBinanceSocketClient>(new BinanceSocketClient(new BinanceSocketClientOptions()
                     {
-                        ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
-                                                        Configuration.GetValue("binance:secretkey")),
+                        ApiCredentials = new ApiCredentials(Config.GetValue("binance:apikey"),
+                                                        Config.GetValue("binance:secretkey")),
                         AutoReconnect = true,
                         LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
                         LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) }

@@ -15,7 +15,7 @@ namespace trape.cli.trader.Trading
 
         private readonly ILogger _logger;
 
-        private List<ITrader> _team;
+        private List<IBroker> _team;
 
         private readonly IBuffer _buffer;
 
@@ -34,7 +34,7 @@ namespace trape.cli.trader.Trading
 
             this._logger = logger.ForContext<TradingTeam>();
             this._buffer = buffer;
-            this._team = new List<ITrader>();
+            this._team = new List<IBroker>();
             this._timerSymbolCheck = new System.Timers.Timer()
             {
                 Interval = new TimeSpan(0, 0, 5).TotalMilliseconds,
@@ -61,7 +61,7 @@ namespace trape.cli.trader.Trading
                 this._logger.Information($"Removing {obsoleteTrader.Symbol} from the trading team");
 
                 this._team.Remove(obsoleteTrader);
-                await obsoleteTrader.Stop().ConfigureAwait(true);
+                await obsoleteTrader.Finish().ConfigureAwait(true);
                 obsoleteTrader.Dispose();
             }
 
@@ -71,7 +71,7 @@ namespace trape.cli.trader.Trading
             // Add new traders
             foreach (var missingSymbol in missingSymbols)
             {
-                var trader = Program.Services.GetService(typeof(ITrader)) as ITrader;
+                var trader = Program.Services.GetService(typeof(IBroker)) as IBroker;
 
                 this._logger.Information($"Adding {missingSymbol} to the trading team.");
 
@@ -98,7 +98,7 @@ namespace trape.cli.trader.Trading
             this._logger.Information("Trading team started");
         }
 
-        public async Task Stop()
+        public async Task Finish()
         {
             this._logger.Information("Stopping trading team");
 
@@ -106,7 +106,7 @@ namespace trape.cli.trader.Trading
 
             foreach (var trader in this._team)
             {
-                await trader.Stop().ConfigureAwait(true);
+                await trader.Finish().ConfigureAwait(true);
             }
 
             this._logger.Information("Trading team stopped");

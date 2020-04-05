@@ -6,10 +6,14 @@ namespace trape.cli.trader.Account
 {
     public interface IAccountant : IDisposable
     {
+        #region Methods
+
         Task Start();
 
-        Task Stop();
+        Task Finish();
 
         Task<BinanceBalance> GetBalance(string symbol);
+
+        #endregion
     }
 }

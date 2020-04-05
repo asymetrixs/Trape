@@ -22,7 +22,7 @@ namespace trape.cli.trader
 
         static async Task Main(string[] args)
         {
-            Configuration.SetUp();
+            Config.SetUp();
 
             var app = CreateHostBuilder(args).Build();
             Services = app.Services;
@@ -55,7 +55,7 @@ namespace trape.cli.trader
         public static IHostBuilder CreateHostBuilder(string[] args)
         {
             Log.Logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(Configuration.Config).CreateLogger();
+                .ReadFrom.Configuration(Config.Current).CreateLogger();
 
             return Host.CreateDefaultBuilder(args)
                 .ConfigureLogging(configure => configure.AddSerilog())
@@ -65,14 +65,14 @@ namespace trape.cli.trader
                     services.AddSingleton(Log.Logger);
                     services.AddSingleton<IBuffer, Cache.Buffer>();
                     services.AddSingleton<IAnalyst, Analyst>();
-                    services.AddTransient<ITrader, Trader>();
+                    services.AddTransient<IBroker, Broker>();
                     services.AddSingleton<ITradingTeam, TradingTeam>();
                     services.AddSingleton<IAccountant, Accountant>();
 
                     services.AddSingleton<IBinanceClient>(new BinanceClient(new BinanceClientOptions()
                     {
-                        ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
-                                                        Configuration.GetValue("binance:secretkey")),
+                        ApiCredentials = new ApiCredentials(Config.GetValue("binance:apikey"),
+                                                        Config.GetValue("binance:secretkey")),
                         LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
                         LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) },
                         AutoTimestamp = true,
@@ -83,8 +83,8 @@ namespace trape.cli.trader
 
                     services.AddSingleton<IBinanceSocketClient>(new BinanceSocketClient(new BinanceSocketClientOptions()
                     {
-                        ApiCredentials = new ApiCredentials(Configuration.GetValue("binance:apikey"),
-                                                        Configuration.GetValue("binance:secretkey")),
+                        ApiCredentials = new ApiCredentials(Config.GetValue("binance:apikey"),
+                                                        Config.GetValue("binance:secretkey")),
                         AutoReconnect = true,
                         LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
                         LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) }

@@ -34,7 +34,7 @@ namespace trape.cli.trader.DataLayer
             }
 
             this._logger = logger.ForContext<TrapeContext>();
-            this._connectionString = Configuration.GetConnectionString("CoinTradeDB");
+            this._connectionString = Config.GetConnectionString("CoinTradeDB");
         }
 
 
@@ -121,9 +121,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -198,9 +195,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -274,9 +268,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -350,9 +341,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -426,9 +414,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -502,9 +487,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -554,9 +536,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -626,9 +605,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -691,9 +667,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -747,9 +720,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -850,9 +820,6 @@ namespace trape.cli.trader.DataLayer
                                 this._logger.Fatal($"Problem in {com.CommandText}");
                                 this._logger.Fatal(ex.Message, ex);
                             }
-#if DEBUG
-                            throw;
-#endif
                         }
                         finally
                         {
@@ -933,9 +900,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -992,9 +956,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
@@ -1144,9 +1105,6 @@ namespace trape.cli.trader.DataLayer
                                 this._logger.Fatal($"Problem in {com.CommandText}");
                                 this._logger.Fatal(ex.Message, ex);
                             }
-#if DEBUG
-                            throw;
-#endif
                         }
                         finally
                         {
@@ -1205,9 +1163,6 @@ namespace trape.cli.trader.DataLayer
                             this._logger.Fatal($"Problem in {com.CommandText}");
                             this._logger.Fatal(ex.Message, ex);
                         }
-#if DEBUG
-                        throw;
-#endif
                     }
                     finally
                     {
