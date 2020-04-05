@@ -29,7 +29,7 @@ namespace trape.cli.collector.DataLayer
                 throw new ArgumentNullException("Paramter cannot be NULL");
             }
 
-            this._logger = logger;
+            this._logger = logger.ForContext<TrapeContext>();
             this._connectionString = Configuration.GetConnectionString("CoinTradeDB");
             this._disposed = false;
         }

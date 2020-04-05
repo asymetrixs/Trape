@@ -1177,7 +1177,6 @@ LANGUAGE plpgsql VOLATILE STRICT;
 
 
 
-
 DROP TRIGGER tr_update_traded_quantity ON binance_order_trade;
 DROP FUNCTION update_traded_quantity;
 CREATE OR REPLACE FUNCTION update_traded_quantity ()
@@ -1209,44 +1208,11 @@ BEGIN
 						WHERE bpo.side = 'Buy'
 							AND bot.consumed < bot.quantity
 							AND bot.price <= NEW.price
-						ORDER BY bot.price DESC
+						ORDER BY bot.price DESC FOR UPDATE OF bpo
 		LOOP
 			IF (i_quantity > 0) THEN
 				i_free_quantity := i_trade.quantity - i_trade.consumed;
 
-				IF (i_quantity > i_free_quantity) THEN
-					i_quantity := i_quantity - i_free_quantity;
-					i_consume_quantity := i_free_quantity;
-				ELSE
-					i_consume_quantity := i_quantity;
-					i_quantity := 0;
-				END IF;
-				
-				i_new_consumed_total := i_trade.consumed + i_consume_quantity;
-				i_part_consumed := i_trade.consumed / i_new_consumed_total;
-				i_part_consume := i_consume_quantity / i_new_consumed_total;				
-				i_new_consumed_price := i_part_consumed * i_trade.price + i_part_consume * i_price;
-				
-				UPDATE binance_order_trade
-					SET consumed = i_new_consumed_total, consumed_price = i_new_consumed_price
-					WHERE binance_order_trade.id = i_trade.id;
-				
-			END IF;
-		END LOOP;
-
-	ELSE
-	
-		FOR i_trade IN SELECT bot.* FROM binance_placed_order bpo
-						INNER JOIN binance_order_trade bot ON bot.binance_placed_order_id = bpo.id
-						WHERE bpo.side = 'Sell' 
-							AND bot.consumed < bot.quantity
-							AND bot.price >= NEW.price
-						ORDER BY bot.price DESC
-		LOOP
-			
-			IF (i_quantity > 0) THEN
-				i_free_quantity := i_trade.quantity - i_trade.consumed;
-				
 				IF (i_quantity > i_free_quantity) THEN
 					i_quantity := i_quantity - i_free_quantity;
 					i_consume_quantity := i_free_quantity;
@@ -1281,27 +1247,50 @@ CREATE TRIGGER tr_update_traded_quantity
 
 
 
-CREATE OR REPLACE FUNCTION select_asset_status()
-RETURNS TABLE (r_symbol TEXT, r_bought NUMERIC, r_sold NUMERIC, r_remaining NUMERIC)
-AS
-$$
+
+CREATE OR REPLACE FUNCTION select_asset_status(
+	)
+    RETURNS TABLE(r_symbol text, r_bought numeric, r_sold numeric, r_remaining numeric) 
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    VOLATILE STRICT 
+    ROWS 1000
+    
+AS $BODY$
 BEGIN
-	RETURN QUERY SELECT sell.symbol, buy.quantity as bought, sell.quantity as sold, (buy.quantity-sell.quantity) as remains FROM
+	RETURN QUERY SELECT buy.symbol, buy.quantity as bought, buy.consumed as sold, (buy.quantity - buy.consumed - buy.commission) as remains FROM
 	(
-		SELECT  bpo.symbol, bpo.side, SUM(quantity) quantity, SUM(consumed) consumed, SUM(quantity-consumed) remaining FROM binance_order_trade bot
-		LEFT JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
-		WHERE consumed != quantity AND side = 'Sell'
-		GROUP BY bpo.symbol, bpo.side
-		ORDER BY bpo.symbol
-	) sell,
-	(
-		SELECT  bpo.symbol, bpo.side, SUM(quantity) quantity, SUM(consumed) consumed, SUM(quantity-consumed) remaining FROM binance_order_trade bot
+		SELECT bpo.symbol, bpo.side, SUM(quantity) quantity, SUM(consumed) consumed, SUM(quantity-consumed) remaining,
+				SUM(CASE WHEN commission_asset = REPLACE(bpo.symbol, 'USDT', '') THEN commission ELSE 0 END) AS commission FROM binance_order_trade bot
 			LEFT JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
 			WHERE consumed != quantity AND side = 'Buy'
 			GROUP BY bpo.symbol, bpo.side
 			ORDER BY bpo.symbol
-	) buy
-	WHERE sell.symbol = buy.symbol;
+	) buy;
+END;
+$BODY$;
+
+ALTER FUNCTION select_asset_status()
+    OWNER TO trape;
+
+CREATE OR REPLACE FUNCTION fix_symbol_quantity (p_symbol TEXT, p_quantity NUMERIC, p_price NUMERIC)
+RETURNS VOID AS
+$$
+	DECLARE i_id BIGINT;
+BEGIN
+	UPDATE binance_order_trade SET consumed = quantity WHERE binance_placed_order_id IN 
+		(SELECT id FROM binance_placed_order WHERE symbol = p_symbol);
+		
+	INSERT INTO binance_placed_order (side, type, time_in_force, status, original_quote_order_quantity, 
+									 cumulative_quote_quantity, executed_quantity, original_quantity,
+									 price, order_id, symbol, transaction_time, original_client_order_id,
+									 client_order_id)
+						 VALUES ('Buy', 'Market', 'GoodTillCancel', 'Filled', 0, 0, 0, 0, 0,
+									0, p_symbol, now(), 0, 'fix') RETURNING id INTO i_id;
+									
+	INSERT INTO binance_order_trade (binance_placed_order_id, trade_id, price, quantity, commission, commission_asset)
+		VALUES (i_id, -1, p_price, p_quantity, 0, 'BNB');
 END;
 $$
-LANGUAGE plpgsql STRICT;
+LANGUAGE plpgsql VOLATILE STRICT;

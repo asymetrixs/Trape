@@ -37,7 +37,7 @@ namespace trape.cli.trader
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
-            this._logger = logger;
+            this._logger = logger.ForContext<Engine>();
             this._buffer = buffer;
             this._recommender = recommender;
             this._tradingTeam = tradingTeam;

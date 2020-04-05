@@ -48,7 +48,7 @@ namespace trape.cli.trader.Account
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
-            this._logger = logger;
+            this._logger = logger.ForContext<Accountant>();
             this._cancellationTokenSource = new CancellationTokenSource();
             this._recommender = recommender;
             this._binanceClient = binanceClient;

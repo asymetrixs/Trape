@@ -15,7 +15,7 @@ namespace trape.cli.collector.DataLayer
     {
         public async Task Execute(CancellationToken cancellationToken)
         {
-            var logger = Program.Services.GetRequiredService<ILogger>();
+            var logger = Program.Services.GetRequiredService<ILogger>().ForContext<CleanUp>();
             var database = Pool.DatabasePool.Get();
             var deletedRows = await database.CleanUpBookTicks(cancellationToken).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);

@@ -47,7 +47,7 @@ namespace trape.cli.collector.DataCollection
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
-            this._logger = logger;
+            this._logger = logger.ForContext<CollectionManager>();
             this._binanceSocketClient = binanceSocketClient;
             this._disposed = false;
             this._cancellationTokenSource = new CancellationTokenSource();

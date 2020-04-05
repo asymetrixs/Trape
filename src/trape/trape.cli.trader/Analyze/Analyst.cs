@@ -35,7 +35,7 @@ namespace trape.cli.trader.Analyze
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
-            this._logger = logger;
+            this._logger = logger.ForContext<Analyst>();
             this._buffer = buffer;
             this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
             this._lastRecommendation = new Dictionary<string, Recommendation>();

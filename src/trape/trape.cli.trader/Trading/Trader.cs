@@ -48,7 +48,7 @@ namespace trape.cli.trader.Trading
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
-            this._logger = logger;
+            this._logger = logger.ForContext<Trader>();
             this._accountant = accountant;
             this._recommender = recommender;
             this._buffer = buffer;
@@ -136,7 +136,7 @@ namespace trape.cli.trader.Trading
                 // Get ask price
                 var bestAskPrice = this._buffer.GetAskPrice(this.Symbol);
 
-                this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestAskPrice:{bestAskPrice};availableAmount:{availableUSDT}");
+                this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestAskPrice:{Math.Round(bestAskPrice, exchangeInfo.BaseAssetPrecision)};availableAmount:{availableUSDT}");
                 this._logger.Verbose($"{this.Symbol} Buy : Checking conditions");
                 this._logger.Verbose($"{this.Symbol} Buy : lastOrder is null: {null == lastOrder}");
                 this._logger.Verbose($"{this.Symbol} Buy : lastOrder side: {lastOrder?.Side.ToString()}");
@@ -207,7 +207,7 @@ namespace trape.cli.trader.Trading
                 // Round to a valid value
                 aimToGetUSDT = Math.Round(aimToGetUSDT.Value, exchangeInfo.BaseAssetPrecision, MidpointRounding.ToZero);
 
-                this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestBidPrice:{bestBidPrice};assetBalanceForSale:{assetBalanceFree};sellQuoteOrderQuantity:{assetBalanceToSell};sellToGetUSDT:{aimToGetUSDT}");
+                this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestBidPrice:{Math.Round(bestBidPrice,exchangeInfo.BaseAssetPrecision)};assetBalanceForSale:{assetBalanceFree};sellQuoteOrderQuantity:{assetBalanceToSell};sellToGetUSDT:{aimToGetUSDT}");
                 this._logger.Verbose($"{this.Symbol} Sell: Checking conditions");
                 this._logger.Verbose($"{this.Symbol} Sell: lastOrder is null: {null == lastOrder}");
                 this._logger.Verbose($"{this.Symbol} Sell: lastOrder side: {lastOrder?.Side.ToString()}");
@@ -313,20 +313,24 @@ namespace trape.cli.trader.Trading
         {
             if (this._timerTrading.Enabled)
             {
-                this._logger.Warning($"Trader for {this.Symbol} is already active");
+                this._logger.Warning($"Trader for {symbolToTrade} is already active");
                 return;
             }
 
-            this._logger.Information($"Starting Trader for {this.Symbol}");
+            this._logger.Information($"Starting Trader for {symbolToTrade}");
 
             if (this._buffer.GetSymbols().Contains(symbolToTrade))
             {
                 this.Symbol = symbolToTrade;
+
+                this._timerTrading.Start();
+
+                this._logger.Information($"Trader for {this.Symbol} started");
             }
-
-            this._timerTrading.Start();
-
-            this._logger.Information($"Trader for {this.Symbol} started");
+            else
+            {
+                this._logger.Error($"Trader for {symbolToTrade} cannot be started, symbol does not exist");
+            }
         }
 
         public async Task Stop()

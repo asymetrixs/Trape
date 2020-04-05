@@ -32,7 +32,7 @@ namespace trape.cli.trader.Trading
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
-            this._logger = logger;
+            this._logger = logger.ForContext<TradingTeam>();
             this._buffer = buffer;
             this._team = new List<ITrader>();
             this._timerSymbolCheck = new System.Timers.Timer()

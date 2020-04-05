@@ -24,6 +24,7 @@ namespace Trape.BinanceNet.Logger
 
         #endregion
 
+        #region Methods
 
         public override Encoding Encoding => System.Text.Encoding.UTF8;
 
@@ -74,5 +75,7 @@ namespace Trape.BinanceNet.Logger
                 this._logger.Fatal($"{prefix}: Failed to log message: {value}");
             }
         }
+
+        #endregion
     }
 }

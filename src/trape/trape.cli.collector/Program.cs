@@ -23,8 +23,7 @@ namespace trape.cli.collector
 
             var app = CreateHostBuilder(args).Build();
             Services = app.Services;
-            var logger = Services.GetRequiredService<ILogger>();
-
+            var logger = Services.GetRequiredService<ILogger>().ForContext<Program>();            
             logger.Information("Start up complete");
 
             try

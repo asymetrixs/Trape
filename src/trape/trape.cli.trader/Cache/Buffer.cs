@@ -76,7 +76,7 @@ namespace trape.cli.trader.Cache
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
-            this._logger = logger;
+            this._logger = logger.ForContext<Buffer>();
             this._binanceClient = binanceClient;
             this._binanceSocketClient = binanceSocketClient;
             this._cancellationTokenSource = new CancellationTokenSource();

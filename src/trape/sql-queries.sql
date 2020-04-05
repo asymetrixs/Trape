@@ -12,26 +12,8 @@ select * from binance_placed_order
 
 SELECT max(id) from binance_placed_order
 
-UPDATE binance_order_trade SET consumed = quantity;
-INSERT INTO binance_placed_order (side, type, time_in_force, status, original_quote_order_quantity, 
-								 cumulative_quote_quantity, executed_quantity, original_quantity,
-								 price, order_id, symbol, transaction_time, original_client_order_id,
-								 client_order_id)
-					 VALUES ('Buy', 'Market', 'GoodTillCancel', 'Filled', 0, 0, 0, 0, 0,
-								0, 'ETHUSDT', now(), 0, 'fix') RETURNING id;
-INSERT INTO binance_order_trade (binance_placed_order_id, trade_id, price, quantity, commission, commission_asset)
-	VALUES (131, -1, 141, 3.05525728, 0, 'BNB');
-	
-INSERT INTO binance_placed_order (side, type, time_in_force, status, original_quote_order_quantity, 
-								 cumulative_quote_quantity, executed_quantity, original_quantity,
-								 price, order_id, symbol, transaction_time, original_client_order_id,
-								 client_order_id)
-					 VALUES ('Buy', 'Market', 'GoodTillCancel', 'Filled', 0, 0, 0, 0, 0,
-								0, 'BTCUSDT', now(), 0, 'fix') RETURNING id;
-INSERT INTO binance_order_trade (binance_placed_order_id, trade_id, price, quantity, commission, commission_asset)
-	VALUES (132, -1, 6750, 0.10656686, 0, 'BNB');
 
-update binance_order_trade set quantity = 0.13755765 where binance_placed_order_id = 132;
 
-UPDATE binance_order_trade SET consumed = quantity WHERE binance_placed_order_id < 131
+SELECT * FROM fix_symbol_quantity('ETHUSDT', 7.92182856, 141.44);
+
 select * from select_asset_status()
