@@ -17,17 +17,25 @@ namespace trape.cli.collector
     {
         public static IServiceProvider Services { get; private set; }
 
+        /// <summary>
+        /// Main starting point
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
         static async Task Main(string[] args)
         {
+            // Setup configuration
             Config.SetUp();
 
-            var app = CreateHostBuilder(args).Build();
+            // Setup IoC container
+            var app = CreateHostBuilder().Build();
             Services = app.Services;
             var logger = Services.GetRequiredService<ILogger>().ForContext<Program>();            
             logger.Information("Start up complete");
 
             try
             {
+                // Run App
                 await app.RunAsync().ConfigureAwait(false);
             }
             catch(OperationCanceledException)
@@ -44,12 +52,18 @@ namespace trape.cli.collector
             logger.Information("Shut down complete");
         }
 
-        public static IHostBuilder CreateHostBuilder(string[] args)
+        /// <summary>
+        /// Creates the IoC container
+        /// </summary>
+        /// <returns></returns>
+        public static IHostBuilder CreateHostBuilder()
         {
+            // Configure Logger
             Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(Config.Current).CreateLogger();
 
-            return Host.CreateDefaultBuilder(args)
+            // Register classes/interfaces in IoC
+            return Host.CreateDefaultBuilder()
                 .ConfigureLogging(configure => configure.AddSerilog())
                 .UseSystemd()
                 .ConfigureServices((hostContext, services) =>

@@ -2,7 +2,9 @@
 using Binance.Net.Objects;
 using CryptoExchange.Net.Objects;
 using Serilog;
+using Serilog.Context;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,48 +15,95 @@ using trape.cli.trader.DataLayer.Models;
 
 namespace trape.cli.trader.Trading
 {
+    /// <summary>
+    /// Does the actual trading taking into account the <c>Recommendation</c> of the <c>Analyst</c> and previous trades
+    /// </summary>
     public class Broker : IBroker
     {
         #region Fields
 
+        /// <summary>
+        /// Disposed
+        /// </summary>
         private bool _disposed;
 
+        /// <summary>
+        /// Logger
+        /// </summary>
         private readonly ILogger _logger;
 
+        /// <summary>
+        /// Accountant
+        /// </summary>
         private IAccountant _accountant;
 
-        private IAnalyst _recommender;
+        /// <summary>
+        /// Analyst
+        /// </summary>
+        private IAnalyst _analyst;
 
+        /// <summary>
+        /// Buffer
+        /// </summary>
         private IBuffer _buffer;
 
+        /// <summary>
+        /// Timer to check if sell/buy is recommended
+        /// </summary>
         private System.Timers.Timer _timerTrading;
 
+        /// <summary>
+        /// Minimum required increase
+        /// </summary>
         private const decimal minIncreaseRequired = 1.002M;
 
+        /// <summary>
+        /// Minimum required decrease
+        /// </summary>
         private const decimal minDecreaseRequired = 0.998M;
 
+        /// <summary>
+        /// Symbol
+        /// </summary>
         public string Symbol { get; private set; }
 
+        /// <summary>
+        /// Cancellation Token Source
+        /// </summary>
         private CancellationTokenSource _cancellationTokenSource;
+
+        /// <summary>
+        /// Records last strongs to not execute a strong <c>Recommendation</c> one after the other without a break inbetween
+        /// </summary>
+        private Dictionary<Analyze.Action, DateTime> _lastRecommendation;
 
         #endregion
 
         #region Constructor
 
-        public Broker(ILogger logger, IAccountant accountant, IAnalyst recommender, IBuffer buffer)
+        /// <summary>
+        /// Initializes a new instance of the <c>Broker</c> class.
+        /// </summary>
+        /// <param name="logger">Logger</param>
+        /// <param name="accountant">Accountant</param>
+        /// <param name="analyst">Analyst</param>
+        /// <param name="buffer">Buffer</param>
+        public Broker(ILogger logger, IAccountant accountant, IAnalyst analyst, IBuffer buffer)
         {
-            if (null == logger || null == accountant || null == recommender || null == buffer)
+            if (null == logger || null == accountant || null == analyst || null == buffer)
             {
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
             this._logger = logger.ForContext<Broker>();
             this._accountant = accountant;
-            this._recommender = recommender;
+            this._analyst = analyst;
             this._buffer = buffer;
             this._cancellationTokenSource = new CancellationTokenSource();
+            this._lastRecommendation = new Dictionary<Analyze.Action, DateTime>();
             this.Symbol = null;
 
+            // Set up timer
             this._timerTrading = new System.Timers.Timer()
             {
                 AutoReset = true,
@@ -67,6 +116,11 @@ namespace trape.cli.trader.Trading
 
         #region Timer Elapsed
 
+        /// <summary>
+        /// Checks the <c>Recommendation</c> of the <c>Analyst</c> and previous trades and decides whether to buy, wait or sell
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void _timerTrading_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             // Check if Symbol is set
@@ -79,7 +133,7 @@ namespace trape.cli.trader.Trading
             this._logger.Verbose($"{this.Symbol}: Going to trade");
 
             // Get recommendation what to do
-            var recommendation = this._recommender.GetRecommendation(this.Symbol);
+            var recommendation = this._analyst.GetRecommendation(this.Symbol);
             if (null == recommendation || recommendation.Action == Analyze.Action.Wait)
             {
                 this._logger.Verbose($"{this.Symbol}: Waiting for recommendation");
@@ -98,6 +152,7 @@ namespace trape.cli.trader.Trading
             // Get last orders
             var lastOrders = await database.GetLastOrdersAsync(this.Symbol, this._cancellationTokenSource.Token).ConfigureAwait(false);
             var lastOrder = lastOrders.Where(l => l.Symbol == this.Symbol).OrderByDescending(l => l.TransactionTime).FirstOrDefault();
+            var lastOrderWithin31Minutes = lastOrders.Where(l => l.Symbol == this.Symbol && l.Side == lastOrder.Side);
 
             /*
              * Rules
@@ -115,12 +170,12 @@ namespace trape.cli.trader.Trading
             var binanceClient = Program.Services.GetService(typeof(IBinanceClient)) as IBinanceClient;
 
             // Buy
-            if (recommendation.Action == Analyze.Action.Buy)
+            if (recommendation.Action == Analyze.Action.Buy || recommendation.Action == Analyze.Action.StrongBuy)
             {
                 this._logger.Verbose($"{this.Symbol}: Preparing to buy");
 
                 // Get remaining USDT balance for trading
-                var usdt = await this._accountant.GetBalance("USDT").ConfigureAwait(false);                
+                var usdt = await this._accountant.GetBalance("USDT").ConfigureAwait(false);
                 if (null == usdt)
                 {
                     // Something is oddly wrong, wait a bit
@@ -129,14 +184,15 @@ namespace trape.cli.trader.Trading
                 }
 
                 // Only take half of what is available to buy assets
-                var availableUSDT = usdt?.Free * 0.5M;
-                
+                var availableUSDT = usdt?.Free * 0.6M;
+
                 // Round to a valid value
                 availableUSDT = Math.Round(availableUSDT.Value, exchangeInfo.BaseAssetPrecision, MidpointRounding.ToZero);
 
                 // Get ask price
                 var bestAskPrice = this._buffer.GetAskPrice(this.Symbol);
 
+                // Logging
                 this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestAskPrice:{Math.Round(bestAskPrice, exchangeInfo.BaseAssetPrecision)};availableAmount:{availableUSDT}");
                 this._logger.Verbose($"{this.Symbol} Buy : Checking conditions");
                 this._logger.Verbose($"{this.Symbol} Buy : lastOrder is null: {null == lastOrder}");
@@ -152,17 +208,20 @@ namespace trape.cli.trader.Trading
                 // Check if no order has been issued yet or order was SELL
                 if ((null == lastOrder
                     || lastOrder.Side == OrderSide.Sell
-                    || lastOrder.Side == OrderSide.Buy && lastOrder.Price * minDecreaseRequired > bestAskPrice && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow)
+                    || lastOrder.Side == OrderSide.Buy && lastOrder.Price * minDecreaseRequired > bestAskPrice && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow
+                    || (!this._lastRecommendation.ContainsKey(recommendation.Action) || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow) && recommendation.Action == Analyze.Action.StrongBuy)
                     && availableUSDT.HasValue && availableUSDT.Value >= exchangeInfo.MinNotionalFilter.MinNotional
                     && bestAskPrice > 0)
                 {
                     this._logger.Debug($"{this.Symbol}: Issuing order to buy");
                     this._logger.Debug($"symbol:{this.Symbol};bestAskPrice:{bestAskPrice};quantity:{availableUSDT}");
 
+                    // Place the order
                     placedOrder = await binanceClient.PlaceOrderAsync(this.Symbol, OrderSide.Buy, OrderType.Market,
                         quoteOrderQuantity: availableUSDT.Value, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
                         ct: this._cancellationTokenSource.Token).ConfigureAwait(true);
 
+                    // Log order in custom format
                     await database.InsertAsync(new Order()
                     {
                         Symbol = this.Symbol,
@@ -183,13 +242,13 @@ namespace trape.cli.trader.Trading
                 }
             }
             // Sell
-            else if (recommendation.Action == Analyze.Action.Sell)
+            else if (recommendation.Action == Analyze.Action.Sell || recommendation.Action == Analyze.Action.StrongSell)
             {
                 this._logger.Debug($"{this.Symbol}: Preparing to sell");
 
                 var assetBalance = await this._accountant.GetBalance(this.Symbol.Replace("USDT", string.Empty)).ConfigureAwait(false);
                 var bestBidPrice = this._buffer.GetBidPrice(this.Symbol);
-                
+
                 var assetBalanceFree = assetBalance?.Free;
                 // Sell 85% of the asset
                 var assetBalanceToSell = assetBalanceFree.HasValue ? assetBalanceFree * 0.85M : null;
@@ -209,7 +268,8 @@ namespace trape.cli.trader.Trading
                 // Round to a valid value
                 aimToGetUSDT = Math.Round(aimToGetUSDT.Value, exchangeInfo.BaseAssetPrecision, MidpointRounding.ToZero);
 
-                this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestBidPrice:{Math.Round(bestBidPrice,exchangeInfo.BaseAssetPrecision)};assetBalanceForSale:{assetBalanceFree};sellQuoteOrderQuantity:{assetBalanceToSell};sellToGetUSDT:{aimToGetUSDT}");
+                // Logging
+                this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestBidPrice:{Math.Round(bestBidPrice, exchangeInfo.BaseAssetPrecision)};assetBalanceForSale:{assetBalanceFree};sellQuoteOrderQuantity:{assetBalanceToSell};sellToGetUSDT:{aimToGetUSDT}");
                 this._logger.Verbose($"{this.Symbol} Sell: Checking conditions");
                 this._logger.Verbose($"{this.Symbol} Sell: lastOrder is null: {null == lastOrder}");
                 this._logger.Verbose($"{this.Symbol} Sell: lastOrder side: {lastOrder?.Side.ToString()}");
@@ -227,16 +287,19 @@ namespace trape.cli.trader.Trading
                 // Check if no order has been issued yet or order was BUY
                 if ((null == lastOrder
                     || lastOrder.Side == OrderSide.Buy
-                    || lastOrder.Side == OrderSide.Sell && lastOrder.Price * minIncreaseRequired < bestBidPrice && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow)
+                    || lastOrder.Side == OrderSide.Sell && lastOrder.Price * minIncreaseRequired < bestBidPrice && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow
+                    || (!this._lastRecommendation.ContainsKey(recommendation.Action) || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow) && recommendation.Action == Analyze.Action.StrongSell)
                     && aimToGetUSDT.HasValue && aimToGetUSDT > exchangeInfo.MinNotionalFilter.MinNotional
                     /* implicit checking bestAskPrice > 0 by checking sellQuoteOrderQuantity > 0*/)
                 {
                     this._logger.Debug($"{this.Symbol}: Issuing order to sell");
 
+                    // Place the order
                     placedOrder = await binanceClient.PlaceOrderAsync(this.Symbol, OrderSide.Sell, OrderType.Market,
                         quoteOrderQuantity: aimToGetUSDT.Value, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
                         ct: this._cancellationTokenSource.Token).ConfigureAwait(true);
 
+                    // Log order in custom format
                     await database.InsertAsync(new Order()
                     {
                         Symbol = this.Symbol,
@@ -257,45 +320,36 @@ namespace trape.cli.trader.Trading
                 }
             }
 
+            // Log recommended action, use for strong recommendations
+            if (this._lastRecommendation.ContainsKey(recommendation.Action))
+            {
+                this._lastRecommendation[recommendation.Action] = DateTime.UtcNow;
+            }
+            else
+            {
+                this._lastRecommendation.Add(recommendation.Action, DateTime.UtcNow);
+            }
+
             // Check if order placed
             if (null != placedOrder)
             {
                 // Check if order is OK and log
                 if (placedOrder.ResponseStatusCode != System.Net.HttpStatusCode.OK || !placedOrder.Success)
                 {
-                    this._logger.Error($"Order {newClientOrderId} was malformed");
+                    using (var context = LogContext.PushProperty("placedOrder", placedOrder))
+                    {
+                        this._logger.Error($"Order {newClientOrderId} was malformed");
+                    }
+
+                    // Logging
                     this._logger.Error(placedOrder.Error?.Code.ToString());
                     this._logger.Error(placedOrder.Error?.Message);
                     this._logger.Error(placedOrder.Error?.Data?.ToString());
+                    this._logger.Warning($"PlacedOrder: {placedOrder.Data.Symbol};{placedOrder.Data.Side};{placedOrder.Data.Type} > ClientOrderId:{placedOrder.Data.ClientOrderId} CummulativeQuoteQuantity:{placedOrder.Data.CummulativeQuoteQuantity} OriginalQuoteOrderQuantity:{placedOrder.Data.OriginalQuoteOrderQuantity} Status:{placedOrder.Data.Status}");
                 }
                 else
                 {
                     await database.InsertAsync(placedOrder.Data, this._cancellationTokenSource.Token).ConfigureAwait(false);
-
-                    try
-                    {
-                        if (placedOrder.Data.Side == OrderSide.Sell)
-                        {
-                            Console.Beep(1000, 500);
-                            await Task.Delay(200).ConfigureAwait(true);
-                            Console.Beep(1000, 500);
-                            await Task.Delay(200).ConfigureAwait(true);
-                            Console.Beep(1000, 500);
-                        }
-                        else
-                        {
-                            Console.Beep(1000, 1500);
-                        }
-                    }
-                    catch (PlatformNotSupportedException)
-                    {
-                        // nothing
-                    }
-                    catch (ArgumentOutOfRangeException aofre)
-                    {
-                        this._logger.Error(aofre.Message, aofre);
-                        throw;
-                    }
                 }
             }
 
@@ -304,10 +358,18 @@ namespace trape.cli.trader.Trading
 
         #endregion
 
+        #region Methods
+
+        /// <summary>
+        /// Gets latest exchange information
+        /// </summary>
+        /// <returns></returns>
         private BinanceSymbol _getExchangeInfo()
         {
             return this._buffer.GetExchangeInfoFor(this.Symbol);
         }
+
+        #endregion
 
         #region Start / Stop
 

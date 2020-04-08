@@ -3,10 +3,25 @@ using System;
 
 namespace trape.cli.trader
 {
+    /// <summary>
+    /// This class holds settings.json
+    /// </summary>
     public static class Config
     {
+        #region Properties
+
+        /// <summary>
+        /// Current settings.json
+        /// </summary>
         public static IConfigurationRoot Current { get; private set; }
 
+        #endregion
+
+        #region
+
+        /// <summary>
+        /// Initializes the configuration from settings.json
+        /// </summary>
         public static void SetUp()
         {
             var builder = new ConfigurationBuilder()
@@ -27,5 +42,7 @@ namespace trape.cli.trader
         {
             return Current.GetConnectionString(connectionName);
         }
+
+        #endregion
     }
 }

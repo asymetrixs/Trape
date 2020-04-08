@@ -13,6 +13,11 @@ namespace trape.cli.collector.DataLayer
 #endif
     class CleanUp : IJob
     {
+        /// <summary>
+        /// Runs a database clean up job that clean book tick records from the binance_book_tick table
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task Execute(CancellationToken cancellationToken)
         {
             var logger = Program.Services.GetRequiredService<ILogger>().ForContext<CleanUp>();

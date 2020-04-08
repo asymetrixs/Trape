@@ -5,7 +5,6 @@ using CryptoExchange.Net.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
-using Serilog.Exceptions;
 using System;
 using System.Threading.Tasks;
 using trape.cli.trader.Account;
@@ -18,46 +17,66 @@ namespace trape.cli.trader
 {
     class Program
     {
+        #region Properties
+
+        /// <summary>
+        /// Services
+        /// </summary>
         public static IServiceProvider Services { get; private set; }
 
+        #endregion
+
+        #region Function
+
+        /// <summary>
+        /// Main entry point
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
         static async Task Main(string[] args)
         {
+            // Set up configuration
             Config.SetUp();
 
-            var app = CreateHostBuilder(args).Build();
+            // Create IoC container
+            var app = CreateHostBuilder().Build();
             Services = app.Services;
             var logger = Services.GetRequiredService<ILogger>().ForContext<Program>();
             logger.Information("Start up complete");
 
             try
             {
+                // Run App
                 await app.RunAsync().ConfigureAwait(false);
             }
             catch (Exception e)
             {
                 logger.Error(e, e.Message);
 
-                Console.Beep(700, 300);
-                Console.Beep(300, 300);
-                Console.Beep(700, 300);
-                Console.Beep(300, 300);
-                Console.Beep(700, 300);
-                Console.Beep(300, 300);
-
+                // Wait 2 seconds
                 await Task.Delay(2000).ConfigureAwait(true);
 
-                throw;
+                // Signal unclean exit and rely on service manager (e.g. systemd) to restart the service
+                logger.Warning("Check previous errors. Exiting with 254.");
+                Environment.Exit(254);
             }
 
             logger.Information("Shut down complete");
+
+            // Exit code will be 0, clean exit
+            Environment.ExitCode = 0;
         }
 
-        public static IHostBuilder CreateHostBuilder(string[] args)
+        /// <summary>
+        /// Creates the host builder
+        /// </summary>
+        /// <returns></returns>
+        public static IHostBuilder CreateHostBuilder()
         {
             Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(Config.Current).CreateLogger();
 
-            return Host.CreateDefaultBuilder(args)
+            return Host.CreateDefaultBuilder()
                 .ConfigureLogging(configure => configure.AddSerilog())
                 .UseSystemd()
                 .ConfigureServices((hostContext, services) =>
@@ -94,4 +113,6 @@ namespace trape.cli.trader
                 });
         }
     }
+
+    #endregion
 }

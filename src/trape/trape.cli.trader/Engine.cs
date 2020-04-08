@@ -10,36 +10,65 @@ using trape.cli.trader.Trading;
 
 namespace trape.cli.trader
 {
+    /// <summary>
+    /// The Engine manages proper startup and shutdown of required services
+    /// </summary>
     public class Engine : BackgroundService
     {
         #region Fields
 
+        /// <summary>
+        /// Logger
+        /// </summary>
         private ILogger _logger;
 
+        /// <summary>
+        /// Buffer
+        /// </summary>
         private IBuffer _buffer;
 
-        private IAnalyst _recommender;
+        /// <summary>
+        /// Analyst
+        /// </summary>
+        private IAnalyst _analyst;
 
+        /// <summary>
+        /// Trading Team
+        /// </summary>
         private ITradingTeam _tradingTeam;
 
+        /// <summary>
+        /// Accountant
+        /// </summary>
         private IAccountant _accountant;
 
+        /// <summary>
+        /// Disposed
+        /// </summary>
         private bool _disposed;
 
         #endregion
 
         #region Constructor
 
-        public Engine(ILogger logger, IBuffer buffer, IAnalyst recommender, ITradingTeam tradingTeam, IAccountant accountant)
+        /// <summary>
+        /// Initializes a new instance of the <c>Engine</c> class
+        /// </summary>
+        /// <param name="logger">Logger</param>
+        /// <param name="buffer">Buffer</param>
+        /// <param name="analyst">Analyst</param>
+        /// <param name="tradingTeam">Trading Team</param>
+        /// <param name="accountant">Accountant</param>
+        public Engine(ILogger logger, IBuffer buffer, IAnalyst analyst, ITradingTeam tradingTeam, IAccountant accountant)
         {
-            if (null == logger || null == buffer || null == recommender || null == tradingTeam)
+            if (logger == null || buffer == null || analyst == null || tradingTeam == null)
             {
                 throw new ArgumentNullException("Parameter cannot be NULL");
             }
 
             this._logger = logger.ForContext<Engine>();
             this._buffer = buffer;
-            this._recommender = recommender;
+            this._analyst = analyst;
             this._tradingTeam = tradingTeam;
             this._accountant = accountant;
         }
@@ -48,13 +77,18 @@ namespace trape.cli.trader
 
         #region Start / Stop
 
+        /// <summary>
+        /// Starts all processes to begin trading
+        /// </summary>
+        /// <param name="stoppingToken"></param>
+        /// <returns></returns>
         protected async override Task ExecuteAsync(CancellationToken stoppingToken)
         {
             this._logger.Information("Engine is starting");
 
             await this._buffer.Start().ConfigureAwait(true);
 
-            this._recommender.Start();
+            this._analyst.Start();
 
             await this._accountant.Start().ConfigureAwait(true);
 
@@ -63,6 +97,11 @@ namespace trape.cli.trader
             this._logger.Information("Engine is started");
         }
 
+        /// <summary>
+        /// Stops all process to end trading
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async override Task StopAsync(CancellationToken cancellationToken)
         {
             this._logger.Information("Engine is stopping");
@@ -71,7 +110,7 @@ namespace trape.cli.trader
 
             await this._accountant.Finish().ConfigureAwait(true);
 
-            this._recommender.Finish();
+            this._analyst.Finish();
 
             this._buffer.Finish();
 
@@ -106,7 +145,7 @@ namespace trape.cli.trader
             {
                 this._buffer.Dispose();
                 this._accountant.Dispose();
-                this._recommender.Dispose();
+                this._analyst.Dispose();
                 this._tradingTeam.Dispose();
             }
 

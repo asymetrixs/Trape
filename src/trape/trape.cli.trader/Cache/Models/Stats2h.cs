@@ -1,27 +1,25 @@
 ﻿namespace trape.cli.trader.Cache.Models
 {
-    public class Stats2h : ITrend
+    /// <summary>
+    /// Class for stats of based on 2 hours refresh
+    /// </summary>
+    public sealed class Stats2h : ITrend
     {
-        public string Symbol { get; private set; }
+        #region Constructor
 
-        public int DataBasis { get; private set; }
-
-        public decimal Slope6h { get; private set; }
-
-        public decimal Slope12h { get; private set; }
-
-        public decimal Slope18h { get; private set; }
-
-        public decimal Slope1d { get; private set; }
-
-        public decimal MovingAverage6h { get; private set; }
-
-        public decimal MovingAverage12h { get; private set; }
-
-        public decimal MovingAverage18h { get; private set; }
-
-        public decimal MovingAverage1d { get; private set; }
-
+        /// <summary>
+        /// Initializes a new instance of the <c>Stats2h</c> class.
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <param name="dataBasis">Data Basis</param>
+        /// <param name="slope6h">Slope 6 hours</param>
+        /// <param name="slope12h">Slope 12 hours</param>
+        /// <param name="slope18h">Slope 18 hours</param>
+        /// <param name="slope1d">Slope 1 day</param>
+        /// <param name="movav6h">Moving Average 6 hours</param>
+        /// <param name="movav12h">Moving Average 12 hours</param>
+        /// <param name="movav18h">Moving Average 18 hours</param>
+        /// <param name="movav1d">Moving Average 1 day</param>
         public Stats2h(string symbol, int dataBasis, decimal slope6h, decimal slope12h, decimal slope18h, decimal slope1d,
             decimal movav6h, decimal movav12h, decimal movav18h, decimal movav1d)
         {
@@ -37,10 +35,74 @@
             this.MovingAverage1d = movav1d;
         }
 
+        #endregion
+
+        #region Properties
+
+        /// <summary>
+        /// Symbol
+        /// </summary>
+        public string Symbol { get; private set; }
+
+        /// <summary>
+        /// Data Basis
+        /// </summary>
+        public int DataBasis { get; private set; }
+
+        /// <summary>
+        /// Slope 6 hours
+        /// </summary>
+        public decimal Slope6h { get; private set; }
+
+        /// <summary>
+        /// Slope 12 hours
+        /// </summary>
+        public decimal Slope12h { get; private set; }
+
+        /// <summary>
+        /// Slope 18 hours
+        /// </summary>
+        public decimal Slope18h { get; private set; }
+
+        /// <summary>
+        /// Slope 1 day
+        /// </summary>
+        public decimal Slope1d { get; private set; }
+
+        /// <summary>
+        /// Moving Average 6 hours
+        /// </summary>
+        public decimal MovingAverage6h { get; private set; }
+
+        /// <summary>
+        /// Moving Average 12 hours
+        /// </summary>
+        public decimal MovingAverage12h { get; private set; }
+
+        /// <summary>
+        /// Moving Average 18 hours
+        /// </summary>
+        public decimal MovingAverage18h { get; private set; }
+
+        /// <summary>
+        /// Moving Average 1 day
+        /// </summary>
+        public decimal MovingAverage1d { get; private set; }
+
+        #endregion
+
+        #region Methods
+
+        /// <summary>
+        /// If true, then the data basis is valid
+        /// </summary>
+        /// <returns></returns>
         public bool IsValid()
         {
             // Roughly 24 * 60 * 60 (24 hours)
             return this.DataBasis > 86200;
         }
+
+        #endregion
     }
 }

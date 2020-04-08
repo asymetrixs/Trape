@@ -15,20 +15,35 @@ using trape.cli.trader.DataLayer.Models;
 
 namespace trape.cli.trader.DataLayer
 {
+    /// <summary>
+    /// Class to interface the database
+    /// </summary>
     public class TrapeContext : DbContext, ITrapeContext
     {
         #region Fields
 
+        /// <summary>
+        /// Logger
+        /// </summary>
         private readonly ILogger _logger;
 
+        /// <summary>
+        /// Connection String
+        /// </summary>
         private readonly string _connectionString;
 
         #endregion Fields
 
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the <c>TrapeContext</c> class.
+        /// </summary>
+        /// <param name="logger"></param>
         public TrapeContext(ILogger logger)
             : base()
         {
-            if (null == logger)
+            if (logger == null)
             {
                 throw new ArgumentNullException("Paramter cannot be NULL");
             }
@@ -37,6 +52,9 @@ namespace trape.cli.trader.DataLayer
             this._connectionString = Config.GetConnectionString("CoinTradeDB");
         }
 
+        #endregion
+
+        #region Methods
 
         public async Task InsertAsync(Analyze.Recommendation recommendation, Stats3s stat3s, Stats15s stat15s, Stats2m stat2m,
             Stats10m stat10m, Stats2h stat2h, CancellationToken cancellationToken)
@@ -1173,5 +1191,7 @@ namespace trape.cli.trader.DataLayer
 
             return list;
         }
+
+        #endregion
     }
 }

@@ -9,18 +9,36 @@ using System.Threading.Tasks;
 
 namespace trape.cli.collector.DataLayer
 {
+    /// <summary>
+    /// Class implementing the TrapeContext
+    /// </summary>
     public class TrapeContext : DbContext, ITrapeContext
     {
         #region Fields
 
+        /// <summary>
+        /// Logger
+        /// </summary>
         private ILogger _logger;
 
+        /// <summary>
+        /// Connection String
+        /// </summary>
         private string _connectionString;
 
+        /// <summary>
+        /// Disposed
+        /// </summary>
         private bool _disposed;
 
         #endregion Fields
 
+        #region Constructor
+
+        /// <summary>
+        /// Constructs a new instance of the <c>TrapeContext</c> class
+        /// </summary>
+        /// <param name="logger"></param>
         public TrapeContext(ILogger logger)
             : base()
         {
@@ -34,14 +52,23 @@ namespace trape.cli.collector.DataLayer
             this._disposed = false;
         }
 
+        #endregion
 
+        #region Methods
+
+        /// <summary>
+        /// Inserts <c>BinanceStreamTick</c> instances into the database
+        /// </summary>
+        /// <param name="binanceStreamTick"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task Insert(BinanceStreamTick binanceStreamTick, CancellationToken cancellationToken)
         {
             if (null == binanceStreamTick)
             {
                 return;
             }
-            
+
             using (var con = new NpgsqlConnection(this._connectionString))
             {
                 using (var com = new NpgsqlCommand("insert_binance_stream_tick", con))
@@ -95,6 +122,12 @@ namespace trape.cli.collector.DataLayer
             }
         }
 
+        /// <summary>
+        /// Inserts <c>BinanceStreamKlineData</c> instances into the database
+        /// </summary>
+        /// <param name="binanceStreamKlineData"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task Insert(BinanceStreamKlineData binanceStreamKlineData, CancellationToken cancellationToken)
         {
             if (null == binanceStreamKlineData)
@@ -139,7 +172,7 @@ namespace trape.cli.collector.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal(ex.Message, ex);                            
+                            this._logger.Fatal(ex.Message, ex);
                         }
                     }
                     finally
@@ -150,6 +183,12 @@ namespace trape.cli.collector.DataLayer
             }
         }
 
+        /// <summary>
+        /// Inserts <c>BinanceBookTick</c> instances into the database
+        /// </summary>
+        /// <param name="binanceBookTick"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task Insert(BinanceBookTick binanceBookTick, CancellationToken cancellationToken)
         {
             if (null == binanceBookTick)
@@ -194,6 +233,11 @@ namespace trape.cli.collector.DataLayer
             }
         }
 
+        /// <summary>
+        /// Cleans up the <c>BinanceBookTick</c>s
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<int> CleanUpBookTicks(CancellationToken cancellationToken)
         {
             using (var con = new NpgsqlConnection(this._connectionString))
@@ -229,12 +273,15 @@ namespace trape.cli.collector.DataLayer
             }
         }
 
+        #endregion
+
+        #region Dispose
         /// <summary>
         /// Public implementation of Dispose pattern callable by consumers.
         /// </summary>
         public sealed override void Dispose()
         {
-            Dispose(true);            
+            Dispose(true);
             GC.SuppressFinalize(this);
         }
 
@@ -253,11 +300,13 @@ namespace trape.cli.collector.DataLayer
             {
                 this._logger = null;
                 this._connectionString = null;
-                
+
                 await base.DisposeAsync();
             }
 
             this._disposed = true;
         }
+
+        #endregion
     }
 }

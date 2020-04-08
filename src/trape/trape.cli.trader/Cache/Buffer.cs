@@ -11,24 +11,51 @@ using trape.cli.trader.Cache.Models;
 
 namespace trape.cli.trader.Cache
 {
+    /// <summary>
+    /// This class is an implementation of <c>IBuffer</c>
+    /// </summary>
     public class Buffer : IBuffer
     {
         #region Fields
 
+        /// <summary>
+        /// Logger
+        /// </summary>
         private ILogger _logger;
 
+        /// <summary>
+        /// Disposed
+        /// </summary>
         private bool _disposed;
 
+        /// <summary>
+        /// Cancellation Token Source
+        /// </summary>
         private CancellationTokenSource _cancellationTokenSource;
 
+        /// <summary>
+        /// Best Ask Price per Symbol
+        /// </summary>
         private ConcurrentDictionary<string, BestPrice> _bestAskPrices;
 
+        /// <summary>
+        /// Best Bid Price per Symbol
+        /// </summary>
         private ConcurrentDictionary<string, BestPrice> _bestBidPrices;
 
+        /// <summary>
+        /// Binance Client
+        /// </summary>
         private IBinanceClient _binanceClient;
 
+        /// <summary>
+        /// Binance Socket Client
+        /// </summary>
         private IBinanceSocketClient _binanceSocketClient;
 
+        /// <summary>
+        /// Exchange Information
+        /// </summary>
         private BinanceExchangeInfo _binanceExchangeInfo;
 
         #region Timers
@@ -69,6 +96,12 @@ namespace trape.cli.trader.Cache
 
         #region Constructor
 
+        /// <summary>
+        /// Initializes a new instance of the <c>Buffer</c> class
+        /// </summary>
+        /// <param name="logger">Logger</param>
+        /// <param name="binanceClient">Binance Client</param>
+        /// <param name="binanceSocketClient">Binance Socket Client</param>
         public Buffer(ILogger logger, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
         {
             if (null == logger || null == binanceClient || null == binanceSocketClient)
@@ -86,6 +119,9 @@ namespace trape.cli.trader.Cache
             this._binanceExchangeInfo = null;
 
             #region Timer setup
+
+            // Set up all timers that query the Database in different
+            // intervals to get recent data
 
             this._timerStats3s = new System.Timers.Timer()
             {
@@ -126,7 +162,7 @@ namespace trape.cli.trader.Cache
             this._timerCurrentPrice = new System.Timers.Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 0, 1).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 0, 0, 500).TotalMilliseconds
             };
             this._timerCurrentPrice.Elapsed += _timerCurrentPrice_Elapsed;
 
@@ -144,6 +180,11 @@ namespace trape.cli.trader.Cache
 
         #region Timer elapsed
 
+        /// <summary>
+        /// Updates current prices
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void _timerCurrentPrice_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             this._logger.Verbose("Updating current price");
@@ -155,6 +196,11 @@ namespace trape.cli.trader.Cache
             this._logger.Verbose("Updated current price");
         }
 
+        /// <summary>
+        /// Updates trends
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void _timerTrend3Seconds_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             this._logger.Verbose("Updating 3 seconds trend");
@@ -166,6 +212,11 @@ namespace trape.cli.trader.Cache
             this._logger.Verbose("Updated 3 seconds trend");
         }
 
+        /// <summary>
+        /// Updates trends
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void _timerTrend15Seconds_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             this._logger.Verbose("Updating 15 seconds trend");
@@ -177,6 +228,11 @@ namespace trape.cli.trader.Cache
             this._logger.Verbose("Updated 15 seconds trend");
         }
 
+        /// <summary>
+        /// Updates trends
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void _timerTrend2Minutes_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             this._logger.Verbose("Updating 2 minutes trend");
@@ -188,6 +244,11 @@ namespace trape.cli.trader.Cache
             this._logger.Verbose("Updated 2 minutes trend");
         }
 
+        /// <summary>
+        /// Updates trends
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void _timerTrend10Minutes_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             this._logger.Verbose("Updating 10 minutes trend");
@@ -199,6 +260,11 @@ namespace trape.cli.trader.Cache
             this._logger.Verbose("Updated 10 minutes trend");
         }
 
+        /// <summary>
+        /// Updates trends
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void _timerTrend2Hours_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             this._logger.Verbose("Updating 2 hours trend");
@@ -210,6 +276,11 @@ namespace trape.cli.trader.Cache
             this._logger.Verbose("Updated 2 hours trend");
         }
 
+        /// <summary>
+        /// Updates Exchange Information
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void _timerExchangeInfo_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             var result = await this._binanceClient.GetExchangeInfoAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
@@ -222,6 +293,12 @@ namespace trape.cli.trader.Cache
 
         #endregion
 
+        #region Methods
+
+        /// <summary>
+        /// Returns the available symbols the buffer has data for
+        /// </summary>
+        /// <returns>List of symbols</returns>
         public IEnumerable<string> GetSymbols()
         {
             // Take symbols that are we have data for
@@ -233,6 +310,11 @@ namespace trape.cli.trader.Cache
             return this.Stats2h.Where(t => t.IsValid()).Select(t => t.Symbol);
         }
 
+        /// <summary>
+        /// Returns the latest ask price for a symbol
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns>Ask price of the symbol</returns>
         public decimal GetAskPrice(string symbol)
         {
             if (!this._bestAskPrices.ContainsKey(symbol))
@@ -246,6 +328,11 @@ namespace trape.cli.trader.Cache
             }
         }
 
+        /// <summary>
+        /// Returns the latest bid price for a symbol
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns>Bid price of the symol</returns>
         public decimal GetBidPrice(string symbol)
         {
             if (!this._bestBidPrices.ContainsKey(symbol))
@@ -259,11 +346,16 @@ namespace trape.cli.trader.Cache
             }
         }
 
+        /// <summary>
+        /// Returns exchange information for a symbol
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns>Exchange information</returns>
         public BinanceSymbol GetExchangeInfoFor(string symbol)
         {
             var symbolInfo = this._binanceExchangeInfo.Symbols.SingleOrDefault(s => s.Name == symbol);
 
-            if(null == symbolInfo || symbolInfo.Status != SymbolStatus.Trading)
+            if (null == symbolInfo || symbolInfo.Status != SymbolStatus.Trading)
             {
                 this._logger.Warning($"No exchange info for {symbol}");
                 return null;
@@ -272,8 +364,14 @@ namespace trape.cli.trader.Cache
             return symbolInfo;
         }
 
+        #endregion
+
         #region Start / Stop
 
+        /// <summary>
+        /// Starts a buffer
+        /// </summary>
+        /// <returns></returns>
         public async Task Start()
         {
             this._logger.Information("Starting Buffer");
@@ -294,25 +392,21 @@ namespace trape.cli.trader.Cache
             this._logger.Debug("Buffer preloaded");
 
             int i = 0;
-            var waitingSince = DateTime.UtcNow;
-            while(!this.GetSymbols().Any())
-            {
-                this._logger.Warning($"No symbols to subscribe to, waiting since {waitingSince.ToShortTimeString()} - {++i}");
-                await Task.Delay(10000).ConfigureAwait(true);
-            }
-            
-            this._logger.Information($"Symbols to subscribe to are {String.Join(',', this.GetSymbols())}, starting the subscription process");
+            this._logger.Information($"Symbols to subscribe to are {String.Join(',', this.Stats2h.Select(s => s.Symbol))}, starting the subscription process");
 
+            // Tries 30 times to subscribe to the ticker
             var countTillHardExit = 30;
             while (countTillHardExit > 0)
             {
                 try
                 {
-                    await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.GetSymbols(), (BinanceBookTick bbt) =>
+                    // Subscribe to all symbols
+                    await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.Stats2h.Select(s => s.Symbol), (BinanceBookTick bbt) =>
                     {
                         var askPriceAdded = false;
                         var bidPriceAdded = false;
 
+                        // Update ask price
                         while (!askPriceAdded)
                         {
                             if (this._bestAskPrices.ContainsKey(bbt.Symbol))
@@ -328,6 +422,7 @@ namespace trape.cli.trader.Cache
                             }
                         }
 
+                        // Update bid price
                         while (!bidPriceAdded)
                         {
                             if (this._bestBidPrices.ContainsKey(bbt.Symbol))
@@ -353,6 +448,7 @@ namespace trape.cli.trader.Cache
 
                     countTillHardExit--;
 
+                    // Fails hard and relies on service manager (e.g. systemd) to restart the service
                     if (countTillHardExit == 0)
                     {
                         this._logger.Fatal("Shutting down, relying on systemd to restart");
@@ -377,12 +473,16 @@ namespace trape.cli.trader.Cache
             this._logger.Information("Buffer started");
         }
 
+        /// <summary>
+        /// Stops a buffer
+        /// </summary>
         public void Finish()
         {
             this._logger.Information("Stopping buffer");
 
             this._cancellationTokenSource.Cancel();
 
+            // Shutdown of timers
             this._timerStats3s.Stop();
             this._timerStats15s.Stop();
             this._timerStats2m.Stop();

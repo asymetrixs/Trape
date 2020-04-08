@@ -1,11 +1,9 @@
-﻿using Binance.Net;
-using Binance.Net.Interfaces;
+﻿using Binance.Net.Interfaces;
 using Binance.Net.Objects;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -111,6 +109,13 @@ namespace trape.cli.collector.DataCollection
 
         #endregion
 
+        #region Methods
+
+        /// <summary>
+        /// Starts the Collection Manager
+        /// </summary>
+        /// <param name="stoppingToken"></param>
+        /// <returns></returns>
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             this._startStop.Wait();
@@ -119,11 +124,13 @@ namespace trape.cli.collector.DataCollection
             {
                 this._logger.Information("Setting up Collection Manager");
 
+                // Get symbols from settings.json
                 var symbols = Config.GetValue("binance:symbols").Split(';', ',');
 
+                // Set up binance client to subscribe to these symbols
                 await this._setupClients(symbols).ConfigureAwait(true);
 
-                // Register cleanup job
+                // Register cleanup job and start
                 Program.Services.GetService<IJobManager>().Start(new CleanUp());
 
                 this._logger.Information($"Collection Mangager is online");
@@ -134,32 +141,41 @@ namespace trape.cli.collector.DataCollection
             }
         }
 
+        /// <summary>
+        /// Stops the Collection Manager
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
             this._shutdown = true;
 
+            // Check that start has finished/cancelled in case service is stopped while still starting
             await this._startStop.WaitAsync().ConfigureAwait(true);
 
             try
             {
                 this._logger.Information($"Shutting down CollectionManager.");
 
-                var terminateClients = new List<Task>();
-
                 this._logger.Debug($"Waiting for subscribers to terminate.");
 
+                // Termintate subscriptions
                 await this._binanceSocketClient.UnsubscribeAll().ConfigureAwait(true);
 
                 this._logger.Debug($"Subscribers terminated.");
 
+                // Signal buffer completion
                 this._binanceStreamTickBuffer.Complete();
                 this._binanceStreamKlineDataBuffer.Complete();
                 this._binanceBookTickBuffer.Complete();
 
+                // Terminate jobs managed by job manager
                 Program.Services.GetRequiredService<IJobManager>().TerminateAll();
 
+                // Cancel all outstanding and running tasks
                 this._cancellationTokenSource.Cancel();
 
+                // Signal stop to base
                 await base.StopAsync(cancellationToken).ConfigureAwait(true);
 
                 this._logger.Information($"CollectionManager is down.");
@@ -171,14 +187,21 @@ namespace trape.cli.collector.DataCollection
             }
             finally
             {
+                // Release lock
                 this._startStop.Release();
             }
         }
 
+        /// <summary>
+        /// Sets up the Binance client to subscribe to binance trading data
+        /// </summary>
+        /// <param name="symbols"></param>
+        /// <returns></returns>
         private async Task _setupClients(string[] symbols)
         {
             foreach (var symbol in symbols)
             {
+                // Retry 30 times (e.g. network error, disconnect, etc.)
                 int countTillHardExit = 30;
 
                 while (countTillHardExit > 0)
@@ -187,6 +210,9 @@ namespace trape.cli.collector.DataCollection
 
                     try
                     {
+                        // Subscribe to a bunch of streams
+
+                        // Skip if shutdown was called during startup
                         if (this._shutdown) return;
                         await this._binanceSocketClient.SubscribeToSymbolTickerUpdatesAsync(symbol, (BinanceStreamTick bst) =>
                         {
@@ -296,6 +322,7 @@ namespace trape.cli.collector.DataCollection
 
                         if (countTillHardExit == 0)
                         {
+                            // Fail hard after 30 times and rely on service manager (e.g. systemd) to restart the service
                             this._logger.Fatal("Shutting down, relying on systemd to restart");
                             Environment.Exit(1);
                         }
@@ -305,6 +332,8 @@ namespace trape.cli.collector.DataCollection
                 }
             }
         }
+
+        #endregion
 
         #region Dispose
 

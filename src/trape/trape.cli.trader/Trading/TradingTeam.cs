@@ -7,24 +7,47 @@ using trape.cli.trader.Cache;
 
 namespace trape.cli.trader.Trading
 {
+    /// <summary>
+    /// Starts, stops, and manages the <c>Brokers</c>
+    /// </summary>
     public class TradingTeam : ITradingTeam
     {
         #region Fields
 
+        /// <summary>
+        /// Disposed
+        /// </summary>
         private bool _disposed;
 
+        /// <summary>
+        /// Logger
+        /// </summary>
         private readonly ILogger _logger;
 
+        /// <summary>
+        /// Team holding the <c>Broker</c>s
+        /// </summary>
         private List<IBroker> _team;
 
+        /// <summary>
+        /// Buffer
+        /// </summary>
         private readonly IBuffer _buffer;
 
+        /// <summary>
+        /// Timer to check for new/obsolete Symbols
+        /// </summary>
         private System.Timers.Timer _timerSymbolCheck;
 
         #endregion
 
         #region Constructor 
 
+        /// <summary>
+        /// Initializes a new instance of the <c>TradingTeam</c> class.
+        /// </summary>
+        /// <param name="logger"></param>
+        /// <param name="buffer"></param>
         public TradingTeam(ILogger logger, IBuffer buffer)
         {
             if (null == logger || null == buffer)
@@ -35,6 +58,8 @@ namespace trape.cli.trader.Trading
             this._logger = logger.ForContext<TradingTeam>();
             this._buffer = buffer;
             this._team = new List<IBroker>();
+
+            // Timer
             this._timerSymbolCheck = new System.Timers.Timer()
             {
                 Interval = new TimeSpan(0, 0, 5).TotalMilliseconds,
@@ -47,6 +72,11 @@ namespace trape.cli.trader.Trading
 
         #region Timer Elapsed
 
+        /// <summary>
+        /// Checks for new and obsolete Symbols and creates new <c>Broker</c>s or disposes them.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void _timerSymbolCheck_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             this._logger.Verbose("Checking trading team");
@@ -55,7 +85,7 @@ namespace trape.cli.trader.Trading
 
             var obsoleteTraders = this._team.Where(t => !availableSymbols.Contains(t.Symbol));
 
-            // Remove obsolete traders
+            // Remove obsolete brokers
             foreach (var obsoleteTrader in obsoleteTraders)
             {
                 this._logger.Information($"Removing {obsoleteTrader.Symbol} from the trading team");
@@ -68,7 +98,7 @@ namespace trape.cli.trader.Trading
             var tradedSymbols = this._team.Select(t => t.Symbol);
             var missingSymbols = this._buffer.GetSymbols().Where(b => !tradedSymbols.Contains(b));
 
-            // Add new traders
+            // Add new brokers
             foreach (var missingSymbol in missingSymbols)
             {
                 var trader = Program.Services.GetService(typeof(IBroker)) as IBroker;
