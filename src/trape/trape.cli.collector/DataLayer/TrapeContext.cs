@@ -111,7 +111,7 @@ namespace trape.cli.collector.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -172,7 +172,7 @@ namespace trape.cli.collector.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -222,7 +222,7 @@ namespace trape.cli.collector.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -260,7 +260,7 @@ namespace trape.cli.collector.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally

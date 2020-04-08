@@ -136,8 +136,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -210,8 +209,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -283,8 +281,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -356,8 +353,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -429,8 +425,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -502,8 +497,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -551,8 +545,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -620,8 +613,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -682,8 +674,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -735,8 +726,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -835,8 +825,7 @@ namespace trape.cli.trader.DataLayer
 
                             if (!cancellationToken.IsCancellationRequested)
                             {
-                                this._logger.Fatal($"Problem in {com.CommandText}");
-                                this._logger.Fatal(ex.Message, ex);
+                                this._logger.Fatal(ex, ex.Message, com.CommandText);
                             }
                         }
                         finally
@@ -915,8 +904,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -971,8 +959,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally
@@ -1120,8 +1107,7 @@ namespace trape.cli.trader.DataLayer
 
                             if (!cancellationToken.IsCancellationRequested)
                             {
-                                this._logger.Fatal($"Problem in {com.CommandText}");
-                                this._logger.Fatal(ex.Message, ex);
+                                this._logger.Fatal(ex, ex.Message, com.CommandText);
                             }
                         }
                         finally
@@ -1178,8 +1164,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            this._logger.Fatal($"Problem in {com.CommandText}");
-                            this._logger.Fatal(ex.Message, ex);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
                         }
                     }
                     finally

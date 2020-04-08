@@ -5,6 +5,7 @@ using CryptoExchange.Net.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using Serilog.Exceptions;
 using System;
 using System.Threading.Tasks;
 using trape.cli.trader.Account;
@@ -73,8 +74,24 @@ namespace trape.cli.trader
         /// <returns></returns>
         public static IHostBuilder CreateHostBuilder()
         {
+            // Configure Logger
             Log.Logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(Config.Current).CreateLogger();
+                .ReadFrom.Configuration(Config.Current)
+                .Enrich.FromLogContext()
+                .Enrich.WithExceptionDetails()
+                .Destructure.ToMaximumDepth(4)
+                .Destructure.ToMaximumStringLength(100)
+                .Destructure.ToMaximumCollectionCount(10)
+                .WriteTo.Console(
+                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
+                    outputTemplate: Config.GetValue("Serilog:OutputTemplateConsole")
+                )
+                .WriteTo.File(
+                    path: Config.GetValue("Serilog:LogFileLocation"), retainedFileCountLimit: 7, rollingInterval: RollingInterval.Day, buffered: false,
+                    outputTemplate: Config.GetValue("Serilog:OutputTemplateFile")
+                )
+                .CreateLogger();
+
 
             return Host.CreateDefaultBuilder()
                 .ConfigureLogging(configure => configure.AddSerilog())
