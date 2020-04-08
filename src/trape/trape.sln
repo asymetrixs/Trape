@@ -3,15 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29728.190
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "trape.cli.Collector", "trape.cli.Collector\trape.cli.Collector.csproj", "{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "trape.cli.collector", "trape.cli.Collector\trape.cli.collector.csproj", "{4208AFBF-2C4B-4685-BDFD-7D514F137EE0}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "trape.Jobs", "trape.jobs\trape.Jobs.csproj", "{54DD0DD5-3E49-41C5-AB85-27074B8BD0D7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "trape.cli.Trader", "trape.cli.Trader\trape.cli.Trader.csproj", "{6139DDFD-63C6-4331-BBA7-FF250ECB3879}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "trape.cli.trader", "trape.cli.Trader\trape.cli.trader.csproj", "{6139DDFD-63C6-4331-BBA7-FF250ECB3879}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Trape.Cli.Trader.Tests", "Trape.Cli.Trader.Tests\Trape.Cli.Trader.Tests.csproj", "{A6588BA8-E0AA-44AC-973D-3A2E1A5409B9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trape.BinanceNet.Logger", "Trape.BinanceNet.Logger\Trape.BinanceNet.Logger.csproj", "{73AD5F5E-5E7B-41DD-A7ED-1023ADE73D28}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Trape.BinanceNet.Logger", "Trape.BinanceNet.Logger\Trape.BinanceNet.Logger.csproj", "{73AD5F5E-5E7B-41DD-A7ED-1023ADE73D28}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

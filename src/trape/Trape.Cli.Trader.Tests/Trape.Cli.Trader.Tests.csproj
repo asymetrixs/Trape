@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\trape.cli.Trader\trape.cli.Trader.csproj" />
+    <ProjectReference Include="..\trape.cli.Trader\trape.cli.trader.csproj" />
   </ItemGroup>
 
 </Project>

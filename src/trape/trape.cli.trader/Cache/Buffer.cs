@@ -448,12 +448,90 @@ namespace trape.cli.trader.Cache
 
                     countTillHardExit--;
 
+                    // Log what stats are missing
+                    #region Log invalid stats
+
+                    if (this.Stats3s != null)
+                    {
+                        foreach(var s in this.Stats3s)
+                        {
+                            if(!s.IsValid())
+                            {
+                                this._logger.Warning($"3s: {s.Symbol} is invalid");
+                            }
+                            else
+                            {
+                                this._logger.Warning($"3s: {s.Symbol} is valid");
+                            }
+                        }
+                    }
+                    if (this.Stats15s != null)
+                    {
+                        foreach (var s in this.Stats3s)
+                        {
+                            if (!s.IsValid())
+                            {
+                                this._logger.Warning($"15s: {s.Symbol} is invalid");
+                            }
+                            else
+                            {
+                                this._logger.Warning($"15s: {s.Symbol} is valid");
+                            }
+                        }
+                    }
+                    if (this.Stats2m != null)
+                    {
+                        foreach (var s in this.Stats3s)
+                        {
+                            if (!s.IsValid())
+                            {
+                                this._logger.Warning($"2m: {s.Symbol} is invalid");
+                            }
+                            else
+                            {
+                                this._logger.Warning($"2m: {s.Symbol} is valid");
+                            }
+                        }
+                    }
+                    if (this.Stats10m != null)
+                    {
+                        foreach (var s in this.Stats3s)
+                        {
+                            if (!s.IsValid())
+                            {
+                                this._logger.Warning($"10m: {s.Symbol} is invalid");
+                            }
+                            else
+                            {
+                                this._logger.Warning($"10m: {s.Symbol} is valid");
+                            }
+                        }
+                    }
+                    if (this.Stats2h != null)
+                    {
+                        foreach (var s in this.Stats3s)
+                        {
+                            if (!s.IsValid())
+                            {
+                                this._logger.Warning($"2h: {s.Symbol} is invalid");
+                            }
+                            else
+                            {
+                                this._logger.Warning($"2h: {s.Symbol} is valid");
+                            }
+                        }
+                    }
+
+                    #endregion
+
                     // Fails hard and relies on service manager (e.g. systemd) to restart the service
                     if (countTillHardExit == 0)
                     {
                         this._logger.Fatal("Shutting down, relying on systemd to restart");
                         Environment.Exit(1);
                     }
+
+                    await Task.Delay(2000).ConfigureAwait(true);
                 }
             }
 
