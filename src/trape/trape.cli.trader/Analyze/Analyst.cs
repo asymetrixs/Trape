@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Timers;
+using System.Threading;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Cache.Models;
 
@@ -19,32 +19,37 @@ namespace trape.cli.trader.Analyze
         /// <summary>
         /// Logger
         /// </summary>
-        private ILogger _logger;
+        private readonly ILogger _logger;
 
         /// <summary>
         /// Buffer
         /// </summary>
-        private IBuffer _buffer;
+        private readonly IBuffer _buffer;
 
         /// <summary>
         /// Cancellation Token
         /// </summary>
-        private System.Threading.CancellationTokenSource _cancellationTokenSource;
+        private readonly CancellationTokenSource _cancellationTokenSource;
 
         /// <summary>
         /// Timer when Analyst makes a new decision
         /// </summary>
-        private Timer _timerRecommendationMaker;
+        private readonly System.Timers.Timer _timerRecommendationMaker;
 
         /// <summary>
         /// The last recommendation for an symbol
         /// </summary>
-        private Dictionary<string, Recommendation> _lastRecommendation;
+        private readonly Dictionary<string, Recommendation> _lastRecommendation;
 
         /// <summary>
         /// Disposed
         /// </summary>
         private bool _disposed;
+
+        /// <summary>
+        /// Synchronizes access to recommendation generation
+        /// </summary>
+        private SemaphoreSlim _recommendationSynchronizer;
 
         #endregion
 
@@ -67,12 +72,13 @@ namespace trape.cli.trader.Analyze
             this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
             this._lastRecommendation = new Dictionary<string, Recommendation>();
             this._disposed = false;
+            this._recommendationSynchronizer = new SemaphoreSlim(1, 1);
 
             // Set up timer that makes decisions, every second
-            this._timerRecommendationMaker = new Timer()
+            this._timerRecommendationMaker = new System.Timers.Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 0, 1).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 0, 0, 100).TotalMilliseconds
             };
             this._timerRecommendationMaker.Elapsed += _makeRecommendation_Elapsed;
         }
@@ -86,13 +92,30 @@ namespace trape.cli.trader.Analyze
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _makeRecommendation_Elapsed(object sender, ElapsedEventArgs e)
+        private async void _makeRecommendation_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
+            // Check if free to go
+            if (this._recommendationSynchronizer.CurrentCount == 0)
+            {
+                return;
+            }
+
             this._logger.Verbose("Calculating recommendation");
 
-            foreach (var symbol in this._buffer.GetSymbols())
+            try
             {
-                await _recommend(symbol).ConfigureAwait(false);
+                // Get lock
+                this._recommendationSynchronizer.Wait();
+
+                foreach (var symbol in this._buffer.GetSymbols())
+                {
+                    await _recommend(symbol).ConfigureAwait(true);
+                }
+            }
+            finally
+            {
+                // Release lock
+                this._recommendationSynchronizer.Release();
             }
         }
 
@@ -107,6 +130,8 @@ namespace trape.cli.trader.Analyze
             {
                 return;
             }
+
+            var database = Pool.DatabasePool.Get();
 
             // Reference current buffer data
             var s3s = this._buffer.Stats3s;
@@ -124,21 +149,19 @@ namespace trape.cli.trader.Analyze
             var stat2h = s2h.SingleOrDefault(t => t.Symbol == symbol);
 
             // Check that data is valud
-            if (null == stat3s || !stat3s.IsValid()
-                || null == stat15s || !stat15s.IsValid()
-                || null == stat2m || !stat2m.IsValid()
-                || null == stat10m || !stat10m.IsValid()
-                || null == stat2h || !stat2h.IsValid())
+            if (stat3s == null || !stat3s.IsValid()
+                || stat15s == null || !stat15s.IsValid()
+                || stat2m == null || !stat2m.IsValid()
+                || stat10m == null || !stat10m.IsValid()
+                || stat2h == null || !stat2h.IsValid())
             {
                 this._logger.Warning($"Skipped {symbol} due to old or incomplete data");
                 this._lastRecommendation.Remove(symbol);
                 return;
             }
 
-            var database = Pool.DatabasePool.Get();
-
             // Get current symbol price
-            var currentPrice = await database.GetCurrentPriceAsync(symbol, this._cancellationTokenSource.Token).ConfigureAwait(false);
+            var currentPrice = this._buffer.GetBidPrice(symbol);
 
             decimal upperLimit = stat10m.MovingAverage2h * 1.001M;
             decimal lowerLimit = stat10m.MovingAverage2h * 0.999M;
@@ -154,15 +177,38 @@ namespace trape.cli.trader.Analyze
                 // buy
                 action = Action.Buy;
             }
-            //// MovingAverage2h about to cross MovingAverage6h and tendency is positive
-            //else if (stat10m.Slope30m > 0
-            //    && stat10m.Slope1h > 0
-            //    && stat10m.Slope2h > 0
-            //    && lowerLimit < stat2h.MovingAverage6h && stat2h.MovingAverage6h < upperLimit)
-            //{
-            //    action = Action.StrongBuy;
-            //}
-            // Sell
+            // MovingAverage2h about to cross MovingAverage6h and tendency is positive
+            else if (stat10m.Slope30m > 0.8M
+                && stat10m.Slope1h > 0
+                && stat10m.Slope2h > 0
+                && lowerLimit < stat2h.MovingAverage6h && stat2h.MovingAverage6h < upperLimit)
+            {
+                action = Action.StrongBuy;
+            }
+            // Panic sell
+            else if (stat3s.Slope5s < 0
+                && stat3s.Slope10s < 0
+                && stat3s.Slope15s < 0
+                && stat3s.Slope30s < 0
+                && stat15s.Slope45s < 0
+                && stat15s.Slope1m < -1M
+                && stat15s.Slope2m < -0.3M
+                && stat15s.Slope3m < -0.15M
+                && stat2m.Slope5m < -0M
+                )
+            {
+                action = Action.PanicSell;
+            }
+            // Market seems to drop rapidly
+            else if (stat15s.Slope1m < -0.8M
+                && stat15s.Slope2m < -0.3M
+                && stat15s.Slope3m < -0.15M
+                && stat2m.Slope5m < -0.03M
+                )
+            {
+                action = Action.StrongSell;
+            }
+            // Market drops normally
             else if (stat10m.Slope30m < 0
                 && stat10m.Slope1h < 0
                 && stat10m.Slope2h < 0.003M
@@ -171,14 +217,6 @@ namespace trape.cli.trader.Analyze
                 // sell
                 action = Action.Sell;
             }
-            //// MovingAverage2h about to cross MovingAverage6h and tendency is negative
-            //else if (stat10m.Slope30m < 0
-            //    && stat10m.Slope1h < 0
-            //    && stat10m.Slope2h < 0
-            //    && lowerLimit < stat2h.MovingAverage6h && stat2h.MovingAverage6h < upperLimit)
-            //{
-            //    action = Action.StrongSell;
-            //}
             else
             {
                 // do nothng
@@ -208,14 +246,14 @@ namespace trape.cli.trader.Analyze
 
             // Store recommendation in database
             await database.InsertAsync(newRecommendation, stat3s, stat15s, stat2m, stat10m, stat2h, this._cancellationTokenSource.Token).ConfigureAwait(false);
-            Pool.DatabasePool.Put(database);
-            database = null;
 
             // Announce the trend every 5 seconds not to spam the log
-            if (DateTime.UtcNow.Second % 5 == 0 || newRecommendation.Action != lastRecommendation?.Action)
+            if (DateTime.UtcNow.Second % 50 == 0 || newRecommendation.Action != lastRecommendation?.Action)
             {
                 this._logger.Verbose(_GetTrend(newRecommendation, stat10m, stat2h));
             }
+            // Return database
+            Pool.DatabasePool.Put(database);
         }
 
         /// <summary>

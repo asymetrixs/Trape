@@ -27,7 +27,7 @@ namespace trape.cli.trader.Trading
         /// <summary>
         /// Team holding the <c>Broker</c>s
         /// </summary>
-        private List<IBroker> _team;
+        private readonly List<IBroker> _team;
 
         /// <summary>
         /// Buffer
@@ -37,7 +37,7 @@ namespace trape.cli.trader.Trading
         /// <summary>
         /// Timer to check for new/obsolete Symbols
         /// </summary>
-        private System.Timers.Timer _timerSymbolCheck;
+        private readonly System.Timers.Timer _timerSymbolCheck;
 
         #endregion
 

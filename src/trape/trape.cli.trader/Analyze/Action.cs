@@ -24,6 +24,10 @@
         /// <summary>
         /// Corner case strongly advising to sell
         /// </summary>
-        StrongSell
+        StrongSell,
+        /// <summary>
+        /// Corner case - market drop
+        /// </summary>
+        PanicSell
     }
 }

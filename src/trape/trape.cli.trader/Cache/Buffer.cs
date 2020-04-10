@@ -21,7 +21,7 @@ namespace trape.cli.trader.Cache
         /// <summary>
         /// Logger
         /// </summary>
-        private ILogger _logger;
+        private readonly ILogger _logger;
 
         /// <summary>
         /// Disposed
@@ -31,27 +31,27 @@ namespace trape.cli.trader.Cache
         /// <summary>
         /// Cancellation Token Source
         /// </summary>
-        private CancellationTokenSource _cancellationTokenSource;
+        private readonly CancellationTokenSource _cancellationTokenSource;
 
         /// <summary>
         /// Best Ask Price per Symbol
         /// </summary>
-        private ConcurrentDictionary<string, BestPrice> _bestAskPrices;
+        private readonly ConcurrentDictionary<string, BestPrice> _bestAskPrices;
 
         /// <summary>
         /// Best Bid Price per Symbol
         /// </summary>
-        private ConcurrentDictionary<string, BestPrice> _bestBidPrices;
+        private readonly ConcurrentDictionary<string, BestPrice> _bestBidPrices;
 
         /// <summary>
         /// Binance Client
         /// </summary>
-        private IBinanceClient _binanceClient;
+        private readonly IBinanceClient _binanceClient;
 
         /// <summary>
         /// Binance Socket Client
         /// </summary>
-        private IBinanceSocketClient _binanceSocketClient;
+        private readonly IBinanceSocketClient _binanceSocketClient;
 
         /// <summary>
         /// Exchange Information
@@ -126,43 +126,42 @@ namespace trape.cli.trader.Cache
             this._timerStats3s = new System.Timers.Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 0, 1).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 0, 0, 100).TotalMilliseconds
             };
             this._timerStats3s.Elapsed += _timerTrend3Seconds_Elapsed;
-
 
             this._timerStats15s = new System.Timers.Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 0, 5).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 0, 0, 250).TotalMilliseconds
             };
             this._timerStats15s.Elapsed += _timerTrend15Seconds_Elapsed;
 
             this._timerStats2m = new System.Timers.Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 1, 0).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 0, 0, 500).TotalMilliseconds
             };
             this._timerStats2m.Elapsed += _timerTrend2Minutes_Elapsed;
 
             this._timerStats10m = new System.Timers.Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 3, 0).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 1).TotalMilliseconds
             };
             this._timerStats10m.Elapsed += _timerTrend10Minutes_Elapsed;
 
             this._timerStats2h = new System.Timers.Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 10, 0).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 3).TotalMilliseconds
             };
             this._timerStats2h.Elapsed += _timerTrend2Hours_Elapsed;
 
             this._timerCurrentPrice = new System.Timers.Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 0, 0, 0, 500).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 0, 0, 100).TotalMilliseconds
             };
             this._timerCurrentPrice.Elapsed += _timerCurrentPrice_Elapsed;
 
@@ -391,7 +390,6 @@ namespace trape.cli.trader.Cache
 
             this._logger.Debug("Buffer preloaded");
 
-            int i = 0;
             this._logger.Information($"Symbols to subscribe to are {String.Join(',', this.Stats2h.Select(s => s.Symbol))}, starting the subscription process");
 
             // Tries 30 times to subscribe to the ticker
@@ -453,9 +451,9 @@ namespace trape.cli.trader.Cache
 
                     if (this.Stats3s != null)
                     {
-                        foreach(var s in this.Stats3s)
+                        foreach (var s in this.Stats3s)
                         {
-                            if(!s.IsValid())
+                            if (!s.IsValid())
                             {
                                 this._logger.Warning($"3s: {s.Symbol} is invalid");
                             }

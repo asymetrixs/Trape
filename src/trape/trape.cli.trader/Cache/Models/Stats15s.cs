@@ -99,7 +99,7 @@
         /// <returns></returns>
         public bool IsValid()
         {
-            // Roughly 3 * 60 (3 Minutes)
+            // Should have at least a value per second
             return this.DataBasis > 170;
         }
 
