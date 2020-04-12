@@ -189,7 +189,7 @@ namespace trape.cli.trader.Trading
                 // Buy
                 if (recommendation.Action == Analyze.Action.Buy || recommendation.Action == Analyze.Action.StrongBuy)
                 {
-                    this._logger.Verbose($"{this.Symbol}: Preparing to buy");
+                    this._logger.Debug($"{this.Symbol}: Preparing to buy");
 
                     // Get remaining USDT balance for trading
                     var usdt = await this._accountant.GetBalance("USDT").ConfigureAwait(false);
@@ -208,7 +208,7 @@ namespace trape.cli.trader.Trading
 
                     if (availableUSDT == 0)
                     {
-                        this._logger.Verbose($"{this.Symbol} nothing free");
+                        this._logger.Debug($"{this.Symbol} nothing free");
                     }
                     else
                     {
@@ -216,25 +216,35 @@ namespace trape.cli.trader.Trading
                         var bestAskPrice = this._buffer.GetAskPrice(this.Symbol);
 
                         // Logging
-                        this._logger.Verbose($"{this.Symbol}: {recommendation.Action} bestAskPrice:{Math.Round(bestAskPrice, exchangeInfo.BaseAssetPrecision)};availableAmount:{availableUSDT}");
-                        this._logger.Verbose($"{this.Symbol} Buy : Checking conditions");
-                        this._logger.Verbose($"{this.Symbol} Buy : lastOrder is null: {null == lastOrder}");
-                        this._logger.Verbose($"{this.Symbol} Buy : lastOrder side: {lastOrder?.Side.ToString()}");
-                        this._logger.Verbose($"{this.Symbol} Buy : lastOrder Price: {lastOrder?.Price} * {minDecreaseRequired} > {bestAskPrice}: {lastOrder?.Price * minDecreaseRequired > bestAskPrice}");
-                        this._logger.Verbose($"{this.Symbol} Buy : Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(15)}) < {DateTime.UtcNow}: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow}");
-                        this._logger.Verbose($"{this.Symbol} Buy : availableAmount has value {availableUSDT.HasValue}");
+                        this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestAskPrice:{Math.Round(bestAskPrice, exchangeInfo.BaseAssetPrecision)};availableAmount:{availableUSDT}");
+                        this._logger.Debug($"{this.Symbol} Buy : Checking conditions");
+                        this._logger.Debug($"{this.Symbol} Buy : lastOrder is null: {null == lastOrder}");
+                        this._logger.Debug($"{this.Symbol} Buy : lastOrder side: {lastOrder?.Side.ToString()}");
+                        this._logger.Debug($"{this.Symbol} Buy : lastOrder Price: {lastOrder?.Price} * {minDecreaseRequired} > {bestAskPrice}: {lastOrder?.Price * minDecreaseRequired > bestAskPrice}");
+                        this._logger.Debug($"{this.Symbol} Buy : Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow}");
+                        this._logger.Debug($"{this.Symbol} Buy : availableAmount has value {availableUSDT.HasValue}");
                         if (availableUSDT.HasValue)
                         {
-                            this._logger.Verbose($"Value {availableUSDT} > 0: {availableUSDT > 0} and higher than minNotional {exchangeInfo.MinNotionalFilter.MinNotional}: {availableUSDT >= exchangeInfo.MinNotionalFilter.MinNotional}");
+                            this._logger.Debug($"{this.Symbol} Buy : Value {availableUSDT} > 0: {availableUSDT > 0} and higher than minNotional {exchangeInfo.MinNotionalFilter.MinNotional}: {availableUSDT >= exchangeInfo.MinNotionalFilter.MinNotional}");
+                            this._logger.Debug($"{this.Symbol} Buy : MaxPrice { exchangeInfo.PriceFilter.MaxPrice} > Amount {availableUSDT.Value} > MinPrice {exchangeInfo.PriceFilter.MinPrice}");
+                            this._logger.Debug($"{this.Symbol} Buy : MaxLOT {exchangeInfo.LotSizeFilter.MaxQuantity} > Amount {availableUSDT / bestAskPrice} > MinLOT {exchangeInfo.LotSizeFilter.MinQuantity}");
                         }
+
+
 
                         // Check if no order has been issued yet or order was SELL
                         if ((null == lastOrder
                             || lastOrder.Side == OrderSide.Sell
-                            || lastOrder.Side == OrderSide.Buy && lastOrder.Price * minDecreaseRequired > bestAskPrice && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow
+                            || lastOrder.Side == OrderSide.Buy && lastOrder.Price * minDecreaseRequired > bestAskPrice && lastOrder.TransactionTime.AddMinutes(5) < DateTime.UtcNow
                             || (!this._lastRecommendation.ContainsKey(recommendation.Action) || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow) && recommendation.Action == Analyze.Action.StrongBuy)
-                            && availableUSDT.HasValue && availableUSDT.Value >= exchangeInfo.MinNotionalFilter.MinNotional
-                            && bestAskPrice > 0)
+                            // Logic check
+                            && availableUSDT.HasValue && availableUSDT.Value >= exchangeInfo.MinNotionalFilter.MinNotional && bestAskPrice > 0
+                                /// Price range
+                                && availableUSDT.Value >= exchangeInfo.PriceFilter.MinPrice
+                                && availableUSDT.Value <= exchangeInfo.PriceFilter.MaxPrice
+                                // LOT size
+                                && availableUSDT / bestAskPrice >= exchangeInfo.LotSizeFilter.MinQuantity
+                                && availableUSDT / bestAskPrice <= exchangeInfo.LotSizeFilter.MaxQuantity)
                         {
                             this._logger.Debug($"{this.Symbol}: Issuing order to buy");
                             this._logger.Debug($"symbol:{this.Symbol};bestAskPrice:{bestAskPrice};quantity:{availableUSDT}");
@@ -274,7 +284,7 @@ namespace trape.cli.trader.Trading
 
                     if (assetBalance == null || assetBalance?.Free == 0)
                     {
-                        this._logger.Verbose($"{this.Symbol} nothing free");
+                        this._logger.Debug($"{this.Symbol} nothing free");
                     }
                     else
                     {
@@ -299,6 +309,12 @@ namespace trape.cli.trader.Trading
                             assetBalanceFree = assetBalance?.Free;
                             bestBidPrice = bestBidPrice * 0.999M; // Reduce by 0.1 percent to definitely sell
                         }
+                        else if (recommendation.Action == Analyze.Action.StrongSell)
+                        {
+                            // Sell 80% of what is available
+                            assetBalanceFree = assetBalance?.Free * 0.8M;
+                            bestBidPrice = bestBidPrice * 0.999M; // Reduce by 0.1 percent to definitely sell
+                        }
 
                         // Sell as much required to get this total USDT price
                         var aimToGetUSDT = assetBalanceToSell * bestBidPrice;
@@ -306,29 +322,38 @@ namespace trape.cli.trader.Trading
                         aimToGetUSDT = Math.Round(aimToGetUSDT.Value, exchangeInfo.BaseAssetPrecision, MidpointRounding.ToZero);
 
                         // Logging
-                        this._logger.Verbose($"{this.Symbol}: {recommendation.Action} bestBidPrice:{Math.Round(bestBidPrice, exchangeInfo.BaseAssetPrecision)};assetBalanceForSale:{assetBalanceFree};sellQuoteOrderQuantity:{assetBalanceToSell};sellToGetUSDT:{aimToGetUSDT}");
-                        this._logger.Verbose($"{this.Symbol} Sell: Checking conditions");
-                        this._logger.Verbose($"{this.Symbol} Sell: lastOrder is null: {null == lastOrder}");
-                        this._logger.Verbose($"{this.Symbol} Sell: lastOrder side: {lastOrder?.Side.ToString()}");
-                        this._logger.Verbose($"{this.Symbol} Sell: lastOrder Price: {lastOrder?.Price} * {minIncreaseRequired} < {bestBidPrice}: {lastOrder?.Price * minIncreaseRequired < bestBidPrice}");
-                        this._logger.Verbose($"{this.Symbol} Sell: Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(15)}) < {DateTime.UtcNow}: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow}");
-                        this._logger.Verbose($"{this.Symbol} Sell: aimToGetUSDT has value {aimToGetUSDT.HasValue} -> {aimToGetUSDT.Value}");
+                        this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestBidPrice:{Math.Round(bestBidPrice, exchangeInfo.BaseAssetPrecision)};assetBalanceForSale:{assetBalanceFree};sellQuoteOrderQuantity:{assetBalanceToSell};sellToGetUSDT:{aimToGetUSDT}");
+                        this._logger.Debug($"{this.Symbol} Sell: Checking conditions");
+                        this._logger.Debug($"{this.Symbol} Sell: lastOrder is null: {null == lastOrder}");
+                        this._logger.Debug($"{this.Symbol} Sell: lastOrder side: {lastOrder?.Side.ToString()}");
+                        this._logger.Debug($"{this.Symbol} Sell: lastOrder Price: {lastOrder?.Price} * {minIncreaseRequired} < {bestBidPrice}: {lastOrder?.Price * minIncreaseRequired < bestBidPrice}");
+                        this._logger.Debug($"{this.Symbol} Sell: Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow}");
+                        this._logger.Debug($"{this.Symbol} Sell: aimToGetUSDT has value {aimToGetUSDT.HasValue} -> {aimToGetUSDT.Value}");
                         if (aimToGetUSDT.HasValue)
                         {
-                            this._logger.Verbose($"Value {aimToGetUSDT} > 0: {aimToGetUSDT > 0} and higher than {exchangeInfo.MinNotionalFilter.MinNotional}: {aimToGetUSDT >= exchangeInfo.MinNotionalFilter.MinNotional}");
+                            this._logger.Debug($"{this.Symbol} Sell: Value {aimToGetUSDT} > 0: {aimToGetUSDT > 0} and higher than {exchangeInfo.MinNotionalFilter.MinNotional}: {aimToGetUSDT >= exchangeInfo.MinNotionalFilter.MinNotional}");
+                            this._logger.Debug($"{this.Symbol} Sell: MaxPrice { exchangeInfo.PriceFilter.MaxPrice} > Amount {aimToGetUSDT.Value} > MinPrice {exchangeInfo.PriceFilter.MinPrice}");
+                            this._logger.Debug($"{this.Symbol} Sell: MaxLOT {exchangeInfo.LotSizeFilter.MaxQuantity} > Amount {assetBalanceToSell} > MinLOT {exchangeInfo.LotSizeFilter.MinQuantity}");
                         }
 
-                        this._logger.Verbose($"Sell X to get {aimToGetUSDT}");
+                        this._logger.Debug($"Sell X to get {aimToGetUSDT}");
 
 
                         // Check if no order has been issued yet or order was BUY
                         if ((null == lastOrder
                             || lastOrder.Side == OrderSide.Buy
-                            || lastOrder.Side == OrderSide.Sell && lastOrder.Price * minIncreaseRequired < bestBidPrice && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow
+                            || lastOrder.Side == OrderSide.Sell && lastOrder.Price * minIncreaseRequired < bestBidPrice && lastOrder.TransactionTime.AddMinutes(5) < DateTime.UtcNow
                             || (!this._lastRecommendation.ContainsKey(recommendation.Action) || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow) && recommendation.Action == Analyze.Action.StrongSell)
                             || recommendation.Action == Analyze.Action.PanicSell
-                            && aimToGetUSDT.HasValue && aimToGetUSDT > exchangeInfo.MinNotionalFilter.MinNotional
-                            /* implicit checking bestAskPrice > 0 by checking sellQuoteOrderQuantity > 0*/)
+                            // Logic check
+                            && aimToGetUSDT.HasValue && aimToGetUSDT.Value >= exchangeInfo.MinNotionalFilter.MinNotional && aimToGetUSDT.Value > 0
+                                /// Price range
+                                && aimToGetUSDT.Value >= exchangeInfo.PriceFilter.MinPrice
+                                && aimToGetUSDT.Value <= exchangeInfo.PriceFilter.MaxPrice
+                                // LOT size
+                                && assetBalanceToSell >= exchangeInfo.LotSizeFilter.MinQuantity
+                                && assetBalanceToSell <= exchangeInfo.LotSizeFilter.MaxQuantity
+                            )
                         {
                             this._logger.Debug($"{this.Symbol}: Issuing order to sell");
 
@@ -380,7 +405,8 @@ namespace trape.cli.trader.Trading
                     // Check if order is OK and log
                     if (placedOrder.ResponseStatusCode != System.Net.HttpStatusCode.OK || !placedOrder.Success)
                     {
-                        using (var context = LogContext.PushProperty("placedOrder", placedOrder))
+                        using (var context1 = LogContext.PushProperty("placedOrder.Error", placedOrder.Error))
+                        using (var context2 = LogContext.PushProperty("placedOrder.Data", placedOrder.Data))
                         {
                             this._logger.Error($"Order {newClientOrderId} was malformed");
                         }
@@ -389,16 +415,20 @@ namespace trape.cli.trader.Trading
                         this._logger.Error(placedOrder.Error?.Code.ToString());
                         this._logger.Error(placedOrder.Error?.Message);
                         this._logger.Error(placedOrder.Error?.Data?.ToString());
-                        this._logger.Warning($"PlacedOrder: {placedOrder.Data.Symbol};{placedOrder.Data.Side};{placedOrder.Data.Type} > ClientOrderId:{placedOrder.Data.ClientOrderId} CummulativeQuoteQuantity:{placedOrder.Data.CummulativeQuoteQuantity} OriginalQuoteOrderQuantity:{placedOrder.Data.OriginalQuoteOrderQuantity} Status:{placedOrder.Data.Status}");
+
+                        if (placedOrder.Data != null)
+                        {
+                            this._logger.Warning($"PlacedOrder: {placedOrder.Data.Symbol};{placedOrder.Data.Side};{placedOrder.Data.Type} > ClientOrderId:{placedOrder.Data.ClientOrderId} CummulativeQuoteQuantity:{placedOrder.Data.CummulativeQuoteQuantity} OriginalQuoteOrderQuantity:{placedOrder.Data.OriginalQuoteOrderQuantity} Status:{placedOrder.Data.Status}");
+                        }
                     }
                     else
                     {
                         await database.InsertAsync(placedOrder.Data, this._cancellationTokenSource.Token).ConfigureAwait(false);
                     }
-                }                
+                }
             }
             /// Catch All Exception
-            catch(Exception cae)
+            catch (Exception cae)
             {
                 this._logger.Error(cae, cae.Message);
             }

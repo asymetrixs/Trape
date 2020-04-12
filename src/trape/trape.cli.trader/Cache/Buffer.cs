@@ -352,6 +352,11 @@ namespace trape.cli.trader.Cache
         /// <returns>Exchange information</returns>
         public BinanceSymbol GetExchangeInfoFor(string symbol)
         {
+            if (this._binanceExchangeInfo == null || string.IsNullOrEmpty(symbol))
+            {
+                return null;
+            }
+
             var symbolInfo = this._binanceExchangeInfo.Symbols.SingleOrDefault(s => s.Name == symbol);
 
             if (null == symbolInfo || symbolInfo.Status != SymbolStatus.Trading)

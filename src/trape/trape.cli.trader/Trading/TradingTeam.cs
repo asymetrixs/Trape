@@ -117,7 +117,7 @@ namespace trape.cli.trader.Trading
 
         public void Start()
         {
-            this._logger.Information("Starting trading team");
+            this._logger.Debug("Starting trading team");
 
             // Call once manually to set up the traders
             _timerSymbolCheck_Elapsed(null, null);
@@ -125,12 +125,12 @@ namespace trape.cli.trader.Trading
             // Start timer for regular checks
             this._timerSymbolCheck.Start();
 
-            this._logger.Information("Trading team started");
+            this._logger.Debug("Trading team started");
         }
 
         public async Task Finish()
         {
-            this._logger.Information("Stopping trading team");
+            this._logger.Debug("Stopping trading team");
 
             this._timerSymbolCheck.Stop();
 
@@ -139,7 +139,7 @@ namespace trape.cli.trader.Trading
                 await trader.Finish().ConfigureAwait(true);
             }
 
-            this._logger.Information("Trading team stopped");
+            this._logger.Debug("Trading team stopped");
         }
 
         #endregion

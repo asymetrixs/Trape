@@ -1,9 +1,7 @@
 SELECT bpo.time_in_force, bpo.transaction_time, bpo.side, bpo.symbol, bot.price, bot.quantity, bot.commission, 
-	bot.commission_asset, bot.consumed, ROUND(bot.current_price, 8) FROM binance_order_trade bot
+	bot.commission_asset, bot.consumed, ROUND(bot.price, 8) FROM binance_order_trade AS bot
 LEFT JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
-ORDER BY binance_placed_order_id DESC, id DESC;
-
-select * from recommendation order by event_time desc limit 100
+ORDER BY binance_placed_order_id DESC, bpo.id DESC;
 
 SELECT transaction_time, symbol, ROUND(buy, 8), ROUND(sell, 8), ROUND(sell-buy, 8) AS profit FROM (
 	SELECT	transaction_time::DATE,
