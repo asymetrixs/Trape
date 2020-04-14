@@ -107,12 +107,17 @@ namespace trape.cli.collector.DataLayer
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -168,12 +173,17 @@ namespace trape.cli.collector.DataLayer
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -218,12 +228,17 @@ namespace trape.cli.collector.DataLayer
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -256,12 +271,17 @@ namespace trape.cli.collector.DataLayer
 
                         return (int)obj;
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {

@@ -132,12 +132,17 @@ namespace trape.cli.trader.DataLayer
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -205,12 +210,17 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -277,12 +287,17 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -349,12 +364,17 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -421,12 +441,17 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -493,12 +518,17 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -541,12 +571,17 @@ namespace trape.cli.trader.DataLayer
                     {
                         this._logger.Error("Value is not decimal");
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -609,12 +644,17 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -670,12 +710,17 @@ namespace trape.cli.trader.DataLayer
                         }
 
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -722,12 +767,17 @@ namespace trape.cli.trader.DataLayer
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -819,14 +869,20 @@ namespace trape.cli.trader.DataLayer
 
                             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
                         }
-                        catch (Exception ex)
+                        catch (OperationCanceledException oce)
                         {
                             await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
-
-                            if (!cancellationToken.IsCancellationRequested)
-                            {
-                                this._logger.Fatal(ex, ex.Message, com.CommandText);
-                            }
+                            this._logger.Debug(oce, oce.Message);
+                        }
+                        catch (NpgsqlException ex)
+                        {
+                            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        }
+                        catch (Exception e)
+                        {
+                            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                            this._logger.Fatal($"General Exception: {e.Message}");
                         }
                         finally
                         {
@@ -900,12 +956,17 @@ namespace trape.cli.trader.DataLayer
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -955,12 +1016,17 @@ namespace trape.cli.trader.DataLayer
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
@@ -1101,14 +1167,20 @@ namespace trape.cli.trader.DataLayer
                             }
                             await transaction.CommitAsync().ConfigureAwait(false);
                         }
-                        catch (Exception ex)
+                        catch (OperationCanceledException oce)
                         {
                             await transaction.RollbackAsync().ConfigureAwait(false);
-
-                            if (!cancellationToken.IsCancellationRequested)
-                            {
-                                this._logger.Fatal(ex, ex.Message, com.CommandText);
-                            }
+                            this._logger.Debug(oce, oce.Message);
+                        }
+                        catch (NpgsqlException ex)
+                        {
+                            await transaction.RollbackAsync().ConfigureAwait(false);
+                            this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        }
+                        catch (Exception e)
+                        {
+                            await transaction.RollbackAsync().ConfigureAwait(false);
+                            this._logger.Fatal($"General Exception: {e.Message}");
                         }
                         finally
                         {
@@ -1160,12 +1232,17 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException oce)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
-                        }
+                        this._logger.Debug(oce, oce.Message);
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
                     }
                     finally
                     {
