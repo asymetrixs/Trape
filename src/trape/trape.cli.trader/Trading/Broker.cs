@@ -53,14 +53,14 @@ namespace trape.cli.trader.Trading
         private System.Timers.Timer _timerTrading;
 
         /// <summary>
-        /// Minimum required increase
+        /// Minimum required increase of the price before another chunk is sold
         /// </summary>
-        private const decimal minIncreaseRequired = 1.002M;
+        private const decimal requiredPriceGainForResell = 1.003M;
 
         /// <summary>
-        /// Minimum required decrease
+        /// Minimum required decrease of the price before another chunk is bought
         /// </summary>
-        private const decimal minDecreaseRequired = 0.998M;
+        private const decimal requiredPriceDropforRebuy = 0.997M;
 
         /// <summary>
         /// Symbol
@@ -202,6 +202,11 @@ namespace trape.cli.trader.Trading
 
                     // Only take half of what is available to buy assets
                     var availableUSDT = usdt?.Free * 0.6M;
+                    // In case of strong buy increase budget
+                    if (recommendation.Action == Analyze.Action.StrongBuy)
+                    {
+                        availableUSDT = usdt?.Free * 0.8M;
+                    }
 
                     // Round to a valid value
                     availableUSDT = Math.Round(availableUSDT.Value, exchangeInfo.BaseAssetPrecision, MidpointRounding.ToZero);
@@ -220,7 +225,7 @@ namespace trape.cli.trader.Trading
                         this._logger.Debug($"{this.Symbol} Buy : Checking conditions");
                         this._logger.Debug($"{this.Symbol} Buy : lastOrder is null: {null == lastOrder}");
                         this._logger.Debug($"{this.Symbol} Buy : lastOrder side: {lastOrder?.Side.ToString()}");
-                        this._logger.Debug($"{this.Symbol} Buy : lastOrder Price: {lastOrder?.Price} * {minDecreaseRequired} > {bestAskPrice}: {lastOrder?.Price * minDecreaseRequired > bestAskPrice}");
+                        this._logger.Debug($"{this.Symbol} Buy : lastOrder Price: {lastOrder?.Price} * {requiredPriceDropforRebuy} > {bestAskPrice}: {lastOrder?.Price * requiredPriceDropforRebuy > bestAskPrice}");
                         this._logger.Debug($"{this.Symbol} Buy : Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow}");
                         this._logger.Debug($"{this.Symbol} Buy : availableAmount has value {availableUSDT.HasValue}");
                         if (availableUSDT.HasValue)
@@ -230,12 +235,10 @@ namespace trape.cli.trader.Trading
                             this._logger.Debug($"{this.Symbol} Buy : MaxLOT {exchangeInfo.LotSizeFilter.MaxQuantity} > Amount {availableUSDT / bestAskPrice} > MinLOT {exchangeInfo.LotSizeFilter.MinQuantity}");
                         }
 
-
-
                         // Check if no order has been issued yet or order was SELL
                         if ((null == lastOrder
                             || lastOrder.Side == OrderSide.Sell
-                            || lastOrder.Side == OrderSide.Buy && lastOrder.Price * minDecreaseRequired > bestAskPrice && lastOrder.TransactionTime.AddMinutes(5) < DateTime.UtcNow
+                            || lastOrder.Side == OrderSide.Buy && lastOrder.Price * requiredPriceDropforRebuy > bestAskPrice && lastOrder.TransactionTime.AddMinutes(5) < DateTime.UtcNow
                             || (!this._lastRecommendation.ContainsKey(recommendation.Action) || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow) && recommendation.Action == Analyze.Action.StrongBuy)
                             // Logic check
                             && availableUSDT.HasValue && availableUSDT.Value >= exchangeInfo.MinNotionalFilter.MinNotional && bestAskPrice > 0
@@ -326,7 +329,7 @@ namespace trape.cli.trader.Trading
                         this._logger.Debug($"{this.Symbol} Sell: Checking conditions");
                         this._logger.Debug($"{this.Symbol} Sell: lastOrder is null: {null == lastOrder}");
                         this._logger.Debug($"{this.Symbol} Sell: lastOrder side: {lastOrder?.Side.ToString()}");
-                        this._logger.Debug($"{this.Symbol} Sell: lastOrder Price: {lastOrder?.Price} * {minIncreaseRequired} < {bestBidPrice}: {lastOrder?.Price * minIncreaseRequired < bestBidPrice}");
+                        this._logger.Debug($"{this.Symbol} Sell: lastOrder Price: {lastOrder?.Price} * {requiredPriceGainForResell} < {bestBidPrice}: {lastOrder?.Price * requiredPriceGainForResell < bestBidPrice}");
                         this._logger.Debug($"{this.Symbol} Sell: Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow}");
                         this._logger.Debug($"{this.Symbol} Sell: aimToGetUSDT has value {aimToGetUSDT.HasValue} -> {aimToGetUSDT.Value}");
                         if (aimToGetUSDT.HasValue)
@@ -342,7 +345,7 @@ namespace trape.cli.trader.Trading
                         // Check if no order has been issued yet or order was BUY
                         if ((null == lastOrder
                             || lastOrder.Side == OrderSide.Buy
-                            || lastOrder.Side == OrderSide.Sell && lastOrder.Price * minIncreaseRequired < bestBidPrice && lastOrder.TransactionTime.AddMinutes(5) < DateTime.UtcNow
+                            || lastOrder.Side == OrderSide.Sell && lastOrder.Price * requiredPriceGainForResell < bestBidPrice && lastOrder.TransactionTime.AddMinutes(5) < DateTime.UtcNow
                             || (!this._lastRecommendation.ContainsKey(recommendation.Action) || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow) && recommendation.Action == Analyze.Action.StrongSell)
                             || recommendation.Action == Analyze.Action.PanicSell
                             // Logic check

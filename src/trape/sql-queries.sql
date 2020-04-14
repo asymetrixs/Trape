@@ -1,5 +1,5 @@
 SELECT bpo.time_in_force, bpo.transaction_time, bpo.side, bpo.symbol, bot.price, bot.quantity, bot.commission, 
-	bot.commission_asset, bot.consumed, ROUND(bot.price, 8) FROM binance_order_trade AS bot
+	bot.commission_asset, bot.consumed, ROUND(bot.consumed_price, 8) FROM binance_order_trade AS bot
 LEFT JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
 ORDER BY binance_placed_order_id DESC, bpo.id DESC;
 
@@ -10,9 +10,13 @@ SELECT transaction_time, symbol, ROUND(buy, 8), ROUND(sell, 8), ROUND(sell-buy, 
 			SUM(consumed_price*consumed) as sell
 			FROM binance_order_trade bot
 			INNER JOIN binance_placed_order bop ON bop.id = bot.binance_placed_order_id
-	WHERE consumed != 0
+	WHERE side = 'Buy'
 	GROUP BY transaction_time::DATE, symbol ) a
 ORDER BY transaction_time::DATE DESC, symbol ASC
+
+update binance_order_trade set consumed = quantity where binance_placed_order_id != 278
+update binance_order_trade set consumed_price = price where binance_placed_order_id != 278 AND consumed_price = 0
+select * from binance_order_trade
 
 select * from select_asset_status()
 --233
@@ -22,7 +26,13 @@ select * from select_asset_status()
 delete from binance_order_trade where binance_placed_order_id = 226;
 delete from binance_placed_order where id = 226;
 
+select * from recommendation where event_time > '2020-04-12 12:14:00 +00'::timestamptz AND  event_time < '2020-04-12 12:18:00 +00'::timestamptz
+	AND slope10m < -0.004 AND slope15m < -0.001
+	
+select event_time, slope1h from recommendation where event_time > '2020-04-12 14:45:00 +00'::timestamptz AND  event_time < '2020-04-12 14:46:00 +00'::timestamptz
+ORDER BY id ASC
 
+select * from recommendation order by id desc limit 10
 
 select * from binance_order_trade order by binance_placed_order_id DESC;
 
@@ -40,8 +50,8 @@ SELECT max(id) from binance_placed_order
 
 delete from binance_placed_order;
 delete from binance_order_trade;
-SELECT * FROM fix_symbol_quantity('BTCUSDT', 0.01053939, 7343.58);
-SELECT * FROM fix_symbol_quantity('ETHUSDT', 0, 170.59);
+SELECT * FROM fix_symbol_quantity('BTCUSDT', 0.04132487, 7133.00);
+
 
 
 

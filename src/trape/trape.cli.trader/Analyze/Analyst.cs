@@ -400,8 +400,8 @@ namespace trape.cli.trader.Analyze
         /// <returns></returns>
         public static Action VerticalBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA10m, decimal upperLimitMA10m)
         {
-            var action = Action.Wait;
-
+            // Advise to buy
+            var action = Action.StrongBuy;
             return action;
         }
 
