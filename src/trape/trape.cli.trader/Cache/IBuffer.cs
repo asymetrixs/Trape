@@ -77,6 +77,6 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="symbol">Symbol</param>
         /// <returns>Exchange information</returns>
-        BinanceSymbol GetExchangeInfoFor(string symbol);
+        BinanceSymbol GetSymbolInfoFor(string symbol);
     }
 }

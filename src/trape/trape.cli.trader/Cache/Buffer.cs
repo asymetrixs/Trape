@@ -350,7 +350,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="symbol">Symbol</param>
         /// <returns>Exchange information</returns>
-        public BinanceSymbol GetExchangeInfoFor(string symbol)
+        public BinanceSymbol GetSymbolInfoFor(string symbol)
         {
             if (this._binanceExchangeInfo == null || string.IsNullOrEmpty(symbol))
             {
