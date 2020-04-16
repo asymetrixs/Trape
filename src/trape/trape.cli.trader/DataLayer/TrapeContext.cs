@@ -60,10 +60,14 @@ namespace trape.cli.trader.DataLayer
             Stats10m stat10m, Stats2h stat2h, CancellationToken cancellationToken)
 
         {
+            #region Argument checks
+
             if (null == stat3s || null == stat15s || null == stat2m || null == stat10m || null == stat2h || null == recommendation)
             {
                 return;
             }
+
+            #endregion
 
             var pushedProperties = new List<IDisposable>();
 
@@ -132,7 +136,7 @@ namespace trape.cli.trader.DataLayer
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }
@@ -210,7 +214,7 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }
@@ -287,7 +291,7 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }
@@ -364,7 +368,7 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }
@@ -441,7 +445,7 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }
@@ -518,7 +522,7 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }
@@ -571,7 +575,7 @@ namespace trape.cli.trader.DataLayer
                     {
                         this._logger.Error("Value is not decimal");
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }
@@ -644,7 +648,7 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }
@@ -670,10 +674,14 @@ namespace trape.cli.trader.DataLayer
 
         public async Task InsertAsync(IEnumerable<BinanceStreamBalance> binanceStreamBalances, CancellationToken cancellationToken)
         {
+            #region Argument checks
+
             if (null == binanceStreamBalances || !binanceStreamBalances.Any())
             {
                 return;
             }
+
+            #endregion
 
             var pushedProperties = new List<IDisposable>();
 
@@ -710,7 +718,7 @@ namespace trape.cli.trader.DataLayer
                         }
 
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }
@@ -738,10 +746,14 @@ namespace trape.cli.trader.DataLayer
         public async Task InsertAsync(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate, CancellationToken cancellationToken)
 
         {
+            #region Argument checks
+
             if (null == binanceStreamBalanceUpdate)
             {
                 return;
             }
+
+            #endregion
 
             var pushedProperties = new List<IDisposable>();
 
@@ -767,7 +779,7 @@ namespace trape.cli.trader.DataLayer
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }
@@ -796,10 +808,14 @@ namespace trape.cli.trader.DataLayer
         public async Task InsertAsync(BinanceStreamOrderList binanceStreamOrderList, CancellationToken cancellationToken)
 
         {
+            #region Argument checks
+
             if (null == binanceStreamOrderList)
             {
                 return;
             }
+
+            #endregion
 
             var pushedProperties = new List<IDisposable>();
 
@@ -869,7 +885,7 @@ namespace trape.cli.trader.DataLayer
 
                             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
                         }
-                        catch (OperationCanceledException oce)
+                        catch (OperationCanceledException)
                         {
                             await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
                             // nothing
@@ -901,10 +917,14 @@ namespace trape.cli.trader.DataLayer
         public async Task InsertAsync(BinanceStreamOrderUpdate binanceStreamOrderUpdate, CancellationToken cancellationToken)
 
         {
+            #region Argument checks
+
             if (null == binanceStreamOrderUpdate)
             {
                 return;
             }
+
+            #endregion
 
             var pushedProperties = new List<IDisposable>();
 
@@ -956,7 +976,7 @@ namespace trape.cli.trader.DataLayer
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }
@@ -983,10 +1003,14 @@ namespace trape.cli.trader.DataLayer
 
         public async Task InsertAsync(Order order, CancellationToken cancellationToken)
         {
+            #region Argument checks
+
             if (null == order)
             {
                 return;
             }
+
+            #endregion
 
             var pushedProperties = new List<IDisposable>();
 
@@ -1016,7 +1040,7 @@ namespace trape.cli.trader.DataLayer
 
                         await com.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }
@@ -1043,10 +1067,14 @@ namespace trape.cli.trader.DataLayer
 
         public async Task InsertAsync(BinancePlacedOrder binancePlacedOrder, CancellationToken cancellationToken)
         {
+            #region Argument checks
+
             if (null == binancePlacedOrder)
             {
                 return;
             }
+
+            #endregion
 
             var pushedProperties = new List<IDisposable>();
 
@@ -1167,7 +1195,7 @@ namespace trape.cli.trader.DataLayer
                             }
                             await transaction.CommitAsync().ConfigureAwait(false);
                         }
-                        catch (OperationCanceledException oce)
+                        catch (OperationCanceledException)
                         {
                             await transaction.RollbackAsync().ConfigureAwait(false);
                             // nothing
@@ -1232,7 +1260,7 @@ namespace trape.cli.trader.DataLayer
                             }
                         }
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // nothing
                     }

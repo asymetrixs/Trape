@@ -56,8 +56,6 @@ namespace trape.cli.trader.Analyze
         /// </summary>
         private Dictionary<string, Strategy> _lastStrategy;
 
-        private Action _prevAction;
-
         #endregion
 
         #region Constructor
@@ -81,7 +79,6 @@ namespace trape.cli.trader.Analyze
             this._disposed = false;
             this._recommendationSynchronizer = new SemaphoreSlim(1, 1);
             this._lastStrategy = new Dictionary<string, Strategy>();
-            this._prevAction = Action.Wait;
 
             // Set up timer that makes decisions, every second
             this._timerRecommendationMaker = new System.Timers.Timer()
@@ -286,11 +283,15 @@ namespace trape.cli.trader.Analyze
         /// <returns></returns>
         public Action HorizontalSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA10m, decimal upperLimitMA10m)
         {
+            #region Argument checks
+
             if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
             {
                 this._logger.Warning("Stats are NULL");
                 return Action.Wait;
             }
+
+            #endregion
 
             var action = Action.Wait;
 
@@ -339,11 +340,15 @@ namespace trape.cli.trader.Analyze
         /// <returns></returns>
         public Action HorizontalBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA10m, decimal upperLimitMA10m)
         {
+            #region Argument checks
+
             if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
             {
                 this._logger.Warning("Stats are NULL");
                 return Action.Wait;
             }
+
+            #endregion
 
             var action = Action.Wait;
 
