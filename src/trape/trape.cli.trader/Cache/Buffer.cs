@@ -405,7 +405,7 @@ namespace trape.cli.trader.Cache
                 {
                     // Subscribe to all symbols
                     await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.Stats2h.Select(s => s.Symbol), (BinanceBookTick bbt) =>
-                    {
+                    {                        
                         var askPriceAdded = false;
                         var bidPriceAdded = false;
 
@@ -423,6 +423,8 @@ namespace trape.cli.trader.Cache
                                 askPriceAdded = this._bestAskPrices.TryAdd(bbt.Symbol, bestAskPrice);
                                 bestAskPrice.Add(bbt.BestAskPrice);
                             }
+
+                            this._logger.Verbose($"Binance: book tick update - ask for {bbt.Symbol} is {bbt.BestAskPrice}");
                         }
 
                         // Update bid price
@@ -439,6 +441,8 @@ namespace trape.cli.trader.Cache
                                 bidPriceAdded = this._bestBidPrices.TryAdd(bbt.Symbol, bestBidPrice);
                                 bestBidPrice.Add(bbt.BestBidPrice);
                             }
+
+                            this._logger.Verbose($"Binance: book tick update - bid for {bbt.Symbol} is {bbt.BestBidPrice}");
                         }
                     }).ConfigureAwait(true);
 

@@ -515,7 +515,7 @@ namespace trape.cli.trader.Trading
                 {
                     assetBalanceToSell = assetBalance?.Free;
                     assetBalanceFree = assetBalanceToSell;
-                    bestBidPrice = bestBidPrice * 0.9985M; // Reduce by 0.2 percent to definitely sell
+                    bestBidPrice = bestBidPrice * 0.9985M; // Reduce by 0.15 percent to definitely sell
                 }
                 else if (recommendation.Action == Analyze.Action.StrongSell)
                 {
