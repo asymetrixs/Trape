@@ -25,6 +25,9 @@ namespace trape.cli.trader
         public static void Initialize()
         {
             DatabasePool = new ObjectPool<ITrapeContext>(() => new TrapeContext(Program.Services.GetService(typeof(ILogger)) as ILogger));
+
+            // Warmup
+            DatabasePool.Warmup(10);
         }
 
         #endregion

@@ -134,7 +134,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {
@@ -212,7 +212,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {
@@ -289,7 +289,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {
@@ -366,7 +366,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {
@@ -443,7 +443,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {
@@ -520,7 +520,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {
@@ -573,7 +573,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {
@@ -646,7 +646,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {
@@ -712,7 +712,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {
@@ -769,7 +769,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {
@@ -872,7 +872,7 @@ namespace trape.cli.trader.DataLayer
                         catch (OperationCanceledException oce)
                         {
                             await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
-                            this._logger.Debug(oce, oce.Message);
+                            // nothing
                         }
                         catch (NpgsqlException ex)
                         {
@@ -958,7 +958,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {
@@ -1018,7 +1018,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {
@@ -1170,7 +1170,7 @@ namespace trape.cli.trader.DataLayer
                         catch (OperationCanceledException oce)
                         {
                             await transaction.RollbackAsync().ConfigureAwait(false);
-                            this._logger.Debug(oce, oce.Message);
+                            // nothing
                         }
                         catch (NpgsqlException ex)
                         {
@@ -1234,7 +1234,7 @@ namespace trape.cli.trader.DataLayer
                     }
                     catch (OperationCanceledException oce)
                     {
-                        this._logger.Debug(oce, oce.Message);
+                        // nothing
                     }
                     catch (NpgsqlException ex)
                     {

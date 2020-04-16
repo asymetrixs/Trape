@@ -513,39 +513,34 @@ ALTER FUNCTION public.stats_15s()
 
 
 
-CREATE OR REPLACE FUNCTION stats_2m() 
-RETURNS TABLE (
-	r_symbol TEXT,
-	r_databasis INT,
-	r_slope_5m NUMERIC,
-	r_slope_7m NUMERIC,
-	r_slope_10m NUMERIC,
-	r_slope_15m NUMERIC,
-	r_movav_5m NUMERIC,
-	r_movav_7m NUMERIC,
-	r_movav_10m NUMERIC,
-	r_movav_15m NUMERIC
-) AS
-$$
+CREATE OR REPLACE FUNCTION public.stats_2m(
+	)
+    RETURNS TABLE(r_symbol text, r_databasis integer, r_slope_5m numeric, r_slope_7m numeric, r_slope_10m numeric, r_slope_15m numeric, r_movav_5m numeric, r_movav_7m numeric, r_movav_10m numeric, r_movav_15m numeric) 
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    VOLATILE STRICT 
+    ROWS 1000
+    
+AS $BODY$
 BEGIN
 	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes'))::NUMERIC, 8) AS slope_5m,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes'))::NUMERIC, 8) AS slope_7m,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes'))::NUMERIC, 8) AS slope_10,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8) AS slope_15m,
-		ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes') 
+		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes'))::NUMERIC, 8) AS slope_5m,
+		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes'))::NUMERIC, 8) AS slope_7m,
+		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes'))::NUMERIC, 8) AS slope_10,
+		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8) AS slope_15m,
+		ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes') 
 			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes')), 8) AS movav_5m,
-			ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes') 
+			ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes') 
 			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes')), 8) AS movav_7m,
-			ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes') 
+			ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes') 
 			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes')), 8) AS movav_10m,
-			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) AS movav_15m
-	FROM binance_stream_tick
+			ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) / COUNT(*)), 8) AS movav_15m
+	FROM binance_book_tick
 	WHERE event_time >= NOW() - INTERVAL '15 minutes'
 	GROUP BY symbol;
 END;
-$$
-LANGUAGE plpgsql STRICT;
+$BODY$;
 
 
 

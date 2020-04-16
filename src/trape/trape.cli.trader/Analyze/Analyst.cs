@@ -56,6 +56,8 @@ namespace trape.cli.trader.Analyze
         /// </summary>
         private Dictionary<string, Strategy> _lastStrategy;
 
+        private Action _prevAction;
+
         #endregion
 
         #region Constructor
@@ -79,6 +81,7 @@ namespace trape.cli.trader.Analyze
             this._disposed = false;
             this._recommendationSynchronizer = new SemaphoreSlim(1, 1);
             this._lastStrategy = new Dictionary<string, Strategy>();
+            this._prevAction = Action.Wait;
 
             // Set up timer that makes decisions, every second
             this._timerRecommendationMaker = new System.Timers.Timer()
@@ -167,17 +170,19 @@ namespace trape.cli.trader.Analyze
                 || stat10m == null || !stat10m.IsValid()
                 || stat2h == null || !stat2h.IsValid())
             {
-                this._logger.Warning($"Skipped {symbol} due to old or incomplete data");
+                this._logger.Warning($"Skipped {symbol} due to old or incomplete data: 3s:{stat3s?.IsValid()} 15s:{stat15s?.IsValid()} 2m:{stat2m?.IsValid()} 10m:{stat10m?.IsValid()} 2h:{stat2h?.IsValid()}");
                 this._lastRecommendation.Remove(symbol);
                 return;
             }
 
+            // Use regular approach
             // Get current symbol price
             var currentPrice = this._buffer.GetBidPrice(symbol);
 
             // Corridor around Moving Average 10m
             decimal upperLimitMA10m = stat2m.MovingAverage10m * 1.0003M;
             decimal lowerLimitMA10m = stat2m.MovingAverage10m * 0.9997M;
+            const decimal strongThreshold = 0.004M;
 
             // Make the decision
             var action = Action.Wait;
@@ -199,40 +204,40 @@ namespace trape.cli.trader.Analyze
                 this._logger.Warning("Crashing Mode");
                 strategy = Strategy.CrashingSell;
             }
-            else if (stat10m.Slope1h > 0.01M)
-            {
-                action = VerticalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA10m, upperLimitMA10m);
-                strategy = Strategy.VerticalSell;
-            }
-            else if (stat10m.Slope1h > 0M)
-            {
-                action = HorizontalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA10m, upperLimitMA10m);
-                strategy = Strategy.HorizontalSell;
-            }
-            else if (stat10m.Slope1h < -0.01M)
+            else if (stat10m.Slope1h > strongThreshold)
             {
                 action = VerticalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA10m, upperLimitMA10m);
                 strategy = Strategy.VerticalBuy;
             }
-            else if (stat10m.Slope1h < 0M)
+            else if (stat10m.Slope1h > 0M)
             {
                 action = HorizontalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA10m, upperLimitMA10m);
                 strategy = Strategy.HorizontalBuy;
+            }
+            else if (stat10m.Slope1h < -strongThreshold)
+            {
+                action = VerticalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA10m, upperLimitMA10m);
+                strategy = Strategy.VerticalSell;
+            }
+            else if (stat10m.Slope1h < 0M)
+            {
+                action = HorizontalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA10m, upperLimitMA10m);
+                strategy = Strategy.HorizontalSell;
             }
 
             var now = DateTime.UtcNow;
             // Print strategy changes
             if (this._lastStrategy[symbol] != strategy)
             {
-                this._logger.Debug($"{symbol} Switching stategy: {this._lastStrategy[symbol]} -> {strategy}");
-                this._lastStrategy[symbol] = strategy;                
+                this._logger.Information($"{symbol} Switching stategy: {this._lastStrategy[symbol]} -> {strategy}");
+                this._lastStrategy[symbol] = strategy;
             }
             // Print strategy every hour in log
             else if (now.Minute == 0 && now.Second == 0 && now.Millisecond < 100)
             {
-                this._logger.Debug($"{symbol} Stategy: {strategy}");
+                this._logger.Information($"{symbol} Stategy: {strategy}");
             }
-            
+
             // Instantiate new recommendation
             var newRecommendation = new Recommendation()
             {
@@ -258,7 +263,7 @@ namespace trape.cli.trader.Analyze
             await database.InsertAsync(newRecommendation, stat3s, stat15s, stat2m, stat10m, stat2h, this._cancellationTokenSource.Token).ConfigureAwait(false);
 
             // Announce the trend every 5 seconds not to spam the log
-            if (DateTime.UtcNow.Second % 50 == 0 || newRecommendation.Action != lastRecommendation?.Action)
+            if (DateTime.UtcNow.Second % 5 == 0 || newRecommendation.Action != lastRecommendation?.Action)
             {
                 this._logger.Verbose(_GetTrend(newRecommendation, stat10m, stat2h));
             }
@@ -384,6 +389,21 @@ namespace trape.cli.trader.Analyze
         {
             // Advise to sell
             var action = Action.StrongSell;
+
+            if (
+                stat3s?.Slope15s > 0
+                || stat3s?.Slope30s > 0
+                || stat15s?.Slope1m > 0
+                || stat15s?.Slope1m > 0.02M
+                || stat15s?.Slope3m > 0.01M
+                || stat2m?.Slope5m > 0.01M
+                || stat2m?.Slope7m > 0.01M
+                || stat2m?.Slope10m > 0.002M
+                )
+            {
+                action = Action.Wait;
+            }
+
             return action;
         }
 
@@ -402,6 +422,21 @@ namespace trape.cli.trader.Analyze
         {
             // Advise to buy
             var action = Action.StrongBuy;
+
+            if (
+                stat3s?.Slope15s < 0
+                || stat3s?.Slope30s < 0
+                || stat15s?.Slope1m < 0
+                || stat15s?.Slope1m < -0.02M
+                || stat15s?.Slope3m < -0.01M
+                || stat2m?.Slope5m < -0.01M
+                || stat2m?.Slope7m < -0.01M
+                || stat2m?.Slope10m < -0.002M
+                )
+            {
+                action = Action.Wait;
+            }
+
             return action;
         }
 

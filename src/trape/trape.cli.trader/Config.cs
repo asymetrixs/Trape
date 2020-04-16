@@ -29,8 +29,6 @@ namespace trape.cli.trader
                 .AddJsonFile("settings.json", optional: false, reloadOnChange: true);
 
             Current = builder.Build();
-
-            Pool.Initialize();
         }
 
         public static string GetValue(string section)

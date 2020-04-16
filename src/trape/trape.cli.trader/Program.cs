@@ -42,6 +42,10 @@ namespace trape.cli.trader
             // Create IoC container
             var app = CreateHostBuilder().Build();
             Services = app.Services;
+
+            // Initialize pool
+            Pool.Initialize();
+
             var logger = Services.GetRequiredService<ILogger>().ForContext<Program>();
             logger.Information("Start up complete");
 
