@@ -1281,3 +1281,30 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql VOLATILE STRICT;
+
+
+
+CREATE OR REPLACE FUNCTION current_statement ()
+RETURNS TABLE (
+	date DATE,
+	symbol TEXT,
+	buy NUMERIC,
+	sell NUMERIC,
+	profit NUMERIC)
+	AS
+$$
+BEGIN
+	RETURN QUERY
+	SELECT transaction_time, a.symbol, ROUND(a.buy, 8), ROUND(a.sell, 8), ROUND(a.sell-a.buy, 8) AS profit FROM (
+		SELECT	transaction_time::DATE,
+				bop.symbol,
+				SUM(bot.price*consumed) as buy,
+				SUM(consumed_price*consumed) as sell
+				FROM binance_order_trade bot
+				INNER JOIN binance_placed_order bop ON bop.id = bot.binance_placed_order_id
+		WHERE side = 'Buy'
+		GROUP BY transaction_time::DATE, bop.symbol ) a
+	ORDER BY transaction_time::DATE DESC, symbol ASC;
+END;
+$$
+LANGUAGE plpgsql STRICT;

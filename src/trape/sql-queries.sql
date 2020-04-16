@@ -3,16 +3,7 @@ SELECT bpo.time_in_force, bpo.transaction_time, bpo.side, bpo.symbol, bot.price,
 LEFT JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
 ORDER BY binance_placed_order_id DESC, bpo.id DESC;
 
-SELECT transaction_time, symbol, ROUND(buy, 8), ROUND(sell, 8), ROUND(sell-buy, 8) AS profit FROM (
-	SELECT	transaction_time::DATE,
-			symbol,
-			SUM(bot.price*consumed) as buy,
-			SUM(consumed_price*consumed) as sell
-			FROM binance_order_trade bot
-			INNER JOIN binance_placed_order bop ON bop.id = bot.binance_placed_order_id
-	WHERE side = 'Buy'
-	GROUP BY transaction_time::DATE, symbol ) a
-ORDER BY transaction_time::DATE DESC, symbol ASC
+select * from current_statement()
 
 update binance_order_trade set consumed = quantity, consumed_price = 6630 where consumed != quantity
 update binance_order_trade set consumed_price = price where binance_placed_order_id != 278 AND consumed_price = 0
