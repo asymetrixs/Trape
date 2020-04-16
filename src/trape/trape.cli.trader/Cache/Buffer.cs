@@ -404,8 +404,8 @@ namespace trape.cli.trader.Cache
                 try
                 {
                     // Subscribe to all symbols
-                    await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.Stats2h.Select(s => s.Symbol), (BinanceBookTick bbt) =>
-                    {                        
+                    await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.Stats2h.Select(s => s.Symbol), async (BinanceBookTick bbt) =>
+                    {
                         var askPriceAdded = false;
                         var bidPriceAdded = false;
 
@@ -414,14 +414,14 @@ namespace trape.cli.trader.Cache
                         {
                             if (this._bestAskPrices.ContainsKey(bbt.Symbol))
                             {
-                                this._bestAskPrices[bbt.Symbol].Add(bbt.BestAskPrice);
+                                await this._bestAskPrices[bbt.Symbol].Add(bbt.BestAskPrice).ConfigureAwait(true);
                                 askPriceAdded = true;
                             }
                             else
                             {
                                 var bestAskPrice = new BestPrice(bbt.Symbol);
                                 askPriceAdded = this._bestAskPrices.TryAdd(bbt.Symbol, bestAskPrice);
-                                bestAskPrice.Add(bbt.BestAskPrice);
+                                await bestAskPrice.Add(bbt.BestAskPrice).ConfigureAwait(true);
                             }
 
                             this._logger.Verbose($"Binance: book tick update - ask for {bbt.Symbol} is {bbt.BestAskPrice}");
@@ -432,14 +432,14 @@ namespace trape.cli.trader.Cache
                         {
                             if (this._bestBidPrices.ContainsKey(bbt.Symbol))
                             {
-                                this._bestBidPrices[bbt.Symbol].Add(bbt.BestBidPrice);
+                                await this._bestBidPrices[bbt.Symbol].Add(bbt.BestBidPrice).ConfigureAwait(true);
                                 bidPriceAdded = true;
                             }
                             else
                             {
                                 var bestBidPrice = new BestPrice(bbt.Symbol);
                                 bidPriceAdded = this._bestBidPrices.TryAdd(bbt.Symbol, bestBidPrice);
-                                bestBidPrice.Add(bbt.BestBidPrice);
+                                await bestBidPrice.Add(bbt.BestBidPrice).ConfigureAwait(true);
                             }
 
                             this._logger.Verbose($"Binance: book tick update - bid for {bbt.Symbol} is {bbt.BestBidPrice}");

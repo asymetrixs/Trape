@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace trape.cli.trader.Cache
 {
@@ -14,7 +15,7 @@ namespace trape.cli.trader.Cache
         /// <summary>
         /// Buffer size for the price buffer
         /// </summary>
-        private const long _bufferSize = 30;
+        private const long _bufferSize = 15;
 
         /// <summary>
         /// Current position in the buffer
@@ -24,7 +25,7 @@ namespace trape.cli.trader.Cache
         /// <summary>
         /// Synchronize adding of values
         /// </summary>
-        private object _syncAdd;
+        private SemaphoreSlim _syncAdd;
 
         /// <summary>
         /// Array holding the prices
@@ -59,7 +60,7 @@ namespace trape.cli.trader.Cache
             this.Symbol = symbol;
             this._position = -1;
             this._prices = new decimal[_bufferSize];
-            this._syncAdd = new object();
+            this._syncAdd = new SemaphoreSlim(1, 1);
 
             // Initialize with an obsolete value
             this._lastUpdate = DateTime.UtcNow.AddMinutes(-1).Ticks;
@@ -73,23 +74,27 @@ namespace trape.cli.trader.Cache
         /// Adds a new price to the array
         /// </summary>
         /// <param name="price"></param>
-        public void Add(decimal price)
+        public async Task Add(decimal price)
         {
             // Enter synchronized context
-            Monitor.Enter(this._syncAdd);
+            await this._syncAdd.WaitAsync().ConfigureAwait(true);
 
-            // Variable _position overflows at some point
-            unchecked
+            try
             {
-                // Move cursor ahead
-                this._prices[++this._position % _bufferSize] = price;
+                // Variable _position overflows at some point
+                unchecked
+                {
+                    // Move cursor ahead
+                    this._prices[++this._position % _bufferSize] = price;
+                }
+
+                // Update time of addition
+                this._lastUpdate = DateTime.UtcNow.Ticks;
             }
-
-            // Update time of addition
-            this._lastUpdate = DateTime.UtcNow.Ticks;
-
-            // Leave synchronized context
-            Monitor.Exit(this._syncAdd);
+            finally
+            {
+                this._syncAdd.Release();
+            }
         }
 
         /// <summary>
