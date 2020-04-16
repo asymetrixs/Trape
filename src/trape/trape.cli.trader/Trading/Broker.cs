@@ -504,7 +504,7 @@ namespace trape.cli.trader.Trading
                 // Select trades where we bought
                 // And where buying price is smaller than selling price
                 // And where asset is available
-                var availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy && l.Price < (bestBidPrice * 0.999M) /*0.001% less*/ && l.Quantity > l.Consumed)
+                var availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy && l.Price < (bestBidPrice * 0.998M) /*0.002% less*/ && l.Quantity > l.Consumed)
                     .Sum(l => (l.Quantity - l.Consumed));
 
                 // Sell what is maximal possible (max or what was bought for less than it will be sold), because of rounding and commission reduct 1% from availableQuantity
@@ -513,13 +513,15 @@ namespace trape.cli.trader.Trading
                 // Panic Mode
                 if (recommendation.Action == Analyze.Action.PanicSell)
                 {
-                    assetBalanceFree = assetBalance?.Free;
+                    assetBalanceToSell = assetBalance?.Free;
+                    assetBalanceFree = assetBalanceToSell;
                     bestBidPrice = bestBidPrice * 0.9985M; // Reduce by 0.2 percent to definitely sell
                 }
                 else if (recommendation.Action == Analyze.Action.StrongSell)
                 {
                     // Sell 80% of what is available
-                    assetBalanceFree = assetBalance?.Free * 0.8M;
+                    assetBalanceToSell = assetBalance?.Free * 0.8M;
+                    assetBalanceFree = assetBalanceToSell;
                     bestBidPrice = bestBidPrice * 0.999M; // Reduce by 0.1 percent to definitely sell
                 }
 
@@ -529,7 +531,7 @@ namespace trape.cli.trader.Trading
                 aimToGetUSDT = Math.Round(aimToGetUSDT.Value, symbolInfo.BaseAssetPrecision, MidpointRounding.ToZero);
 
                 // Logging
-                this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestBidPrice:{Math.Round(bestBidPrice, symbolInfo.BaseAssetPrecision)};assetBalanceForSale:{assetBalanceFree};sellQuoteOrderQuantity:{assetBalanceToSell};sellToGetUSDT:{aimToGetUSDT}");
+                this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestBidPrice:{Math.Round(bestBidPrice, symbolInfo.BaseAssetPrecision)};assetBalance.Free:{assetBalance?.Free};sellQuoteOrderQuantity:{assetBalanceToSell};sellToGetUSDT:{aimToGetUSDT}");
                 this._logger.Debug($"{this.Symbol} Sell: Checking conditions");
                 this._logger.Debug($"{this.Symbol} Sell: {null == lastOrder} lastOrder is null");
                 this._logger.Debug($"{this.Symbol} Sell: {lastOrder?.Side.ToString()} lastOrder side");

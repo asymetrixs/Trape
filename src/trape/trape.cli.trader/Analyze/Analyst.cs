@@ -395,15 +395,16 @@ namespace trape.cli.trader.Analyze
             // Advise to sell
             var action = Action.StrongSell;
 
+            // Check tendency
             if (
                 stat3s?.Slope15s > 0
-                || stat3s?.Slope30s > 0
-                || stat15s?.Slope1m > 0
-                || stat15s?.Slope1m > 0.02M
-                || stat15s?.Slope3m > 0.01M
-                || stat2m?.Slope5m > 0.01M
-                || stat2m?.Slope7m > 0.01M
-                || stat2m?.Slope10m > 0.002M
+                && stat3s?.Slope30s > 0
+                && stat15s?.Slope1m > 0
+                && stat15s?.Slope1m > 0.02M
+                && stat15s?.Slope3m > 0.01M
+                && stat2m?.Slope5m > 0.01M
+                && stat2m?.Slope7m > 0.01M
+                && stat2m?.Slope10m > 0.002M
                 )
             {
                 action = Action.Wait;
@@ -427,16 +428,17 @@ namespace trape.cli.trader.Analyze
         {
             // Advise to buy
             var action = Action.StrongBuy;
-
+            
+            // Check tendency
             if (
                 stat3s?.Slope15s < 0
-                || stat3s?.Slope30s < 0
-                || stat15s?.Slope1m < 0
-                || stat15s?.Slope1m < -0.02M
-                || stat15s?.Slope3m < -0.01M
-                || stat2m?.Slope5m < -0.01M
-                || stat2m?.Slope7m < -0.01M
-                || stat2m?.Slope10m < -0.002M
+                && stat3s?.Slope30s < 0
+                && stat15s?.Slope1m < 0
+                && stat15s?.Slope1m < -0.02M
+                && stat15s?.Slope3m < -0.01M
+                && stat2m?.Slope5m < -0.01M
+                && stat2m?.Slope7m < -0.01M
+                && stat2m?.Slope10m < -0.002M
                 )
             {
                 action = Action.Wait;
