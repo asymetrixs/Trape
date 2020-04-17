@@ -61,7 +61,12 @@ namespace trape.cli.trader.Cache
         /// <summary>
         /// Time when moving average 10m and moving average 30m crossed last
         /// </summary>
-        private IEnumerable<LatestMA10mAndMA30mCrossing> _latestMA10And30Crossing;
+        private IEnumerable<LatestMA10mAndMA30mCrossing> _latestMA10mAnd30mCrossing;
+
+        /// <summary>
+        /// Time when moving average 1h and moving average 3h crossed last
+        /// </summary>
+        private IEnumerable<LatestMA1hAndMA3hCrossing> _latestMA1hAnd3hCrossing;
 
         #region Timers
 
@@ -75,7 +80,7 @@ namespace trape.cli.trader.Cache
 
         private System.Timers.Timer _timerStats2h;
 
-        private System.Timers.Timer _timerMA10mAndMA30mCrossing;
+        private System.Timers.Timer _timerForCrossings;
 
         private System.Timers.Timer _timerExchangeInfo;
 
@@ -120,7 +125,8 @@ namespace trape.cli.trader.Cache
             this._bestAskPrices = new ConcurrentDictionary<string, BestPrice>();
             this._bestBidPrices = new ConcurrentDictionary<string, BestPrice>();
             this._binanceExchangeInfo = null;
-            this._latestMA10And30Crossing = new List<LatestMA10mAndMA30mCrossing>();
+            this._latestMA10mAnd30mCrossing = new List<LatestMA10mAndMA30mCrossing>();
+            this._latestMA1hAnd3hCrossing = new List<LatestMA1hAndMA3hCrossing>();
 
             #region Timer setup
 
@@ -162,12 +168,12 @@ namespace trape.cli.trader.Cache
             };
             this._timerStats2h.Elapsed += _timerTrend2Hours_Elapsed;
 
-            this._timerMA10mAndMA30mCrossing = new System.Timers.Timer()
+            this._timerForCrossings = new System.Timers.Timer()
             {
                 AutoReset = true,
-                Interval = new TimeSpan(0, 0, 1).TotalMilliseconds
+                Interval = new TimeSpan(0, 0, 2).TotalMilliseconds
             };
-            this._timerMA10mAndMA30mCrossing.Elapsed += _timerMA10mAndMA30mCrossing_Elapsed;
+            this._timerForCrossings.Elapsed += _timerForCrossing_Elapsed;
 
             this._timerExchangeInfo = new System.Timers.Timer()
             {
@@ -188,12 +194,19 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _timerMA10mAndMA30mCrossing_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _timerForCrossing_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             this._logger.Verbose("Updating Moving Average 10m and Moving Average 30m crossing");
 
             var database = Pool.DatabasePool.Get();
-            this._latestMA10And30Crossing = await database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            var awaitLatestMA10mAndMA30mCrossing = database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token);
+            var awaitLatestMA1hAndMA3hCrossing = database.GetLatestMA1hAndMA3hCrossing(this._cancellationTokenSource.Token);
+
+            // Execute in parallel
+            await Task.WhenAll(awaitLatestMA10mAndMA30mCrossing, awaitLatestMA1hAndMA3hCrossing).ConfigureAwait(false);
+
+            this._latestMA10mAnd30mCrossing = awaitLatestMA10mAndMA30mCrossing.Result;
+            this._latestMA1hAnd3hCrossing = awaitLatestMA1hAndMA3hCrossing.Result;
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Updated Moving Average 10m and Moving Average 30m crossing");
@@ -379,7 +392,21 @@ namespace trape.cli.trader.Cache
         /// <returns></returns>
         public LatestMA10mAndMA30mCrossing GetLatest10mAnd30mCrossing(string symbol)
         {
-            return this._latestMA10And30Crossing.SingleOrDefault(s => s.Symbol == symbol);
+            // Save ref
+            var latest = this._latestMA10mAnd30mCrossing;
+            return latest.SingleOrDefault(s => s.Symbol == symbol);
+        }
+
+        /// <summary>
+        /// Returns the last time Slope 10m and Slope 30m were crossing
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        public LatestMA1hAndMA3hCrossing GetLatest1hAnd3hCrossing(string symbol)
+        {
+            //Save ref
+            var latest = this._latestMA1hAnd3hCrossing;
+            return latest.SingleOrDefault(s => s.Symbol == symbol);
         }
 
         #endregion
@@ -402,7 +429,7 @@ namespace trape.cli.trader.Cache
             this.Stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this.Stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this.Stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this._latestMA10And30Crossing = await database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this._latestMA10mAnd30mCrossing = await database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
             Pool.DatabasePool.Put(database);
             database = null;
@@ -564,7 +591,7 @@ namespace trape.cli.trader.Cache
             this._timerStats2m.Start();
             this._timerStats10m.Start();
             this._timerStats2h.Start();
-            this._timerMA10mAndMA30mCrossing.Start();
+            this._timerForCrossings.Start();
 
             // Loading exchange information
             this._timerExchangeInfo_Elapsed(null, null);
@@ -587,7 +614,7 @@ namespace trape.cli.trader.Cache
             this._timerStats2m.Stop();
             this._timerStats10m.Stop();
             this._timerStats2h.Stop();
-            this._timerMA10mAndMA30mCrossing.Stop();
+            this._timerForCrossings.Stop();
 
             this._logger.Information("Buffer stopped");
         }

@@ -140,7 +140,7 @@ namespace trape.cli.trader.Analyze
             // Placeholder for strategy
             if (!this._lastStrategy.ContainsKey(symbol))
             {
-                this._lastStrategy.Add(symbol, Strategy.None);
+                this._lastStrategy.Add(symbol, Strategy.Hold);
             }
 
             var database = Pool.DatabasePool.Get();
@@ -176,22 +176,22 @@ namespace trape.cli.trader.Analyze
             var currentPrice = this._buffer.GetBidPrice(symbol);
 
             // Corridor around Moving Average 10m
-            decimal upperLimitMA10m = stat2m.MovingAverage10m * 1.0003M;
-            decimal lowerLimitMA10m = stat2m.MovingAverage10m * 0.9997M;
+            decimal upperLimitMA1h = stat2m.MovingAverage10m * 1.0002M;
+            decimal lowerLimitMA1h = stat2m.MovingAverage10m * 0.9998M;
             const decimal strongThreshold = 0.004M;
 
             // Make the decision
-            var action = Action.Wait;
-            Strategy strategy = Strategy.None;
+            var action = Action.Hold;
+            Strategy strategy = Strategy.Hold;
 
-            if (stat3s.Slope5s < 0
-                && stat3s.Slope10s < 0
-                && stat3s.Slope15s < 0
-                && stat3s.Slope30s < 0
-                && stat15s.Slope45s < 0
-                && stat15s.Slope1m < -1M
-                && stat15s.Slope2m < -0.3M
-                && stat15s.Slope3m < -0.15M
+            if (stat3s.Slope5s < -0.9M
+                && stat3s.Slope10s < -0.2M
+                && stat3s.Slope15s < -0.1M
+                && stat3s.Slope30s < -0.02M
+                && stat15s.Slope45s < -0.01M
+                && stat15s.Slope1m < -0.041M
+                && stat15s.Slope2m < -0.05M
+                && stat15s.Slope3m < -0.008M
                 && stat2m.Slope5m < -0M
                 )
             {
@@ -202,23 +202,23 @@ namespace trape.cli.trader.Analyze
             }
             else if (stat10m.Slope1h > strongThreshold)
             {
-                action = VerticalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA10m, upperLimitMA10m);
-                strategy = Strategy.VerticalBuy;
+                action = StrongBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
+                strategy = Strategy.StrongBuy;
             }
-            else if (stat10m.Slope1h > 0M)
+            else if (stat10m.Slope1h > 0.0015M)
             {
-                action = HorizontalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA10m, upperLimitMA10m);
-                strategy = Strategy.HorizontalBuy;
+                action = NormalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
+                strategy = Strategy.NormalBuy;
             }
             else if (stat10m.Slope1h < -strongThreshold)
             {
-                action = VerticalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA10m, upperLimitMA10m);
-                strategy = Strategy.VerticalSell;
+                action = StrongSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
+                strategy = Strategy.StrongSell;
             }
-            else if (stat10m.Slope1h < 0M)
+            else if (stat10m.Slope1h < -0.0015M)
             {
-                action = HorizontalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA10m, upperLimitMA10m);
-                strategy = Strategy.HorizontalSell;
+                action = NormalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
+                strategy = Strategy.NormalSell;
             }
 
             var now = DateTime.UtcNow;
@@ -277,57 +277,39 @@ namespace trape.cli.trader.Analyze
         /// <param name="stat2m">Stats 2 minutes</param>
         /// <param name="stat10m">Stats 10 minutes</param>
         /// <param name="stat2h">Stats 2 hours</param>
-        /// <param name="lowerLimitMA10m">Lower limit of moving average for 10 mintues</param>
-        /// <param name="upperLimitMA10m">Upperl imit of moving average for 10 minutes</param>
+        /// <param name="lowerLimitMA1h">Lower limit of moving average for 10 mintues</param>
+        /// <param name="upperLimitMA1h">Upperl imit of moving average for 10 minutes</param>
         /// <returns></returns>
-        public Action HorizontalSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA10m, decimal upperLimitMA10m)
+        public Action NormalSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
         {
             #region Argument checks
 
             if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
             {
                 this._logger.Warning("Stats are NULL");
-                return Action.Wait;
+                return Action.Hold;
             }
 
             #endregion
 
-            var action = Action.Wait;
+            var action = Action.Hold;
 
-            var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
+            var lastCrossing = this._buffer.GetLatest1hAnd3hCrossing(stat3s.Symbol);
 
-            if (stat15s.Slope1m < -0.8M
-                 && stat15s.Slope2m < -0.3M
-                 && stat15s.Slope3m < -0.15M
-                 && stat2m.Slope5m < -0.03M
-                 && (
-                    (stat2m.Slope10m > stat10m.Slope30m)
-                    || (lastCrossing == null)
-                    || (stat2m.Slope10m < stat10m.Slope30m && lastCrossing.EventTime > DateTime.UtcNow.AddMinutes(-6))
-                    )
-                )
+            // if moving average 1h is greater than moving average 3h
+            // or moving average 1h crossed moving average 3h within the last 6 minutes
+            if (stat10m.MovingAverage1h > stat10m.MovingAverage3h
+                || (lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6)))
             {
                 // Strong sell
-                action = Action.StrongSell;
-            }
-            // Market drops normally
-            else if ((stat2m.Slope10m < -0.01M
-                && stat2m.Slope15m < -0.003M
-                && stat2m.MovingAverage10m > stat10m.MovingAverage30m)
-                ||
-                (stat2m.Slope10m < 0
-                && stat10m.Slope30m < 0
-                && stat2m.MovingAverage10m > stat10m.MovingAverage30m)
-                ||
-                (stat15s.Slope2m < 0
-                && stat2m.Slope5m < 0
-                && stat2m.Slope10m < 0
-                && stat10m.Slope30m < 0
-                && stat2m.Slope10m < stat10m.Slope30m
-                && lowerLimitMA10m < stat10m.MovingAverage30m && stat10m.MovingAverage30m < upperLimitMA10m))
-            {
-                // Sell
                 action = Action.Sell;
+            }
+
+            // Check tendency
+            if (stat2m.Slope10m > 0.002M
+                && stat10m.Slope30m > 0.001M)
+            {
+                action = Action.Hold;
             }
 
             return action;
@@ -341,89 +323,39 @@ namespace trape.cli.trader.Analyze
         /// <param name="stat2m">Stats 2 minutes</param>
         /// <param name="stat10m">Stats 10 minutes</param>
         /// <param name="stat2h">Stats 2 hours</param>
-        /// <param name="lowerLimitMA10m">Lower limit of moving average for 10 mintues</param>
-        /// <param name="upperLimitMA10m">Upperl imit of moving average for 10 minutes</param>
+        /// <param name="lowerLimitMA1h">Lower limit of moving average for 10 mintues</param>
+        /// <param name="upperLimitMA1h">Upperl imit of moving average for 10 minutes</param>
         /// <returns></returns>
-        public Action HorizontalBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA10m, decimal upperLimitMA10m)
+        public Action NormalBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
         {
             #region Argument checks
 
             if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
             {
                 this._logger.Warning("Stats are NULL");
-                return Action.Wait;
+                return Action.Hold;
             }
 
             #endregion
 
-            var action = Action.Wait;
+            var action = Action.Hold;
 
-            var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
+            var lastCrossing = this._buffer.GetLatest1hAnd3hCrossing(stat3s.Symbol);
 
-            if (stat15s.Slope1m > 0.08M
-                && stat2m.Slope10m > 0.1M
-                && stat10m.Slope30m > 0.005M
-                && lowerLimitMA10m < stat10m.MovingAverage30m && stat10m.MovingAverage30m < upperLimitMA10m
-                && (
-                    (stat2m.Slope10m < stat10m.Slope30m)
-                    || (lastCrossing == null)
-                    || (stat2m.Slope10m > stat10m.Slope30m && lastCrossing.EventTime > DateTime.UtcNow.AddMinutes(-6))
-                    ))
+            // if moving average 1h is smaller than moving average 3h
+            // or moving average 1h crossed moving average 3h within the last 6 minutes
+            if (stat10m.MovingAverage1h < stat10m.MovingAverage3h
+                || (lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6)))
             {
-                // Strong buy
-                action = Action.StrongBuy;
-            }
-            else if (
-                (stat2m.Slope5m > 0
-                && stat2m.Slope10m > 0
-                && stat10m.Slope30m > 0
-                && stat2m.MovingAverage10m < stat10m.MovingAverage30m)
-                ||
-                (stat15s.Slope2m > 0
-                && stat2m.Slope5m > 0
-                && stat2m.Slope10m > 0
-                && stat10m.Slope30m > 0
-                && stat2m.Slope10m > stat10m.Slope30m
-                && lowerLimitMA10m < stat10m.MovingAverage30m && stat10m.MovingAverage30m < upperLimitMA10m)
-                && (lastCrossing == null || lastCrossing.EventTime > DateTime.UtcNow.AddMinutes(-16))
-                )
-            {
-                // Buy
+                // Strong sell
                 action = Action.Buy;
             }
 
-            return action;
-        }
-
-        /// <summary>
-        /// Takes advantage of vertical movement of the market
-        /// </summary>
-        /// <param name="stat3s">Stats 3 seconds</param>
-        /// <param name="stat15s">stats 15 seconds</param>
-        /// <param name="stat2m">Stats 2 minutes</param>
-        /// <param name="stat10m">Stats 10 minutes</param>
-        /// <param name="stat2h">Stats 2 hours</param>
-        /// <param name="lowerLimitMA10m">Lower limit of moving average for 10 mintues</param>
-        /// <param name="upperLimitMA10m">Upperl imit of moving average for 10 minutes</param>
-        /// <returns></returns>
-        public static Action VerticalSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA10m, decimal upperLimitMA10m)
-        {
-            // Advise to sell
-            var action = Action.StrongSell;
-
             // Check tendency
-            if (
-                stat3s?.Slope15s > 0
-                && stat3s?.Slope30s > 0
-                && stat15s?.Slope1m > 0
-                && stat15s?.Slope1m > 0.02M
-                && stat15s?.Slope3m > 0.01M
-                && stat2m?.Slope5m > 0.01M
-                && stat2m?.Slope7m > 0.01M
-                && stat2m?.Slope10m > 0.002M
-                )
+            if (stat2m.Slope10m < -0.002M
+                && stat10m.Slope30m < -0.001M)
             {
-                action = Action.Wait;
+                action = Action.Hold;
             }
 
             return action;
@@ -437,27 +369,66 @@ namespace trape.cli.trader.Analyze
         /// <param name="stat2m">Stats 2 minutes</param>
         /// <param name="stat10m">Stats 10 minutes</param>
         /// <param name="stat2h">Stats 2 hours</param>
-        /// <param name="lowerLimitMA10m">Lower limit of moving average for 10 mintues</param>
-        /// <param name="upperLimitMA10m">Upperl imit of moving average for 10 minutes</param>
+        /// <param name="lowerLimitMA1h">Lower limit of moving average for 10 mintues</param>
+        /// <param name="upperLimitMA1h">Upperl imit of moving average for 10 minutes</param>
         /// <returns></returns>
-        public static Action VerticalBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA10m, decimal upperLimitMA10m)
+        public Action StrongSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
         {
-            // Advise to buy
-            var action = Action.StrongBuy;
+            #region Argument checks
 
-            // Check tendency
-            if (
-                stat3s?.Slope15s < 0
-                && stat3s?.Slope30s < 0
-                && stat15s?.Slope1m < 0
-                && stat15s?.Slope1m < -0.02M
-                && stat15s?.Slope3m < -0.01M
-                && stat2m?.Slope5m < -0.01M
-                && stat2m?.Slope7m < -0.01M
-                && stat2m?.Slope10m < -0.002M
-                )
+            if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
             {
-                action = Action.Wait;
+                this._logger.Warning("Stats are NULL");
+                return Action.Hold;
+            }
+
+            #endregion
+
+            // Advise to sell
+            var action = Action.Hold;
+
+            if (stat10m.MovingAverage1h > stat10m.MovingAverage3h)
+            {
+                action = Action.StrongSell;
+            }
+
+            return action;
+        }
+
+        /// <summary>
+        /// Takes advantage of vertical movement of the market
+        /// </summary>
+        /// <param name="stat3s">Stats 3 seconds</param>
+        /// <param name="stat15s">stats 15 seconds</param>
+        /// <param name="stat2m">Stats 2 minutes</param>
+        /// <param name="stat10m">Stats 10 minutes</param>
+        /// <param name="stat2h">Stats 2 hours</param>
+        /// <param name="lowerLimitMA1h">Lower limit of moving average for 10 mintues</param>
+        /// <param name="upperLimitMA1h">Upperl imit of moving average for 10 minutes</param>
+        /// <returns></returns>
+        public Action StrongBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
+        {
+            #region Argument checks
+
+            if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
+            {
+                this._logger.Warning("Stats are NULL");
+                return Action.Hold;
+            }
+
+            #endregion
+
+            // Advise to sell
+            var action = Action.Hold;
+
+            var lastCrossing = this._buffer.GetLatest1hAnd3hCrossing(stat3s.Symbol);
+
+            // Strong buy also when crossing
+            if (stat10m.MovingAverage1h < stat10m.MovingAverage3h
+                || lowerLimitMA1h < stat10m.MovingAverage3h && stat10m.MovingAverage3h < upperLimitMA1h
+                || (lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6)))
+            {
+                action = Action.StrongBuy;
             }
 
             return action;

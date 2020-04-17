@@ -6,9 +6,9 @@
     public enum Action
     {
         /// <summary>
-        /// Wait
+        /// Hold
         /// </summary>
-        Wait,
+        Hold,
         /// <summary>
         /// Buy
         /// </summary>

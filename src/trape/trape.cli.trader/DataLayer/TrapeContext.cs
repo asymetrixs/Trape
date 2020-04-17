@@ -140,9 +140,16 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {
@@ -218,9 +225,16 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {
@@ -295,9 +309,16 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {
@@ -372,9 +393,16 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {
@@ -449,9 +477,16 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {
@@ -526,9 +561,16 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {
@@ -579,9 +621,16 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {
@@ -606,7 +655,7 @@ namespace trape.cli.trader.DataLayer
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
-                using (var com = new NpgsqlCommand("get_latest_ma10ma30_crossing", con))
+                using (var com = new NpgsqlCommand("get_latest_ma10m_ma30m_crossing", con))
                 {
                     try
                     {
@@ -644,9 +693,88 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
+                    }
+                    finally
+                    {
+                        pushedProperty?.Dispose();
+
+                        con.Close();
+                    }
+                }
+            }
+
+            return latestCrossings;
+        }
+
+        public async Task<IEnumerable<LatestMA1hAndMA3hCrossing>> GetLatestMA1hAndMA3hCrossing(CancellationToken cancellationToken)
+        {
+            var latestCrossings = new List<LatestMA1hAndMA3hCrossing>();
+            IDisposable pushedProperty = null;
+
+            using (var con = new NpgsqlConnection(this._connectionString))
+            {
+                using (var com = new NpgsqlCommand("get_latest_ma1h_ma3h_crossing", con))
+                {
+                    try
+                    {
+                        this._logger.Verbose($"Executing {com.CommandText}");
+
+                        com.CommandType = CommandType.StoredProcedure;
+
+                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+                        using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
+                        {
+                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                            {
+                                pushedProperty = LogContext.PushProperty("reader", reader);
+
+                                // Skip if values are NULL
+                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+                                    )
+                                {
+                                    continue;
+                                }
+
+                                latestCrossings.Add(new LatestMA1hAndMA3hCrossing(
+                                    reader.GetString(0),
+                                    reader.GetDateTime(1),
+                                    reader.GetDecimal(2),
+                                    reader.GetDecimal(3)));
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // nothing
+                    }
+                    catch (PostgresException px)
+                    {
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {
@@ -714,9 +842,16 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {
@@ -775,9 +910,16 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {
@@ -882,10 +1024,16 @@ namespace trape.cli.trader.DataLayer
                             await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
                             // nothing
                         }
-                        catch (NpgsqlException ex)
+                        catch (PostgresException px)
                         {
-                            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
+                            if (px.MessageText != "canceling statement due to user request")
+                            {
+                                this._logger.Fatal(px, px.Message, com.CommandText);
+                            }
+                        }
+                        catch (NpgsqlException ne)
+                        {
+                            this._logger.Fatal(ne, ne.Message, com.CommandText);
                         }
                         catch (Exception e)
                         {
@@ -972,9 +1120,16 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {
@@ -1036,9 +1191,16 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {
@@ -1192,10 +1354,16 @@ namespace trape.cli.trader.DataLayer
                             await transaction.RollbackAsync().ConfigureAwait(false);
                             // nothing
                         }
-                        catch (NpgsqlException ex)
+                        catch (PostgresException px)
                         {
-                            await transaction.RollbackAsync().ConfigureAwait(false);
-                            this._logger.Fatal(ex, ex.Message, com.CommandText);
+                            if (px.MessageText != "canceling statement due to user request")
+                            {
+                                this._logger.Fatal(px, px.Message, com.CommandText);
+                            }
+                        }
+                        catch (NpgsqlException ne)
+                        {
+                            this._logger.Fatal(ne, ne.Message, com.CommandText);
                         }
                         catch (Exception e)
                         {
@@ -1256,9 +1424,16 @@ namespace trape.cli.trader.DataLayer
                     {
                         // nothing
                     }
-                    catch (NpgsqlException ex)
+                    catch (PostgresException px)
                     {
-                        this._logger.Fatal(ex, ex.Message, com.CommandText);
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
                     }
                     catch (Exception e)
                     {

@@ -75,10 +75,17 @@ namespace trape.cli.trader.Cache
         BinanceSymbol GetSymbolInfoFor(string symbol);
 
         /// <summary>
-        /// Returns the last time Slope 10m and Slope 30m were crossing
+        /// Returns the last time moving average 10m and moving average 30m were crossing
         /// </summary>
         /// <param name="symbol">Symbol</param>
         /// <returns></returns>
         LatestMA10mAndMA30mCrossing GetLatest10mAnd30mCrossing(string symbol);
+
+        /// <summary>
+        /// Returns the last time moving average 1h and moving average 3h were crossing
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        LatestMA1hAndMA3hCrossing GetLatest1hAnd3hCrossing(string symbol);
     }
 }

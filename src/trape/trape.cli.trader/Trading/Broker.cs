@@ -147,7 +147,7 @@ namespace trape.cli.trader.Trading
 
             // Get recommendation
             var recommendation = this._analyst.GetRecommendation(this.Symbol);
-            if (null == recommendation || recommendation.Action == Analyze.Action.Wait)
+            if (null == recommendation || recommendation.Action == Analyze.Action.Hold)
             {
                 this._logger.Verbose($"{this.Symbol}: Waiting for recommendation");
                 return;
@@ -239,6 +239,8 @@ namespace trape.cli.trader.Trading
         }
 
         #endregion
+
+        #region Trading Methods
 
         /// <summary>
         /// Logs an order in the database
@@ -635,6 +637,8 @@ namespace trape.cli.trader.Trading
 
             return placedOrder;
         }
+
+        #endregion
 
         #region Methods
 

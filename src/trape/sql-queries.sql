@@ -28,16 +28,17 @@ where slope1h > 0.004 OR slope1h < 0.004 ANd symbol = 'BTCUSDT'
 group by event_time::date
 order by event_time::date
 
-select event_time, movav1h, movav2h, movav6h, price, slope15m, slope30m, slope1h, slope2h, slope3h, slope6h from recommendation
-	where
-		(event_time = '2020-03-27 04:55:08.676413+00'::timestamptz
-		OR event_time = '2020-03-28 19:40:54.615192+00'::timestamptz
-		OR event_time = '2020-03-30 23:15:53.976092+00'::timestamptz
-		OR event_time = '2020-03-31 06:38:34.984844+00'::timestamptz
-		OR event_time = '2020-03-31 09:55:16.159673+00'::timestamptz)
-		--event_time between '2020-04-02 03:05:00.000 +00'::timestamptz and '2020-04-02 03:05:59.000 +00'::timestamptz
+select *from recommendation
+	where event_time between '2020-04-12 20:50:00.000 +00'::timestamptz and '2020-04-12 20:50:59.000 +00'::timestamptz
 		AND symbol = 'BTCUSDT'
 		ORDER BY event_time desc
+		
+select *from recommendation
+	where event_time between '2020-04-16 10:36:00.000 +00'::timestamptz and '2020-04-16 10:36:59.000 +00'::timestamptz
+		AND symbol = 'BTCUSDT'
+		ORDER BY event_time desc
+		
+		
  /*
              * Do not buy when price > movav6h, do buy when price < movav6h
              * Do buy when slope1h > slope6h and slope1h > 0.03

@@ -1310,7 +1310,7 @@ $$
 LANGUAGE plpgsql STRICT;
 
 
-CREATE OR REPLACE FUNCTION get_latest_ma10ma30_crossing()
+CREATE OR REPLACE FUNCTION get_latest_ma10m_ma30m_crossing()
 RETURNS TABLE (symbol TEXT, event_time TIMESTAMPTZ, slope10m NUMERIC, slope30m NUMERIC)
 AS
 $$
@@ -1322,3 +1322,22 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql STRICT;
+
+
+CREATE OR REPLACE FUNCTION public.get_latest_ma1h_ma3h_crossing(
+	)
+    RETURNS TABLE(symbol text, event_time timestamp with time zone, slope1h numeric, slope3h numeric) 
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    VOLATILE STRICT 
+    ROWS 1000
+    
+AS $BODY$
+BEGIN
+	RETURN QUERY SELECT DISTINCT ON (r.symbol) r.symbol, MAX(r.event_time), r.slope1h, r.slope3h FROM recommendation r
+		WHERE ROUND(r.movav1h, 2) = ROUND(r.movav3h, 2) AND r.event_time >= NOW() - INTERVAL '12 hours'
+		GROUP BY r.symbol, r.slope1h, r.slope3h
+		ORDER BY r.symbol, MAX(r.event_time) DESC;
+END;
+$BODY$;

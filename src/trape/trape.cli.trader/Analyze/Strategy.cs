@@ -5,23 +5,23 @@
         /// <summary>
         /// No strategy is defined
         /// </summary>
-        None,
+        Hold,
         /// <summary>
         /// Market moves slightly upwards
         /// </summary>
-        HorizontalSell,
+        NormalSell,
         /// <summary>
         /// Market moves slightly downwards
         /// </summary>
-        HorizontalBuy,
+        NormalBuy,
         /// <summary>
         /// Market moves upwards
         /// </summary>
-        VerticalSell,
+        StrongSell,
         /// <summary>
         /// Market moves downwards
         /// </summary>
-        VerticalBuy,
+        StrongBuy,
         /// <summary>
         /// Market is crashing
         /// </summary>
