@@ -25,6 +25,6 @@
         /// <summary>
         /// Market is crashing
         /// </summary>
-        CrashingSell
+        PanicSell
     }
 }

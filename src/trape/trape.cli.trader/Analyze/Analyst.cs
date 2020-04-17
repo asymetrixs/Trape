@@ -184,12 +184,12 @@ namespace trape.cli.trader.Analyze
             var action = Action.Hold;
             Strategy strategy = Strategy.Hold;
 
-            if (stat3s.Slope5s < -0.9M
-                && stat3s.Slope10s < -0.2M
-                && stat3s.Slope15s < -0.1M
-                && stat3s.Slope30s < -0.02M
-                && stat15s.Slope45s < -0.01M
-                && stat15s.Slope1m < -0.041M
+            if (stat3s.Slope5s < -2M
+                && stat3s.Slope10s < -1.1M
+                && stat3s.Slope15s < -0.5M
+                && stat3s.Slope30s < -0.32M
+                && stat15s.Slope45s < -0.11M
+                && stat15s.Slope1m < -0.09M
                 && stat15s.Slope2m < -0.05M
                 && stat15s.Slope3m < -0.008M
                 && stat2m.Slope5m < -0M
@@ -197,8 +197,8 @@ namespace trape.cli.trader.Analyze
             {
                 // Panic sell
                 action = Action.PanicSell;
-                this._logger.Warning("Crashing Mode");
-                strategy = Strategy.CrashingSell;
+                this._logger.Warning("Panic Mode");
+                strategy = Strategy.PanicSell;
             }
             else if (stat10m.Slope1h > strongThreshold)
             {
