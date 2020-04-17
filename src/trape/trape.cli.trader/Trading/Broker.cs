@@ -517,14 +517,12 @@ namespace trape.cli.trader.Trading
                 {
                     assetBalanceToSell = assetBalance?.Free;
                     assetBalanceFree = assetBalanceToSell;
-                    bestBidPrice = bestBidPrice * 0.9985M; // Reduce by 0.15 percent to definitely sell
                 }
                 else if (recommendation.Action == Analyze.Action.StrongSell)
                 {
                     // Sell 80% of what is available
                     assetBalanceToSell = assetBalance?.Free * 0.8M;
                     assetBalanceFree = assetBalanceToSell;
-                    bestBidPrice = bestBidPrice * 0.999M; // Reduce by 0.1 percent to definitely sell
                 }
 
                 // Sell as much required to get this total USDT price
