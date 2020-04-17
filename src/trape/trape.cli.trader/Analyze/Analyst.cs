@@ -176,14 +176,16 @@ namespace trape.cli.trader.Analyze
             var currentPrice = this._buffer.GetBidPrice(symbol);
 
             // Corridor around Moving Average 10m
-            decimal upperLimitMA1h = stat2m.MovingAverage10m * 1.0002M;
-            decimal lowerLimitMA1h = stat2m.MovingAverage10m * 0.9998M;
+            decimal upperLimitMA1h = stat10m.MovingAverage1h * 1.0002M;
+            decimal lowerLimitMA1h = stat10m.MovingAverage1h * 0.9998M;
+            decimal panicLimitMA1h = stat10m.MovingAverage1h * 0.9975M;
             const decimal strongThreshold = 0.004M;
 
             // Make the decision
             var action = Action.Hold;
             Strategy strategy = Strategy.Hold;
 
+            // Panic
             if (stat3s.Slope5s < -2M
                 && stat3s.Slope10s < -1.1M
                 && stat3s.Slope15s < -0.5M
@@ -193,6 +195,8 @@ namespace trape.cli.trader.Analyze
                 && stat15s.Slope2m < -0.05M
                 && stat15s.Slope3m < -0.008M
                 && stat2m.Slope5m < -0M
+                // Define threshhold from when on panic mode is active
+                && panicLimitMA1h < stat10m.MovingAverage3h
                 )
             {
                 // Panic sell
