@@ -1308,3 +1308,17 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql STRICT;
+
+
+CREATE OR REPLACE FUNCTION get_latest_ma10ma30_crossing()
+RETURNS TABLE (symbol TEXT, event_time TIMESTAMPTZ, slope10m NUMERIC, slope30m NUMERIC)
+AS
+$$
+BEGIN
+	RETURN QUERY SELECT DISTINCT ON (r.symbol) r.symbol, MAX(r.event_time), r.slope10m, r.slope30m FROM recommendation r
+		WHERE ROUND(r.movav10m, 2) = ROUND(r.movav30m, 2) AND r.event_time >= NOW() - INTERVAL '12 hours'
+		GROUP BY r.symbol, r.slope10m, r.slope30m
+		ORDER BY r.symbol, MAX(r.event_time) DESC;
+END;
+$$
+LANGUAGE plpgsql STRICT;

@@ -599,14 +599,14 @@ namespace trape.cli.trader.DataLayer
             return price;
         }
 
-        public async Task<IEnumerable<CurrentPrice>> GetCurrentPriceAsync(CancellationToken cancellationToken)
+        public async Task<IEnumerable<LatestMA10mAndMA30mCrossing>> GetLatestMA10mAndMA30mCrossing(CancellationToken cancellationToken)
         {
-            var currentPrices = new List<CurrentPrice>();
+            var latestCrossings = new List<LatestMA10mAndMA30mCrossing>();
             IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
-                using (var com = new NpgsqlCommand("current_price", con))
+                using (var com = new NpgsqlCommand("get_latest_ma10ma30_crossing", con))
                 {
                     try
                     {
@@ -627,24 +627,16 @@ namespace trape.cli.trader.DataLayer
                                     || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
                                     || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
                                     )
                                 {
                                     continue;
                                 }
 
-                                currentPrices.Add(new CurrentPrice(
+                                latestCrossings.Add(new LatestMA10mAndMA30mCrossing(
                                     reader.GetString(0),
                                     reader.GetDateTime(1),
                                     reader.GetDecimal(2),
-                                    reader.GetDecimal(3),
-                                    reader.GetDecimal(4),
-                                    reader.GetDecimal(5),
-                                    reader.GetDecimal(6),
-                                    reader.GetDecimal(7)));
+                                    reader.GetDecimal(3)));
                             }
                         }
                     }
@@ -669,7 +661,7 @@ namespace trape.cli.trader.DataLayer
                 }
             }
 
-            return currentPrices;
+            return latestCrossings;
         }
 
         public async Task InsertAsync(IEnumerable<BinanceStreamBalance> binanceStreamBalances, CancellationToken cancellationToken)

@@ -3,7 +3,10 @@ SELECT bpo.time_in_force, bpo.transaction_time, bpo.side, bpo.symbol, bot.price,
 LEFT JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
 ORDER BY binance_placed_order_id DESC, bpo.id DESC;
 
+select * from select_asset_status()
 select * from current_statement()
+select * from get_latest_ma10ma30_crossing()
+
 
 update binance_order_trade set consumed = quantity, consumed_price = 6630 where consumed != quantity
 update binance_order_trade set consumed_price = price where binance_placed_order_id != 278 AND consumed_price = 0
@@ -12,7 +15,7 @@ select * from binance_order_trade
 delete from binance_placed_order;
 delete from binance_order_trade;
 
-select * from select_asset_status()
+
 --233
 --	Bitcoin 0.44544746 0.44544746
 -- Ethereum 8.16653543 8.16653543

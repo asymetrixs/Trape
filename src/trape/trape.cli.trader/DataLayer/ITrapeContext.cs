@@ -71,11 +71,11 @@ namespace trape.cli.trader.DataLayer
         Task<decimal> GetCurrentPriceAsync(string symbol, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Returns a list of current prices, one for each symbol
+        /// Returns per symbol the last time when the 10m slope crossed the 30m slope
         /// </summary>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task<IEnumerable<CurrentPrice>> GetCurrentPriceAsync(CancellationToken cancellationToken);
+        Task<IEnumerable<LatestMA10mAndMA30mCrossing>> GetLatestMA10mAndMA30mCrossing(CancellationToken cancellationToken);
 
         /// <summary>
         /// Stores <c>BinanceStreamBalance</c> in the database

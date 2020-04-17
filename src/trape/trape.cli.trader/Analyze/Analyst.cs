@@ -151,7 +151,6 @@ namespace trape.cli.trader.Analyze
             var s2m = this._buffer.Stats2m;
             var s10m = this._buffer.Stats10m;
             var s2h = this._buffer.Stats2h;
-            var cp = this._buffer.CurrentPrices;
 
             // Extract data for current symbol
             var stat3s = s3s.SingleOrDefault(t => t.Symbol == symbol);
@@ -295,11 +294,18 @@ namespace trape.cli.trader.Analyze
 
             var action = Action.Wait;
 
+            var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
+
             if (stat15s.Slope1m < -0.8M
                  && stat15s.Slope2m < -0.3M
                  && stat15s.Slope3m < -0.15M
                  && stat2m.Slope5m < -0.03M
-                 )
+                 && (
+                    (stat2m.Slope10m > stat10m.Slope30m)
+                    || (lastCrossing == null)
+                    || (stat2m.Slope10m < stat10m.Slope30m && lastCrossing.EventTime > DateTime.UtcNow.AddMinutes(-6))
+                    )
+                )
             {
                 // Strong sell
                 action = Action.StrongSell;
@@ -352,15 +358,23 @@ namespace trape.cli.trader.Analyze
 
             var action = Action.Wait;
 
+            var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
+
             if (stat15s.Slope1m > 0.08M
                 && stat2m.Slope10m > 0.1M
                 && stat10m.Slope30m > 0.005M
-                && lowerLimitMA10m < stat10m.MovingAverage30m && stat10m.MovingAverage30m < upperLimitMA10m)
+                && lowerLimitMA10m < stat10m.MovingAverage30m && stat10m.MovingAverage30m < upperLimitMA10m
+                && (
+                    (stat2m.Slope10m < stat10m.Slope30m)
+                    || (lastCrossing == null)
+                    || (stat2m.Slope10m > stat10m.Slope30m && lastCrossing.EventTime > DateTime.UtcNow.AddMinutes(-6))
+                    ))
             {
                 // Strong buy
                 action = Action.StrongBuy;
             }
-            else if ((stat2m.Slope5m > 0
+            else if (
+                (stat2m.Slope5m > 0
                 && stat2m.Slope10m > 0
                 && stat10m.Slope30m > 0
                 && stat2m.MovingAverage10m < stat10m.MovingAverage30m)
@@ -370,7 +384,9 @@ namespace trape.cli.trader.Analyze
                 && stat2m.Slope10m > 0
                 && stat10m.Slope30m > 0
                 && stat2m.Slope10m > stat10m.Slope30m
-                && lowerLimitMA10m < stat10m.MovingAverage30m && stat10m.MovingAverage30m < upperLimitMA10m))
+                && lowerLimitMA10m < stat10m.MovingAverage30m && stat10m.MovingAverage30m < upperLimitMA10m)
+                && (lastCrossing == null || lastCrossing.EventTime > DateTime.UtcNow.AddMinutes(-16))
+                )
             {
                 // Buy
                 action = Action.Buy;
@@ -428,7 +444,7 @@ namespace trape.cli.trader.Analyze
         {
             // Advise to buy
             var action = Action.StrongBuy;
-            
+
             // Check tendency
             if (
                 stat3s?.Slope15s < 0

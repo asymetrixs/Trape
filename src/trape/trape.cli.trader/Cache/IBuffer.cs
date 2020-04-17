@@ -37,11 +37,6 @@ namespace trape.cli.trader.Cache
         IEnumerable<Stats2h> Stats2h { get; }
 
         /// <summary>
-        /// Holds current prices
-        /// </summary>
-        IEnumerable<CurrentPrice> CurrentPrices { get; }
-
-        /// <summary>
         /// Starts a buffer
         /// </summary>
         /// <returns></returns>
@@ -78,5 +73,12 @@ namespace trape.cli.trader.Cache
         /// <param name="symbol">Symbol</param>
         /// <returns>Exchange information</returns>
         BinanceSymbol GetSymbolInfoFor(string symbol);
+
+        /// <summary>
+        /// Returns the last time Slope 10m and Slope 30m were crossing
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        LatestMA10mAndMA30mCrossing GetLatest10mAnd30mCrossing(string symbol);
     }
 }
