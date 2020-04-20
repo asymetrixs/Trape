@@ -1164,11 +1164,12 @@ LANGUAGE plpgsql VOLATILE STRICT;
 
 
 
-DROP TRIGGER tr_update_traded_quantity ON binance_order_trade;
-DROP FUNCTION update_traded_quantity;
-CREATE OR REPLACE FUNCTION update_traded_quantity ()
-RETURNS TRIGGER AS
-$$
+CREATE FUNCTION public.update_traded_quantity()
+    RETURNS trigger
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE NOT LEAKPROOF STRICT
+AS $BODY$
 	DECLARE i_trade binance_order_trade%ROWTYPE;
 			i_side TEXT;
 			i_quantity NUMERIC;
@@ -1195,7 +1196,7 @@ BEGIN
 						WHERE bpo.side = 'Buy'
 							AND bot.consumed < bot.quantity
 							AND bot.price <= NEW.price
-						ORDER BY bot.price DESC FOR UPDATE OF bpo
+						ORDER BY bot.price DESC FOR UPDATE OF bot
 		LOOP
 			IF (i_quantity > 0) THEN
 				i_free_quantity := i_trade.quantity - i_trade.consumed;
@@ -1219,12 +1220,46 @@ BEGIN
 				
 			END IF;
 		END LOOP;
+		
+		-- Due to panic sell the quantity might not be distributed to buys of a lower price
+		-- because it might have been sold under value and has to be deducted it from more expensive purchases (Buys)
+		-- Check if remaining quantity, deduct from purchases with higher prices (not checking price in this case)
+		IF ( i_quantity > 0) THEN
+			FOR i_trade IN SELECT bot.* FROM binance_placed_order bpo
+						INNER JOIN binance_order_trade bot ON bot.binance_placed_order_id = bpo.id
+						WHERE bpo.side = 'Buy'
+							AND bot.consumed < bot.quantity
+						ORDER BY bot.price DESC FOR UPDATE OF bot
+			LOOP
+				IF (i_quantity > 0) THEN
+					i_free_quantity := i_trade.quantity - i_trade.consumed;
+
+					IF (i_quantity > i_free_quantity) THEN
+						i_quantity := i_quantity - i_free_quantity;
+						i_consume_quantity := i_free_quantity;
+					ELSE
+						i_consume_quantity := i_quantity;
+						i_quantity := 0;
+					END IF;
+
+					i_new_consumed_total := i_trade.consumed + i_consume_quantity;
+					i_part_consumed := i_trade.consumed / i_new_consumed_total;
+					i_part_consume := i_consume_quantity / i_new_consumed_total;				
+					i_new_consumed_price := i_part_consumed * i_trade.price + i_part_consume * i_price;
+
+					UPDATE binance_order_trade
+						SET consumed = i_new_consumed_total, consumed_price = i_new_consumed_price
+						WHERE binance_order_trade.id = i_trade.id;
+
+				END IF;
+			END LOOP;			
+		END IF;
+		
 	END IF;
 
 	RETURN NEW;
 END;
-$$
-LANGUAGE plpgsql VOLATILE STRICT;
+$BODY$;
 
 
 CREATE TRIGGER tr_update_traded_quantity
