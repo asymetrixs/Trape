@@ -1211,13 +1211,15 @@ BEGIN
 				
 				i_new_consumed_total := i_trade.consumed + i_consume_quantity;
 				i_part_consumed := i_trade.consumed / i_new_consumed_total;
-				i_part_consume := i_consume_quantity / i_new_consumed_total;				
+				i_part_consume := i_consume_quantity / i_new_consumed_total;
 				i_new_consumed_price := i_part_consumed * i_trade.price + i_part_consume * i_price;
 				
 				UPDATE binance_order_trade
 					SET consumed = i_new_consumed_total, consumed_price = i_new_consumed_price
 					WHERE binance_order_trade.id = i_trade.id;
-				
+			ELSE
+				-- Done, exit loop
+				EXIT;
 			END IF;
 		END LOOP;
 		
@@ -1244,15 +1246,17 @@ BEGIN
 
 					i_new_consumed_total := i_trade.consumed + i_consume_quantity;
 					i_part_consumed := i_trade.consumed / i_new_consumed_total;
-					i_part_consume := i_consume_quantity / i_new_consumed_total;				
+					i_part_consume := i_consume_quantity / i_new_consumed_total;
 					i_new_consumed_price := i_part_consumed * i_trade.price + i_part_consume * i_price;
 
 					UPDATE binance_order_trade
 						SET consumed = i_new_consumed_total, consumed_price = i_new_consumed_price
 						WHERE binance_order_trade.id = i_trade.id;
-
+				ELSE
+					-- Done, exit loop
+					EXIT;
 				END IF;
-			END LOOP;			
+			END LOOP;
 		END IF;
 		
 	END IF;
