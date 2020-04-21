@@ -87,5 +87,12 @@ namespace trape.cli.trader.Cache
         /// <param name="symbol">Symbol</param>
         /// <returns></returns>
         LatestMA1hAndMA3hCrossing GetLatest1hAnd3hCrossing(string symbol);
+
+        /// <summary>
+        /// Returns the last falling price
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        public FallingPrice GetLastFallingPrice(string symbol);
     }
 }

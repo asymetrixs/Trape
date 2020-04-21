@@ -6,7 +6,7 @@ ORDER BY binance_placed_order_id DESC, bpo.id DESC;
 select * from select_asset_status()
 select * from current_statement()
 
-
+select * from binance_order_trade order by binance_placed_order_id desc
 update binance_order_trade set consumed = quantity, consumed_price = 6630 where consumed != quantity
 update binance_order_trade set consumed_price = price where binance_placed_order_id != 278 AND consumed_price = 0
 select * from binance_order_trade
@@ -21,22 +21,22 @@ delete from binance_order_trade;
 
 SELECT * FROM fix_symbol_quantity('BTCUSDT', 0.04132487, 7133.00);
 
+-- Pseudo panic drops
+--6830 :04 -> 6817 :17	> 13 USD	13s		0.99809
+--6845 :07 -> 6815 :23	> 30 USD	16s		0.99562
+--6804 :57 -> 6797 :05	>  7 USD	 8s		0.99897
+--6797 :08 -> 6787 :19	> 10 USD	11s		0.99853
+--==> 20s & > 0.5%
 
-select event_time::date, count(*) filter (where slope1h>0.004) AS higher, count(*) filter (where slope1h < 0.004) AS lower from recommendation 
-where slope1h > 0.004 OR slope1h < 0.004 ANd symbol = 'BTCUSDT'
-group by event_time::date
-order by event_time::date
+SELECT symbol, * FROM recommendation
+WHERE event_time > NOW() - INTERVAL '1 minute' AND slope5s < 0
+	ORDER BY event_time ASC
+	LIMIT 1
 
-select *from recommendation
-	where event_time between '2020-04-12 20:50:00.000 +00'::timestamptz and '2020-04-12 20:50:59.000 +00'::timestamptz
+select * from recommendation
+	where event_time between '2020-04-21 13:34:50.000 +00'::timestamptz and '2020-04-21 13:35:25.000 +00'::timestamptz
 		AND symbol = 'BTCUSDT'
 		ORDER BY event_time desc
-		
-select *from recommendation
-	where event_time between '2020-04-16 10:36:00.000 +00'::timestamptz and '2020-04-16 10:36:59.000 +00'::timestamptz
-		AND symbol = 'BTCUSDT'
-		ORDER BY event_time desc
-		
 		
  /*
              * Do not buy when price > movav6h, do buy when price < movav6h

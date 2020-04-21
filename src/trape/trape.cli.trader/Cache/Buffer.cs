@@ -68,6 +68,11 @@ namespace trape.cli.trader.Cache
         /// </summary>
         private IEnumerable<LatestMA1hAndMA3hCrossing> _latestMA1hAnd3hCrossing;
 
+        /// <summary>
+        /// Holds the last time per symbol when the price dropped for the first time
+        /// </summary>
+        private Dictionary<string, FallingPrice> _fallingPrices;
+
         #region Timers
 
         private System.Timers.Timer _timerStats3s;
@@ -127,6 +132,7 @@ namespace trape.cli.trader.Cache
             this._binanceExchangeInfo = null;
             this._latestMA10mAnd30mCrossing = new List<LatestMA10mAndMA30mCrossing>();
             this._latestMA1hAnd3hCrossing = new List<LatestMA1hAndMA3hCrossing>();
+            this._fallingPrices = new Dictionary<string, FallingPrice>();
 
             #region Timer setup
 
@@ -224,6 +230,36 @@ namespace trape.cli.trader.Cache
             var database = Pool.DatabasePool.Get();
             this.Stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
+
+            // Set falling prices
+            foreach (var stat in this.Stats3s)
+            {
+                var currentPrice = this.GetBidPrice(stat.Symbol);
+
+                if (stat.Slope5s < 0)
+                {
+                    // Add if not in, this is the first time it drops
+                    // if record is in, then during the previous run the price
+                    // already dropped, otherwise it would have been removed
+                    if (!this._fallingPrices.ContainsKey(stat.Symbol))
+                    {
+                        if (currentPrice != -1)
+                        {
+                            this._logger.Verbose($"{stat.Symbol}: Falling price added - {currentPrice} at {DateTime.UtcNow.ToShortTimeString()}");
+                            this._fallingPrices.Add(stat.Symbol, new FallingPrice(stat.Symbol, currentPrice, DateTime.UtcNow));
+                        }
+                    }
+                }
+                else
+                {
+                    // Slope 5s is higher than 0, then remove the entry
+                    if (this._fallingPrices.ContainsKey(stat.Symbol))
+                    {
+                        this._fallingPrices.Remove(stat.Symbol, out var value);
+                        this._logger.Verbose($"{stat.Symbol}: Falling price removed - {value.OriginalPrice} < {currentPrice} at {DateTime.UtcNow.ToShortTimeString()}");
+                    }
+                }
+            }
 
             this._logger.Verbose("Updated 3 seconds trend");
         }
@@ -407,6 +443,22 @@ namespace trape.cli.trader.Cache
             //Save ref
             var latest = this._latestMA1hAnd3hCrossing;
             return latest.SingleOrDefault(s => s.Symbol == symbol);
+        }
+
+        /// <summary>
+        /// Returns the last falling price
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        public FallingPrice GetLastFallingPrice(string symbol)
+        {
+            var fallingPrice = this._fallingPrices.GetValueOrDefault(symbol);
+            if (fallingPrice == default)
+            {
+                return null;
+            }
+
+            return fallingPrice;
         }
 
         #endregion

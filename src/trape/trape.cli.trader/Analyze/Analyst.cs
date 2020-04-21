@@ -185,6 +185,8 @@ namespace trape.cli.trader.Analyze
             var action = Action.Hold;
             Strategy strategy = Strategy.Hold;
 
+            var lastFallingPrice = this._buffer.GetLastFallingPrice(symbol);
+
             // Panic
             if (stat3s.Slope5s < -2M
                 && stat3s.Slope10s < -1.1M
@@ -197,6 +199,11 @@ namespace trape.cli.trader.Analyze
                 && stat2m.Slope5m < -0M
                 // Define threshhold from when on panic mode is active
                 && panicLimitMA1h < stat10m.MovingAverage3h
+                // Price has to drop for more than 21 seconds
+                // and lose more than 0.55%
+                && lastFallingPrice != null 
+                    && lastFallingPrice.Since < DateTime.UtcNow.AddSeconds(-21)
+                    && currentPrice < lastFallingPrice.OriginalPrice * 0.9955M
                 )
             {
                 // Panic sell
