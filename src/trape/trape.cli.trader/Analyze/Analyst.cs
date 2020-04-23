@@ -54,7 +54,7 @@ namespace trape.cli.trader.Analyze
         /// <summary>
         /// Saves state of last strategy
         /// </summary>
-        private Dictionary<string, Strategy> _lastStrategy;
+        private Dictionary<string, Action> _lastStrategy;
 
         #endregion
 
@@ -78,7 +78,7 @@ namespace trape.cli.trader.Analyze
             this._lastRecommendation = new Dictionary<string, Recommendation>();
             this._disposed = false;
             this._recommendationSynchronizer = new SemaphoreSlim(1, 1);
-            this._lastStrategy = new Dictionary<string, Strategy>();
+            this._lastStrategy = new Dictionary<string, Action>();
 
             // Set up timer that makes decisions, every second
             this._timerRecommendationMaker = new System.Timers.Timer()
@@ -140,7 +140,7 @@ namespace trape.cli.trader.Analyze
             // Placeholder for strategy
             if (!this._lastStrategy.ContainsKey(symbol))
             {
-                this._lastStrategy.Add(symbol, Strategy.Hold);
+                this._lastStrategy.Add(symbol, Action.Hold);
             }
 
             var database = Pool.DatabasePool.Get();
@@ -183,7 +183,6 @@ namespace trape.cli.trader.Analyze
 
             // Make the decision
             var action = Action.Hold;
-            Strategy strategy = Strategy.Hold;
 
             var lastFallingPrice = this._buffer.GetLastFallingPrice(symbol);
 
@@ -201,7 +200,7 @@ namespace trape.cli.trader.Analyze
                 && panicLimitMA1h < stat10m.MovingAverage3h
                 // Price has to drop for more than 21 seconds
                 // and lose more than 0.55%
-                && lastFallingPrice != null 
+                && lastFallingPrice != null
                     && lastFallingPrice.Since < DateTime.UtcNow.AddSeconds(-21)
                     && currentPrice < lastFallingPrice.OriginalPrice * 0.9955M
                 )
@@ -209,40 +208,49 @@ namespace trape.cli.trader.Analyze
                 // Panic sell
                 action = Action.PanicSell;
                 this._logger.Warning("Panic Mode");
-                strategy = Strategy.PanicSell;
             }
             else if (stat10m.Slope1h > strongThreshold)
             {
                 action = StrongBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
-                strategy = Strategy.StrongBuy;
             }
             else if (stat10m.Slope1h > 0.0015M)
             {
                 action = NormalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
-                strategy = Strategy.NormalBuy;
             }
             else if (stat10m.Slope1h < -strongThreshold)
             {
                 action = StrongSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
-                strategy = Strategy.StrongSell;
             }
             else if (stat10m.Slope1h < -0.0015M)
             {
                 action = NormalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
-                strategy = Strategy.NormalSell;
+            }
+
+            // Check if price has gained a lot over the last 15 minutes
+            // Get Price from 15 minutes ago
+            var raceStartingPrice = await database.GetPriceOn(symbol, DateTime.UtcNow.AddMinutes(-15), this._cancellationTokenSource.Token).ConfigureAwait(false);
+
+            // Advise to sell on 200 USD gain
+            if (raceStartingPrice != default && raceStartingPrice < currentPrice - 220)
+            {
+                // Check market movement, if a huge sell is detected advice to take profits
+                if (stat3s.MovingAverage15s < -2)
+                {
+                    action = Action.TakeProfitsSell;
+                }
             }
 
             var now = DateTime.UtcNow;
             // Print strategy changes
-            if (this._lastStrategy[symbol] != strategy)
+            if (this._lastStrategy[symbol] != action)
             {
-                this._logger.Information($"{symbol} Switching stategy: {this._lastStrategy[symbol]} -> {strategy}");
-                this._lastStrategy[symbol] = strategy;
+                this._logger.Information($"{symbol} Switching stategy: {this._lastStrategy[symbol]} -> {action}");
+                this._lastStrategy[symbol] = action;
             }
             // Print strategy every hour in log
             else if (now.Minute == 0 && now.Second == 0 && now.Millisecond < 100)
             {
-                this._logger.Information($"{symbol} Stategy: {strategy}");
+                this._logger.Information($"{symbol} Stategy: {action}");
             }
 
             // Instantiate new recommendation

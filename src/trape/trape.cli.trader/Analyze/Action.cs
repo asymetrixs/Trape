@@ -28,6 +28,10 @@
         /// <summary>
         /// Corner case - market drop
         /// </summary>
-        PanicSell
+        PanicSell,
+        /// <summary>
+        /// Price gained a lot over the past hours
+        /// </summary>
+        TakeProfitsSell
     }
 }

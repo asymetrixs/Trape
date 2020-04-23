@@ -1,5 +1,8 @@
 SELECT bpo.time_in_force, bpo.transaction_time, bpo.side, bpo.symbol, bot.price, bot.quantity, bot.commission, 
-	bot.commission_asset, bot.consumed, ROUND(bot.consumed_price, 8) FROM binance_order_trade AS bot
+	bot.commission_asset, bot.consumed, ROUND(bot.consumed_price, 8),
+	ROUND(bot.price * bot.quantity) payed, ROUND(bot.consumed_price * bot.consumed) got,
+	ROUND(bot.consumed_price * bot.consumed - bot.price * bot.quantity) win
+	FROM binance_order_trade AS bot
 LEFT JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
 ORDER BY binance_placed_order_id DESC, bpo.id DESC;
 
@@ -14,7 +17,7 @@ select * from binance_order_trade
 delete from binance_placed_order;
 delete from binance_order_trade;
 
-
+select * from recommendation order by event_time desc limit 2
 --233
 --	Bitcoin 0.44544746 0.44544746
 -- Ethereum 8.16653543 8.16653543
@@ -34,8 +37,9 @@ WHERE event_time > NOW() - INTERVAL '1 minute' AND slope5s < 0
 	LIMIT 1
 
 select * from recommendation
-	where event_time between '2020-04-21 13:34:50.000 +00'::timestamptz and '2020-04-21 13:35:25.000 +00'::timestamptz
+	where event_time between '2020-04-23 14:05:00.000 +00'::timestamptz and '2020-04-23 14:23:00.000 +00'::timestamptz
 		AND symbol = 'BTCUSDT'
+		AND slope15s < -2
 		ORDER BY event_time desc
 		
  /*

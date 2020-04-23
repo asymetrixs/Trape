@@ -1449,6 +1449,68 @@ namespace trape.cli.trader.DataLayer
             return list;
         }
 
+        
+        public async Task<decimal> GetPriceOn(string symbol, DateTime dateTime, CancellationToken cancellationToken)
+        {
+            var price = default(decimal);
+            IDisposable pushedProperty = null;
+
+            using (var con = new NpgsqlConnection(this._connectionString))
+            {
+                using (var com = new NpgsqlCommand("get_price_on", con))
+                {
+                    try
+                    {
+                        this._logger.Verbose($"Executing {com.CommandText}");
+
+                        com.CommandType = CommandType.StoredProcedure;
+
+                        com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = symbol;
+                        com.Parameters.Add("p_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = dateTime.ToUniversalTime();
+
+                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+                        var obj = await com.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+
+                        pushedProperty = LogContext.PushProperty("obj", obj);
+
+                        price = (decimal)obj;
+                    }
+                    catch (InvalidCastException)
+                    {
+                        this._logger.Error("Value is not decimal");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // nothing
+                    }
+                    catch (PostgresException px)
+                    {
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
+                    }
+                    finally
+                    {
+                        pushedProperty?.Dispose();
+
+                        con.Close();
+                    }
+                }
+            }
+
+            return price;
+        }
+
         #endregion
     }
 }

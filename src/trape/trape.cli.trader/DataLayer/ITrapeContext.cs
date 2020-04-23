@@ -1,5 +1,6 @@
 ﻿using Binance.Net.Objects;
 using Binance.Net.Objects.Sockets;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -139,5 +140,14 @@ namespace trape.cli.trader.DataLayer
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
         Task<IEnumerable<LastOrder>> GetLastOrdersAsync(string symbol, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Returns the averaged price for the <paramref name="symbol"/> on <paramref name="dateTime"/>.
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <param name="dateTime">Date</param>
+        /// <param name="cancellationToken">Cancellation Token</param>
+        /// <returns></returns>
+        Task<decimal> GetPriceOn(string symbol, DateTime dateTime, CancellationToken cancellationToken);
     }
 }

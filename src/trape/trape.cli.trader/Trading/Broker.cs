@@ -201,12 +201,16 @@ namespace trape.cli.trader.Trading
                 WebCallResult<BinancePlacedOrder> placedOrder = null;
 
                 // Buy
-                if (recommendation.Action == Analyze.Action.Buy || recommendation.Action == Analyze.Action.StrongBuy)
+                if (recommendation.Action == Analyze.Action.Buy
+                    || recommendation.Action == Analyze.Action.StrongBuy)
                 {
                     placedOrder = await this.Buy(recommendation, symbolInfo, database, newClientOrderId, lastOrder).ConfigureAwait(true);
                 }
                 // Sell
-                else if (recommendation.Action == Analyze.Action.Sell || recommendation.Action == Analyze.Action.StrongSell || recommendation.Action == Analyze.Action.PanicSell)
+                else if (recommendation.Action == Analyze.Action.Sell
+                    || recommendation.Action == Analyze.Action.StrongSell
+                    || recommendation.Action == Analyze.Action.PanicSell
+                    || recommendation.Action == Analyze.Action.TakeProfitsSell)
                 {
                     placedOrder = await this.Sell(recommendation, lastOrders, symbolInfo, database, newClientOrderId, lastOrder).ConfigureAwait(true);
                 }
@@ -490,39 +494,34 @@ namespace trape.cli.trader.Trading
             }
             else
             {
-                if (recommendation.Action == Analyze.Action.PanicSell)
-                {
-                    this._logger.Warning($"{this.Symbol}: PANICKING");
-                }
-
-                var assetBalanceFree = assetBalance?.Free;
                 // Sell 85% of the asset
-                var assetBalanceToSell = assetBalanceFree.HasValue ? assetBalanceFree * 0.85M : null;
+                var assetBalanceToSell = assetBalance?.Free * 0.85M;
 
                 // Get best bid price
                 var bestBidPrice = this._buffer.GetBidPrice(this.Symbol);
 
                 // Do not sell below buying price
-                // Select trades where we bought
+                // Select trades from Buy-side
                 // And where buying price is smaller than selling price
-                // And where asset is available
-                var availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy && l.Price < (bestBidPrice * 0.998M) /*0.002% less*/ && l.Quantity > l.Consumed)
-                    .Sum(l => (l.Quantity - l.Consumed));
+                // And where assets are available
+                var availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy
+                                                            && l.Price < (bestBidPrice * 0.998M) /*0.2% less*/
+                                                            && l.Quantity > l.Consumed)
+                                                        .Sum(l => (l.Quantity - l.Consumed));
 
                 // Sell what is maximal possible (max or what was bought for less than it will be sold), because of rounding and commission reduct 1% from availableQuantity
                 assetBalanceToSell = assetBalanceToSell < (availableAssetQuantity * 0.99M) ? assetBalanceToSell : (availableAssetQuantity * 0.99M);
 
-                // Panic Mode
+                // Panic Mode, sell everything
                 if (recommendation.Action == Analyze.Action.PanicSell)
                 {
                     assetBalanceToSell = assetBalance?.Free;
-                    assetBalanceFree = assetBalanceToSell;
                 }
                 else if (recommendation.Action == Analyze.Action.StrongSell)
                 {
-                    // Sell 80% of what is available
-                    assetBalanceToSell = assetBalance?.Free * 0.8M;
-                    assetBalanceFree = assetBalanceToSell;
+                    // TODO: Sell everything on break-even
+                    // Sell everything with profit or at least 75% of what is in stock
+                    assetBalanceToSell = assetBalance?.Free * 0.75M < assetBalanceToSell ? assetBalanceToSell : assetBalance?.Free * 0.75M;
                 }
 
                 // Sell as much required to get this total USDT price
@@ -551,6 +550,10 @@ namespace trape.cli.trader.Trading
                 if (recommendation.Action == Analyze.Action.PanicSell)
                 {
                     this._logger.Warning($"{this.Symbol}: PANICKING - preparing sell of {assetBalanceToSell} for {aimToGetUSDT.Value}");
+                }
+                else if (recommendation.Action == Analyze.Action.TakeProfitsSell)
+                {
+                    this._logger.Information($"{this.Symbol}: TAKE PROFITS - preparing sell of {assetBalanceToSell} for {aimToGetUSDT.Value}");
                 }
 
                 // For increased readability
@@ -605,6 +608,10 @@ namespace trape.cli.trader.Trading
                     if (recommendation.Action == Analyze.Action.PanicSell)
                     {
                         this._logger.Warning($"{this.Symbol}: PANICKING - issuing sell of {assetBalanceToSell} for {aimToGetUSDT.Value}");
+                    }
+                    else if (recommendation.Action == Analyze.Action.TakeProfitsSell)
+                    {
+                        this._logger.Warning($"{this.Symbol}: TAKE PROFITS - issuing sell of {assetBalanceToSell} for {aimToGetUSDT.Value}");
                     }
 
                     // Place the order

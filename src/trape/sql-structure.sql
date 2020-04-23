@@ -1380,3 +1380,37 @@ BEGIN
 		ORDER BY r.symbol, MAX(r.event_time) DESC;
 END;
 $BODY$;
+
+
+
+CREATE OR REPLACE FUNCTION get_price_on(p_symbol TEXT, p_time TIMESTAMPTZ)
+RETURNS NUMERIC AS
+$$
+	DECLARE i_avg_price NUMERIC;
+BEGIN
+	IF p_time > NOW() THEN
+		p_time = NOW();
+	END IF;
+
+	-- Calculate live over average of 20 records
+	SELECT ROUND(AVG((best_ask_price + best_bid_price)/2), 8) INTO i_avg_price FROM (
+		SELECT best_ask_price, best_bid_price
+			FROM binance_book_tick 
+			WHERE event_time <= p_time AND symbol = p_symbol
+			ORDER BY event_time DESC
+			LIMIT 20
+		) a;
+		
+	-- Get from historical data
+	IF i_avg_price IS NULL THEN
+		RAISE NOTICE 'Not Found';
+		SELECT ROUND(current_day_close_price, 8) INTO i_avg_price
+			FROM binance_stream_tick
+			WHERE event_time BETWEEN DATE_TRUNC('second', p_time) AND DATE_TRUNC('second', p_time + INTERVAL '1 second') - INTERVAL '1 microsecond'
+				AND symbol = p_symbol;
+	END IF;
+
+	RETURN i_avg_price;
+END;
+$$
+LANGUAGE plpgsql STRICT STABLE;
