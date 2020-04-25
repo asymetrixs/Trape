@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Newtonsoft.Json.Serialization;
+using Serilog;
 using trape.cli.collector.DataLayer;
 
 namespace trape.cli.collector
@@ -24,7 +25,7 @@ namespace trape.cli.collector
         /// </summary>
         public static void Initialize()
         {
-            DatabasePool = new ObjectPool<ITrapeContext>(() => new TrapeContext(Program.Services.GetService(typeof(ILogger)) as ILogger));
+            DatabasePool = new ObjectPool<ITrapeContext>(() => Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext);
         }
 
         #endregion

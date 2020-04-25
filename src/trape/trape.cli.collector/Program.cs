@@ -9,6 +9,7 @@ using Serilog.Exceptions;
 using System;
 using System.Threading.Tasks;
 using trape.cli.collector.DataCollection;
+using trape.cli.collector.DataLayer;
 using trape.jobs;
 using Trape.BinanceNet.Logger;
 
@@ -31,7 +32,7 @@ namespace trape.cli.collector
             // Setup IoC container
             var app = CreateHostBuilder().Build();
             Services = app.Services;
-            var logger = Services.GetRequiredService<ILogger>().ForContext<Program>();            
+            var logger = Services.GetRequiredService<ILogger>().ForContext<Program>();
             logger.Information("Start up complete");
 
             try
@@ -39,9 +40,10 @@ namespace trape.cli.collector
                 // Run App
                 await app.RunAsync().ConfigureAwait(false);
             }
-            catch(OperationCanceledException)
+            catch (OperationCanceledException oce)
             {
-                throw;
+                // Ignore
+                logger.Warning(oce, oce.Message);
             }
             catch (Exception e)
             {
@@ -84,7 +86,8 @@ namespace trape.cli.collector
                 .UseSystemd()
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services.AddSingleton<ILogger>(Log.Logger);
+                    services.AddTransient<ITrapeContext, TrapeContext>();
+                    services.AddSingleton(Log.Logger);
                     services.AddSingleton<IJobManager, JobManager>();
                     services.AddHostedService<CollectionManager>();
 

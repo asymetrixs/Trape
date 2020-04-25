@@ -1,7 +1,9 @@
 ﻿using Binance.Net.Objects;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using trape.cli.collector.DataLayer.Models;
 
 namespace trape.cli.collector.DataLayer
 {
@@ -10,6 +12,8 @@ namespace trape.cli.collector.DataLayer
     /// </summary>
     public interface ITrapeContext : IDisposable
     {
+        DbSet<Symbol> Symbols { get; }
+
         /// <summary>
         /// Inserts <c>BinanceStreamTick</c> instances into the database
         /// </summary>

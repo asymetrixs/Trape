@@ -6,6 +6,7 @@ using System;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
+using trape.cli.collector.DataLayer.Models;
 
 namespace trape.cli.collector.DataLayer
 {
@@ -51,6 +52,23 @@ namespace trape.cli.collector.DataLayer
             this._connectionString = Config.GetConnectionString("CoinTradeDB");
             this._disposed = false;
         }
+
+        /// <summary>
+        /// Configure
+        /// </summary>
+        /// <param name="optionsBuilder"></param>
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            _ = optionsBuilder.UseNpgsql(this._connectionString);
+
+            base.OnConfiguring(optionsBuilder);
+        }
+
+        #endregion
+
+        #region Properties
+
+        public DbSet<Symbol> Symbols { get; set; }
 
         #endregion
 

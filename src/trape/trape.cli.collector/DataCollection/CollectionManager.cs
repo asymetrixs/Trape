@@ -1,9 +1,13 @@
 ﻿using Binance.Net.Interfaces;
 using Binance.Net.Objects;
+using CryptoExchange.Net.Objects;
+using CryptoExchange.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -12,38 +16,92 @@ using trape.jobs;
 
 namespace trape.cli.collector.DataCollection
 {
+    /// <summary>
+    /// Manages connections to binance to retrieve data
+    /// </summary>
     public class CollectionManager : BackgroundService
     {
         #region Fields
 
-        private ILogger _logger;
+        /// <summary>
+        /// Logger
+        /// </summary>
+        private readonly ILogger _logger;
 
-        private IBinanceSocketClient _binanceSocketClient;
+        /// <summary>
+        /// Binance Socket Client
+        /// </summary>
+        private readonly IBinanceSocketClient _binanceSocketClient;
 
-        private ActionBlock<BinanceStreamTick> _binanceStreamTickBuffer;
+        /// <summary>
+        /// Binance Stream Tick Buffer
+        /// </summary>
+        private readonly ActionBlock<BinanceStreamTick> _binanceStreamTickBuffer;
 
-        private ActionBlock<BinanceStreamKlineData> _binanceStreamKlineDataBuffer;
+        /// <summary>
+        /// Binance Stream Kline Data Buffer
+        /// </summary>
+        private readonly ActionBlock<BinanceStreamKlineData> _binanceStreamKlineDataBuffer;
 
-        private ActionBlock<BinanceBookTick> _binanceBookTickBuffer;
+        /// <summary>
+        /// Binance Book Tick Buffer
+        /// </summary>
+        private readonly ActionBlock<BinanceBookTick> _binanceBookTickBuffer;
 
+        /// <summary>
+        /// Disposed
+        /// </summary>
         private bool _disposed;
 
+        /// <summary>
+        /// Cancellation Token Source
+        /// </summary>
         private CancellationTokenSource _cancellationTokenSource;
 
-        private SemaphoreSlim _startStop;
+        /// <summary>
+        /// Start/Stop synchronizer
+        /// </summary>
+        private readonly SemaphoreSlim _startStop;
 
+        /// <summary>
+        /// Shutdown indicator
+        /// </summary>
         private bool _shutdown;
+
+        /// <summary>
+        /// Checks periodically if symbols have to be added or dropped
+        /// </summary>
+        private System.Timers.Timer _timerSubscriptionManager;
+
+        /// <summary>
+        /// Holds list of active subscriptions
+        /// </summary>
+        private readonly Dictionary<string, List<UpdateSubscription>> _activeSubscriptions;
 
         #endregion
 
         #region Constructor
 
+        /// <summary>
+        /// Initializes a new instance of the <c>CollectionManager</c> class.
+        /// </summary>
+        /// <param name="logger">Logger</param>
+        /// <param name="binanceSocketClient">Binance Socket Client</param>
         public CollectionManager(ILogger logger, IBinanceSocketClient binanceSocketClient)
         {
-            if (logger == null || binanceSocketClient == null)
+            #region Argument checks
+
+            if (logger == null)
             {
-                throw new ArgumentNullException("Parameter cannot be NULL");
+                throw new ArgumentNullException(paramName: nameof(logger));
             }
+
+            if (binanceSocketClient == null)
+            {
+                throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
+            }
+
+            #endregion
 
             this._logger = logger.ForContext<CollectionManager>();
             this._binanceSocketClient = binanceSocketClient;
@@ -51,8 +109,21 @@ namespace trape.cli.collector.DataCollection
             this._cancellationTokenSource = new CancellationTokenSource();
             this._startStop = new SemaphoreSlim(1, 1);
             this._shutdown = false;
+            this._activeSubscriptions = new Dictionary<string, List<UpdateSubscription>>();
 
             #region Timer Setup
+
+            // Check every five seconds
+            this._timerSubscriptionManager = new System.Timers.Timer()
+            {
+                AutoReset = true,
+                Interval = new TimeSpan(0, 0, 5).TotalMilliseconds
+            };
+            this._timerSubscriptionManager.Elapsed += _timerSubscriptionManager_Elapsed;
+
+            #endregion
+
+            #region Buffer setup
 
             this._binanceStreamTickBuffer = new ActionBlock<BinanceStreamTick>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(true),
                 new ExecutionDataflowBlockOptions()
@@ -82,28 +153,113 @@ namespace trape.cli.collector.DataCollection
             #endregion
         }
 
+        /// <summary>
+        /// Checks periodically if subscriptions missing or obsolete
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void _timerSubscriptionManager_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            await _manage().ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Manages subscribing and unsubscribing
+        /// </summary>
+        /// <returns></returns>
+        private async Task _manage()
+        {
+            this._logger.Verbose("Checking subscriptions");
+
+            // Get symbols from database
+            var database = Pool.DatabasePool.Get();
+            var requiredSymbols = database.Symbols.Where(s => s.IsActive).Select(s => s.Name).ToArray();
+            Pool.DatabasePool.Put(database);
+
+
+            // Stop timer, because it may take a while
+            if (this._timerSubscriptionManager.Enabled)
+            {
+                this._timerSubscriptionManager.Stop();
+            }
+
+            try
+            {
+                // TODO: Sanity check if symbol exists on Binance
+
+                this._logger.Verbose($"Holding {this._activeSubscriptions.Count()} symbols with a total of {this._activeSubscriptions.Sum(s => s.Value.Count)} subscriptions");
+
+                // Subscribe to missing symbols
+                foreach (var requiredSymbol in requiredSymbols)
+                {
+                    if (!this._activeSubscriptions.ContainsKey(requiredSymbol))
+                    {
+                        await this._subscribeTo(requiredSymbol).ConfigureAwait(true);
+                    }
+                }
+
+                // Unsubscribe from non-required symbols
+                foreach (var subscribedSymbol in this._activeSubscriptions.Select(s => s.Key))
+                {
+                    if (!requiredSymbols.Contains(subscribedSymbol))
+                    {
+                        await this._unsubscribeFrom(subscribedSymbol).ConfigureAwait(true);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                this._logger.Warning(ex.Message, ex);
+            }
+            finally
+            {
+                // Start timer again when done
+                this._timerSubscriptionManager.Start();
+            }
+
+            this._logger.Verbose("Subscriptions checked");
+        }
+
         #endregion
 
         #region Timer Elapsed
 
+        /// <summary>
+        /// Saves <c>BinanceStreamTick</c> in the database.
+        /// </summary>
+        /// <param name="bst">Binance Stream Tick</param>
+        /// <param name="cancellationToken">Canellation Token</param>
+        /// <returns></returns>
         public static async Task Save(BinanceStreamTick bst, CancellationToken cancellationToken)
         {
             var database = Pool.DatabasePool.Get();
-            await database.Insert(bst, cancellationToken).ConfigureAwait(false);
+            //await database.Insert(bst, cancellationToken).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
         }
 
+        /// <summary>
+        /// Saves <c>BinanceStreamKlineData</c> in the database.
+        /// </summary>
+        /// <param name="bskd">Binance Stream Kline Data</param>
+        /// <param name="cancellationToken">Cancellation Token</param>
+        /// <returns></returns>
         public static async Task Save(BinanceStreamKlineData bskd, CancellationToken cancellationToken)
         {
             var database = Pool.DatabasePool.Get();
-            await database.Insert(bskd, cancellationToken).ConfigureAwait(false);
+            //await database.Insert(bskd, cancellationToken).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
         }
 
+        /// <summary>
+        /// Saves <c>BinanceBookTick</c> in the database
+        /// </summary>
+        /// <param name="bbt">Binance Book Tick</param>
+        /// <param name="cancellationToken">Cancellation Token</param>
+        /// <returns></returns>
         public static async Task Save(BinanceBookTick bbt, CancellationToken cancellationToken)
         {
             var database = Pool.DatabasePool.Get();
-            await database.Insert(bbt, cancellationToken).ConfigureAwait(false);
+            //await database.Insert(bbt, cancellationToken).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
         }
 
@@ -124,11 +280,8 @@ namespace trape.cli.collector.DataCollection
             {
                 this._logger.Information("Setting up Collection Manager");
 
-                // Get symbols from settings.json
-                var symbols = Config.GetValue("binance:symbols").Split(';', ',');
-
-                // Set up binance client to subscribe to these symbols
-                await this._setupClients(symbols).ConfigureAwait(true);
+                // Set up subscription
+                await _manage().ConfigureAwait(true);
 
                 // Register cleanup job and start
                 Program.Services.GetService<IJobManager>().Start(new CleanUp());
@@ -152,6 +305,14 @@ namespace trape.cli.collector.DataCollection
 
             // Check that start has finished/cancelled in case service is stopped while still starting
             await this._startStop.WaitAsync().ConfigureAwait(true);
+
+            // Check if timer is enabled. If not it is checking/un-/subscribing, so wait.
+            while (!this._timerSubscriptionManager.Enabled)
+            {
+                await Task.Delay(1000).ConfigureAwait(true);
+            }
+            // immediately stop timer
+            this._timerSubscriptionManager.Stop();
 
             try
             {
@@ -193,144 +354,176 @@ namespace trape.cli.collector.DataCollection
         }
 
         /// <summary>
-        /// Sets up the Binance client to subscribe to binance trading data
+        /// Subscribes to updates for a symbol
         /// </summary>
-        /// <param name="symbols"></param>
+        /// <param name="symbol">Symbol</param>
         /// <returns></returns>
-        private async Task _setupClients(string[] symbols)
+        private async Task _subscribeTo(string symbol)
         {
-            foreach (var symbol in symbols)
+            // Retry 30 times (e.g. network error, disconnect, etc.)
+            int countTillHardExit = 30;
+
+            var subscriptions = new List<UpdateSubscription>();
+            var subscribeTasks = new List<Task<CallResult<UpdateSubscription>>>();
+
+
+            while (countTillHardExit > 0)
             {
-                // Retry 30 times (e.g. network error, disconnect, etc.)
-                int countTillHardExit = 30;
+                this._logger.Debug($"{symbol}: Starting collector");
 
-                while (countTillHardExit > 0)
+                try
                 {
-                    this._logger.Debug($"Starting collector for {symbol}");
+                    // Subscribe to available streams
 
-                    try
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToSymbolTickerUpdatesAsync(symbol, (BinanceStreamTick bst) =>
                     {
-                        // Subscribe to a bunch of streams
+                        this._binanceStreamTickBuffer.Post(bst);
+                    }));
 
-                        // Skip if shutdown was called during startup
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToSymbolTickerUpdatesAsync(symbol, (BinanceStreamTick bst) =>
-                        {
-                            this._binanceStreamTickBuffer.Post(bst);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to Symbol Ticker Updates");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneMinute, (BinanceStreamKlineData bskd) =>
-                        {
-                            this._binanceStreamKlineDataBuffer.Post(bskd);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to KLine data 1 minute");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeMinutes, (BinanceStreamKlineData bskd) =>
-                        {
-                            this._binanceStreamKlineDataBuffer.Post(bskd);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to KLine data 3 minutes");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FiveMinutes, (BinanceStreamKlineData bskd) =>
-                        {
-                            this._binanceStreamKlineDataBuffer.Post(bskd);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to KLine data 5 minutes");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FifteenMinutes, (BinanceStreamKlineData bskd) =>
-                        {
-                            this._binanceStreamKlineDataBuffer.Post(bskd);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to KLine data 15 minutes");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThirtyMinutes, (BinanceStreamKlineData bskd) =>
-                        {
-                            this._binanceStreamKlineDataBuffer.Post(bskd);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to KLine data 30 minutes");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneHour, (BinanceStreamKlineData bskd) =>
-                        {
-                            this._binanceStreamKlineDataBuffer.Post(bskd);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to KLine data 1 hour");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwoHour, (BinanceStreamKlineData bskd) =>
-                        {
-                            this._binanceStreamKlineDataBuffer.Post(bskd);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to KLine data 2 hours");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.SixHour, (BinanceStreamKlineData bskd) =>
-                        {
-                            this._binanceStreamKlineDataBuffer.Post(bskd);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to KLine data 6 hours");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.EightHour, (BinanceStreamKlineData bskd) =>
-                        {
-                            this._binanceStreamKlineDataBuffer.Post(bskd);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to KLine data 8 hours");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwelveHour, (BinanceStreamKlineData bskd) =>
-                        {
-                            this._binanceStreamKlineDataBuffer.Post(bskd);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to KLine data 12 hours");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneDay, (BinanceStreamKlineData bskd) =>
-                        {
-                            this._binanceStreamKlineDataBuffer.Post(bskd);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to KLine data 1 day");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeDay, (BinanceStreamKlineData bskd) =>
-                        {
-                            this._binanceStreamKlineDataBuffer.Post(bskd);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to KLine data 3 days");
-
-                        if (this._shutdown) return;
-                        await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(symbol, (BinanceBookTick bbt) =>
-                        {
-                            this._binanceBookTickBuffer.Post(bbt);
-                        }).ConfigureAwait(true);
-                        this._logger.Debug($"{symbol}: Subscribed to Book Ticker");
-
-                        countTillHardExit = -1;
-                    }
-                    catch (Exception e)
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneMinute, (BinanceStreamKlineData bskd) =>
                     {
-                        this._logger.Fatal($"Connecting to Binance failed, retrying, {31 - countTillHardExit}/30");
-                        this._logger.Fatal(e.Message, e);
+                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                    }));
 
-                        countTillHardExit--;
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeMinutes, (BinanceStreamKlineData bskd) =>
+                    {
+                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                    }));
 
-                        if (countTillHardExit == 0)
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FiveMinutes, (BinanceStreamKlineData bskd) =>
+                    {
+                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                    }));
+
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FifteenMinutes, (BinanceStreamKlineData bskd) =>
+                    {
+                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                    }));
+
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThirtyMinutes, (BinanceStreamKlineData bskd) =>
+                    {
+                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                    }));
+
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneHour, (BinanceStreamKlineData bskd) =>
+                    {
+                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                    }));
+
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwoHour, (BinanceStreamKlineData bskd) =>
+                    {
+                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                    }));
+
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.SixHour, (BinanceStreamKlineData bskd) =>
+                    {
+                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                    }));
+
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.EightHour, (BinanceStreamKlineData bskd) =>
+                    {
+                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                    }));
+
+
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwelveHour, (BinanceStreamKlineData bskd) =>
+                    {
+                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                    }));
+
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneDay, (BinanceStreamKlineData bskd) =>
+                    {
+                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                    }));
+
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeDay, (BinanceStreamKlineData bskd) =>
+                    {
+                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                    }));
+
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(symbol, (BinanceBookTick bbt) =>
+                    {
+                        this._binanceBookTickBuffer.Post(bbt);
+                    }));
+
+                    await Task.WhenAll(subscribeTasks.ToArray()).ConfigureAwait(true);
+
+                    foreach (var t in subscribeTasks)
+                    {
+                        if (t.Result.Success)
                         {
-                            // Fail hard after 30 times and rely on service manager (e.g. systemd) to restart the service
-                            this._logger.Fatal("Shutting down, relying on systemd to restart");
-                            Environment.Exit(1);
+                            subscriptions.Add(t.Result.Data);
+                        }
+                        else
+                        {
+                            throw new SubscriptionFailedException($"{symbol}: Problem to subscribe");
                         }
                     }
 
-                    this._logger.Debug($"Collectors online for {symbol}");
+                    countTillHardExit = -1;
                 }
+                catch (Exception e)
+                {
+                    this._logger.Fatal($"{symbol}: Connecting to Binance failed, retrying, {31 - countTillHardExit}/30");
+                    this._logger.Fatal(e.Message, e);
+
+                    countTillHardExit--;
+
+                    if (countTillHardExit == 0)
+                    {
+                        // Fail hard after 30 times and rely on service manager (e.g. systemd) to restart the service
+                        this._logger.Fatal("Shutting down, relying on systemd to restart");
+                        Environment.Exit(1);
+                    }
+                }
+
+                this._logger.Debug($"{symbol}: Collector is started");
+
+                // Register
+                this._activeSubscriptions.Add(symbol, subscriptions);
             }
+        }
+
+        /// <summary>
+        /// Unsubscribes from updates for a symbol
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        private async Task _unsubscribeFrom(string symbol)
+        {
+            this._logger.Debug($"{symbol}: Stopping collector");
+
+            var removedSubscriptions = new List<UpdateSubscription>();
+            try
+            {
+                var unsubscribeTasks = new List<Task>();
+                // Unsubscribe
+                foreach (var subscription in this._activeSubscriptions[symbol])
+                {
+                    // Return if in shutdown mode, everything will be unsubscribed than anyway
+                    if (this._shutdown) return;
+
+                    unsubscribeTasks.Add(this._binanceSocketClient.Unsubscribe(subscription));
+                    removedSubscriptions.Add(subscription);
+                }
+
+                await Task.WhenAll(unsubscribeTasks).ConfigureAwait(true);
+            }
+            catch (Exception e)
+            {
+                this._logger.Debug($"{symbol}: Unsubscribing failed");
+                this._logger.Fatal(e.Message, e);
+                return;
+            }
+            finally
+            {
+                this._activeSubscriptions[symbol].RemoveAll(s => removedSubscriptions.Contains(s));
+            }
+
+            this._logger.Debug($"{symbol}: Collector is stopped");
+
+            // Remove
+            this._activeSubscriptions.Remove(symbol);
         }
 
         #endregion

@@ -665,8 +665,7 @@ END;
 $$
 LANGUAGE plpgsql VOLATILE ;
 
-DROP TABLE binance_stream_balance_update;
-DROP FUNCTION insert_binance_stream_balance_update(timestamptz, text, text, numeric, timestamptz);
+
 CREATE TABLE binance_stream_balance_update
 (
 	id BIGSERIAL NOT NULL,
@@ -693,10 +692,6 @@ END;
 $$
 LANGUAGE plpgsql VOLATILE ;
 
-
-
-DROP FUNCTION insert_binance_stream_order_list (TEXT, TIMESTAMPTZ, INT8, TEXT, TEXT, TEXT, TEXT);
-DROP TABLE binance_stream_order_list;
 
 CREATE TABLE binance_stream_order_list
 (
@@ -1484,3 +1479,5 @@ CREATE TABLE symbol
 	is_active BOOLEAN NOT NULL DEFAULT true,
 	PRIMARY KEY (id)
 );
+
+INSERT INTO symbol (name, is_active) VALUES ('BTCUSDT', true);
