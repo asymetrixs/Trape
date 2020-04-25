@@ -52,6 +52,26 @@ namespace trape.cli.trader.DataLayer
             this._connectionString = Config.GetConnectionString("CoinTradeDB");
         }
 
+        /// <summary>
+        /// Configure
+        /// </summary>
+        /// <param name="optionsBuilder"></param>
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            _ = optionsBuilder.UseNpgsql(this._connectionString);
+
+            base.OnConfiguring(optionsBuilder);
+        }
+
+        #endregion
+
+        #region Properties
+
+        /// <summary>
+        /// Symbols
+        /// </summary>
+        public DbSet<Symbol> Symbols { get; set; }
+
         #endregion
 
         #region Methods

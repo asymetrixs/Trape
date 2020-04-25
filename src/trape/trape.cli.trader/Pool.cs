@@ -24,7 +24,7 @@ namespace trape.cli.trader
         /// </summary>
         public static void Initialize()
         {
-            DatabasePool = new ObjectPool<ITrapeContext>(() => new TrapeContext(Program.Services.GetService(typeof(ILogger)) as ILogger));
+            DatabasePool = new ObjectPool<ITrapeContext>(() => Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext);
 
             // Warmup
             DatabasePool.Warmup(10);

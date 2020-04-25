@@ -1476,8 +1476,9 @@ CREATE TABLE symbol
 (
 	id serial not null,
 	name TEXT NOT NULL,
-	is_active BOOLEAN NOT NULL DEFAULT true,
+	is_collection_active BOOLEAN NOT NULL DEFAULT true,
+	is_trading_active BOOLEAN NOT NULL DEFAULT true,
 	PRIMARY KEY (id)
 );
 
-INSERT INTO symbol (name, is_active) VALUES ('BTCUSDT', true);
+INSERT INTO symbol (name, is_collection_active, is_trading_active) VALUES ('BTCUSDT', true, true);

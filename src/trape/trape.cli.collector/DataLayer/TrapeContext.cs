@@ -43,10 +43,14 @@ namespace trape.cli.collector.DataLayer
         public TrapeContext(ILogger logger)
             : base()
         {
+            #region Argument checks
+
             if (null == logger)
             {
-                throw new ArgumentNullException("Paramter cannot be NULL");
+                throw new ArgumentNullException(paramName: nameof(logger));
             }
+
+            #endregion
 
             this._logger = logger.ForContext<TrapeContext>();
             this._connectionString = Config.GetConnectionString("CoinTradeDB");

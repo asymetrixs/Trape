@@ -1,5 +1,6 @@
 ﻿using Binance.Net.Objects;
 using Binance.Net.Objects.Sockets;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -15,6 +16,11 @@ namespace trape.cli.trader.DataLayer
     public interface ITrapeContext
     {
         /// <summary>
+        /// Symbols
+        /// </summary>
+        DbSet<Symbol> Symbols { get; }
+
+        /// <summary>
         /// Stores a recommendation with stats in the database
         /// </summary>
         /// <param name="recommendation">Recommendation</param>
@@ -26,7 +32,7 @@ namespace trape.cli.trader.DataLayer
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
         Task InsertAsync(Analyze.Recommendation recommendation, Stats3s trend3Seconds, Stats15s trend15Seconds,
-            Stats2m trend2Minutes, Stats10m trend10Minutes, Stats2h trend2Hours, CancellationToken cancellationToken);
+        Stats2m trend2Minutes, Stats10m trend10Minutes, Stats2h trend2Hours, CancellationToken cancellationToken);
 
         /// <summary>
         /// Returns stats based on 3 seconds

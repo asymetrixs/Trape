@@ -102,6 +102,7 @@ namespace trape.cli.trader
                 .UseSystemd()
                 .ConfigureServices((hostContext, services) =>
                 {
+                    services.AddTransient<ITrapeContext, TrapeContext>();
                     services.AddSingleton(Log.Logger);
                     services.AddSingleton<IBuffer, Cache.Buffer>();
                     services.AddSingleton<IAnalyst, Analyst>();

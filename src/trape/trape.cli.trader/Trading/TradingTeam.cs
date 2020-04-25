@@ -4,6 +4,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache;
+using trape.cli.trader.DataLayer;
 
 namespace trape.cli.trader.Trading
 {
@@ -50,10 +51,19 @@ namespace trape.cli.trader.Trading
         /// <param name="buffer"></param>
         public TradingTeam(ILogger logger, IBuffer buffer)
         {
-            if (null == logger || null == buffer)
+            #region Argument checks
+
+            if (logger == null)
             {
-                throw new ArgumentNullException("Parameter cannot be NULL");
+                throw new ArgumentNullException(paramName: nameof(logger));
             }
+
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(paramName: nameof(buffer));
+            }
+
+            #endregion
 
             this._logger = logger.ForContext<TradingTeam>();
             this._buffer = buffer;
@@ -81,7 +91,9 @@ namespace trape.cli.trader.Trading
         {
             this._logger.Verbose("Checking trading team");
 
-            var availableSymbols = this._buffer.GetSymbols();
+            var database = Pool.DatabasePool.Get();
+            var availableSymbols = database.Symbols.Where(s => s.IsTradingActive).Select(s => s.Name);
+            Pool.DatabasePool.Put(database);
 
             var obsoleteTraders = this._team.Where(t => !availableSymbols.Contains(t.Symbol));
 

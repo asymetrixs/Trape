@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace trape.cli.collector.DataLayer.Models
+namespace trape.cli.trader.DataLayer.Models
 {
     /// <summary>
     /// Database class for symbol

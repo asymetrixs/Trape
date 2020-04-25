@@ -173,7 +173,7 @@ namespace trape.cli.collector.DataCollection
 
             // Get symbols from database
             var database = Pool.DatabasePool.Get();
-            var requiredSymbols = database.Symbols.Where(s => s.IsActive).Select(s => s.Name).ToArray();
+            var requiredSymbols = database.Symbols.Where(s => s.IsCollectionActive).Select(s => s.Name).ToArray();
             Pool.DatabasePool.Put(database);
 
 
@@ -233,7 +233,7 @@ namespace trape.cli.collector.DataCollection
         public static async Task Save(BinanceStreamTick bst, CancellationToken cancellationToken)
         {
             var database = Pool.DatabasePool.Get();
-            //await database.Insert(bst, cancellationToken).ConfigureAwait(false);
+            await database.Insert(bst, cancellationToken).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
         }
 
@@ -246,7 +246,7 @@ namespace trape.cli.collector.DataCollection
         public static async Task Save(BinanceStreamKlineData bskd, CancellationToken cancellationToken)
         {
             var database = Pool.DatabasePool.Get();
-            //await database.Insert(bskd, cancellationToken).ConfigureAwait(false);
+            await database.Insert(bskd, cancellationToken).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
         }
 
@@ -259,7 +259,7 @@ namespace trape.cli.collector.DataCollection
         public static async Task Save(BinanceBookTick bbt, CancellationToken cancellationToken)
         {
             var database = Pool.DatabasePool.Get();
-            //await database.Insert(bbt, cancellationToken).ConfigureAwait(false);
+            await database.Insert(bbt, cancellationToken).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
         }
 
@@ -424,7 +424,6 @@ namespace trape.cli.collector.DataCollection
                     {
                         this._binanceStreamKlineDataBuffer.Post(bskd);
                     }));
-
 
                     subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwelveHour, (BinanceStreamKlineData bskd) =>
                     {
