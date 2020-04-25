@@ -1,7 +1,7 @@
 ﻿namespace trape.cli.trader.Cache.Models
 {
     /// <summary>
-    /// Class for stats of based on 2 hours refresh
+    /// [Deprecated] Class for stats of based on 2 hours refresh
     /// </summary>
     public sealed class Stats2h : ITrend
     {
@@ -50,42 +50,42 @@
         public int DataBasis { get; private set; }
 
         /// <summary>
-        /// Slope 6 hours
+        /// [Deprecated] Slope 6 hours
         /// </summary>
         public decimal Slope6h { get; private set; }
 
         /// <summary>
-        /// Slope 12 hours
+        /// [Deprecated] Slope 12 hours
         /// </summary>
         public decimal Slope12h { get; private set; }
 
         /// <summary>
-        /// Slope 18 hours
+        /// [Deprecated] Slope 18 hours
         /// </summary>
         public decimal Slope18h { get; private set; }
 
         /// <summary>
-        /// Slope 1 day
+        /// [Deprecated] Slope 1 day
         /// </summary>
         public decimal Slope1d { get; private set; }
 
         /// <summary>
-        /// Moving Average 6 hours
+        /// [Deprecated] Moving Average 6 hours
         /// </summary>
         public decimal MovingAverage6h { get; private set; }
 
         /// <summary>
-        /// Moving Average 12 hours
+        /// [Deprecated] Moving Average 12 hours
         /// </summary>
         public decimal MovingAverage12h { get; private set; }
 
         /// <summary>
-        /// Moving Average 18 hours
+        /// [Deprecated] Moving Average 18 hours
         /// </summary>
         public decimal MovingAverage18h { get; private set; }
 
         /// <summary>
-        /// Moving Average 1 day
+        /// [Deprecated] Moving Average 1 day
         /// </summary>
         public decimal MovingAverage1d { get; private set; }
 
@@ -94,7 +94,7 @@
         #region Methods
 
         /// <summary>
-        /// If true, then the data basis is valid
+        /// [Deprecated] If true, then the data basis is valid
         /// </summary>
         /// <returns></returns>
         public bool IsValid()

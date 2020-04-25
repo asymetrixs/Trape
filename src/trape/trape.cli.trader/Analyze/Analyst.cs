@@ -56,6 +56,11 @@ namespace trape.cli.trader.Analyze
         /// </summary>
         private Dictionary<string, Action> _lastStrategy;
 
+        /// <summary>
+        /// Used to limit trend logging
+        /// </summary>
+        private int _logTrendLimiter;
+
         #endregion
 
         #region Constructor
@@ -79,6 +84,7 @@ namespace trape.cli.trader.Analyze
             this._disposed = false;
             this._recommendationSynchronizer = new SemaphoreSlim(1, 1);
             this._lastStrategy = new Dictionary<string, Action>();
+            this._logTrendLimiter = 61;
 
             // Set up timer that makes decisions, every second
             this._timerRecommendationMaker = new System.Timers.Timer()
@@ -164,7 +170,7 @@ namespace trape.cli.trader.Analyze
                 || stat15s == null || !stat15s.IsValid()
                 || stat2m == null || !stat2m.IsValid()
                 || stat10m == null || !stat10m.IsValid()
-                || stat2h == null || !stat2h.IsValid())
+                /*|| stat2h == null || !stat2h.IsValid()*/)
             {
                 this._logger.Warning($"Skipped {symbol} due to old or incomplete data: 3s:{stat3s?.IsValid()} 15s:{stat15s?.IsValid()} 2m:{stat2m?.IsValid()} 10m:{stat10m?.IsValid()} 2h:{stat2h?.IsValid()}");
                 this._lastRecommendation.Remove(symbol);
@@ -277,11 +283,8 @@ namespace trape.cli.trader.Analyze
             // Store recommendation in database
             await database.InsertAsync(newRecommendation, stat3s, stat15s, stat2m, stat10m, stat2h, this._cancellationTokenSource.Token).ConfigureAwait(false);
 
-            // Announce the trend every 5 seconds not to spam the log
-            if (DateTime.UtcNow.Second % 5 == 0 || newRecommendation.Action != lastRecommendation?.Action)
-            {
-                this._logger.Verbose(_GetTrend(newRecommendation, stat10m, stat2h));
-            }
+            _logTrend(newRecommendation, stat10m, stat2h);
+
             // Return database
             Pool.DatabasePool.Put(database);
         }
@@ -453,6 +456,8 @@ namespace trape.cli.trader.Analyze
             return action;
         }
 
+        #endregion
+
         /// <summary>
         /// Returns a string representing current trend data
         /// </summary>
@@ -460,11 +465,17 @@ namespace trape.cli.trader.Analyze
         /// <param name="stat10m">10 minutes stats</param>
         /// <param name="stat2Hours">2 hours stats</param>
         /// <returns>String that returns current trends</returns>
-        private static string _GetTrend(Recommendation recommendation, Stats10m stat10m, Stats2h stat2Hours)
+        private void _logTrend(Recommendation recommendation, Stats10m stat10m, Stats2h stat2Hours)
         {
-            var reco = recommendation.Action == Action.Buy ? "Buy :" : recommendation.Action.ToString();
+            // Announce the trend every second for reduced log spamming
+            if (DateTime.UtcNow.Second != this._logTrendLimiter)
+            {
+                this._logTrendLimiter = DateTime.UtcNow.Second;
 
-            return $"{recommendation.Symbol}: {reco} | S1h: {Math.Round(stat10m.Slope1h, 4)} | S2h: {Math.Round(stat10m.Slope2h, 4)} | MA1h: {Math.Round(stat10m.MovingAverage1h, 4)} | MA2h: {Math.Round(stat10m.MovingAverage2h, 4)} | MA6h: {Math.Round(stat2Hours.MovingAverage6h, 4)}";
+                var reco = recommendation.Action == Action.Buy ? "Buy :" : recommendation.Action.ToString();
+
+                this._logger.Verbose($"{recommendation.Symbol}: {reco} | S1h: {Math.Round(stat10m.Slope1h, 4)} | S2h: {Math.Round(stat10m.Slope2h, 4)} | MA1h: {Math.Round(stat10m.MovingAverage1h, 4)} | MA2h: {Math.Round(stat10m.MovingAverage2h, 4)} | MA6h: {Math.Round(stat2Hours.MovingAverage6h, 4)}");
+            }
         }
 
         /// <summary>
@@ -483,8 +494,6 @@ namespace trape.cli.trader.Analyze
 
             return null;
         }
-
-        #endregion
 
         #endregion
 

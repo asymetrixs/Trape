@@ -354,12 +354,12 @@ namespace trape.cli.trader.Cache
         public IEnumerable<string> GetSymbols()
         {
             // Take symbols that are we have data for
-            if (null == this.Stats2h)
+            if (null == this.Stats10m)
             {
                 return new List<string>();
             }
 
-            return this.Stats2h.Where(t => t.IsValid()).Select(t => t.Symbol);
+            return this.Stats10m.Where(t => t.IsValid()).Select(t => t.Symbol);
         }
 
         /// <summary>

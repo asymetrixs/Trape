@@ -8,6 +8,8 @@ ORDER BY binance_placed_order_id DESC, bpo.id DESC;
 
 select * from select_asset_status()
 select * from current_statement()
+select * from report_walking_profit()
+select * From report_profits()
 
 select * from binance_order_trade order by binance_placed_order_id desc
 update binance_order_trade set consumed = quantity, consumed_price = 6630 where consumed != quantity

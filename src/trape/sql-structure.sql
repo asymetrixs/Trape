@@ -1414,3 +1414,73 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql STRICT STABLE;
+
+
+CREATE OR REPLACE FUNCTION report_walking_profit()
+RETURNS TABLE (r_transaction_time TIMESTAMPTZ, r_walking_profit NUMERIC, r_lead_buy NUMERIC, r_lead_sell NUMERIC)
+AS
+$$
+BEGIN
+
+	RETURN QUERY
+	WITH data AS (
+		SELECT transaction_time, bpo.side, bot.price * bot.quantity AS turnover FROM binance_order_trade bot
+		INNER JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
+		ORDER BY bpo.transaction_time ASC
+	)
+	SELECT 
+			transaction_time,		
+			ROUND((sum_sell - sum_buy), 8) AS walking_profit,
+			ROUND(LEAD(sum_buy, 1) OVER (ORDER BY transaction_time ASC), 8) AS lead_buy,
+			ROUND(LEAD(sum_sell, 1) OVER (ORDER BY transaction_time ASC), 8) AS lead_sell
+			FROM (
+				SELECT transaction_time, side, turnover,
+					SUM(turnover) FILTER (WHERE side = 'Buy') OVER (ORDER BY transaction_time ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) sum_buy,
+					SUM(turnover) FILTER (WHERE side = 'Sell') OVER (ORDER BY transaction_time ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) sum_sell
+				FROM data
+	) a
+	ORDER BY transaction_time ASC, walking_profit ASC;
+END;
+$$
+LANGUAGE plpgsql STRICT STABLE;
+
+
+
+CREATE OR REPLACE FUNCTION report_profits()
+RETURNS TABLE (r_date DATE, r_profit NUMERIC) AS
+$$
+BEGIN
+	RETURN QUERY SELECT r_transaction_time::DATE, ROUND(SUM(r_walking_profit), 8) FROM 
+			(
+				SELECT * FROM report_walking_profit()
+			) b
+			WHERE r_walking_profit > 0 AND (r_lead_sell - r_lead_buy < 0 OR r_lead_sell IS NULL)
+			GROUP BY r_transaction_time::DATE
+			ORDER BY r_transaction_time::DATE ASC;
+END;
+$$
+LANGUAGE plpgsql STRICT STABLE;
+
+
+
+CREATE OR REPLACE FUNCTION report_last_decisions()
+RETURNS TABLE (r_decision text, r_event_time TIMESTAMPTZ)
+AS
+$$
+BEGIN
+	RETURN QUERY SELECT DISTINCT ON (decision) decision, event_time
+					FROM recommendation
+					WHERE event_time > NOW() - INTERVAL '24 hours'
+					ORDER BY decision, event_time DESC;
+END;
+$$
+LANGUAGE plpgsql STRICT STABLE;
+
+
+CREATE TABLE symbol
+(
+	id serial not null,
+	name TEXT NOT NULL,
+	is_active BOOLEAN NOT NULL DEFAULT true,
+	PRIMARY KEY (id)
+);
