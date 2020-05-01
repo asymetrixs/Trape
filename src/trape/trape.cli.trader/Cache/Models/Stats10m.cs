@@ -100,7 +100,7 @@
         public bool IsValid()
         {
             // Roughly 3 * 60 * 60 (3 hours)
-            return this.DataBasis > 10650;
+            return this.DataBasis > 10300;
         }
 
         #endregion

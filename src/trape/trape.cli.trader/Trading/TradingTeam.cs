@@ -88,18 +88,30 @@ namespace trape.cli.trader.Trading
         /// <param name="e"></param>
         private async void _timerSymbolCheck_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            this._logger.Verbose("Checking trading team");
+            this._logger.Verbose("Checking trading team...");
 
             var database = Pool.DatabasePool.Get();
-            var availableSymbols = database.Symbols.Where(s => s.IsTradingActive).Select(s => s.Name);
+            var availableSymbols = database.Symbols.Where(s => s.IsTradingActive).Select(s => s.Name).ToList();
             Pool.DatabasePool.Put(database);
 
+            if (!availableSymbols.Any())
+            {
+                this._logger.Error("No symbols active for trading found");
+                return;
+            }
+            else
+            {
+                this._logger.Debug($"Found {availableSymbols.Count} symbols to trade");
+            }
+
             var obsoleteTraders = this._team.Where(t => !availableSymbols.Contains(t.Symbol));
+
+            this._logger.Verbose($"Found {obsoleteTraders.Count()} obsolete brokers");
 
             // Remove obsolete brokers
             foreach (var obsoleteTrader in obsoleteTraders)
             {
-                this._logger.Information($"Removing {obsoleteTrader.Symbol} from the trading team");
+                this._logger.Information($"{obsoleteTrader.Symbol}: Removing Broker from the trading team");
 
                 this._team.Remove(obsoleteTrader);
                 await obsoleteTrader.Finish().ConfigureAwait(true);
@@ -109,17 +121,21 @@ namespace trape.cli.trader.Trading
             var tradedSymbols = this._team.Select(t => t.Symbol);
             var missingSymbols = this._buffer.GetSymbols().Where(b => !tradedSymbols.Contains(b));
 
+            this._logger.Verbose($"Found {missingSymbols.Count()} missing brokers");
+
             // Add new brokers
             foreach (var missingSymbol in missingSymbols)
             {
                 var trader = Program.Services.GetService(typeof(IBroker)) as IBroker;
 
-                this._logger.Information($"Adding {missingSymbol} to the trading team.");
+                this._logger.Information($"{missingSymbol}: Adding Broker to the trading team.");
 
                 this._team.Add(trader);
 
                 trader.Start(missingSymbol);
             }
+
+            this._logger.Verbose($"Trading Team checked: {this._team.Count()} Broker online");
         }
 
         #endregion

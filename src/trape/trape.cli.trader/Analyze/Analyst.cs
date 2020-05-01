@@ -199,9 +199,9 @@ namespace trape.cli.trader.Analyze
 
             if (lastFallingPrice != null)
             {
-                this._logger.Verbose($"{symbol} - Last Falling Price Original: {Math.Round(lastFallingPrice.OriginalPrice, 4)} | Since: {lastFallingPrice.Since.ToShortTimeString()}");
+                this._logger.Verbose($"{symbol} - Last Falling Price Original: {lastFallingPrice.OriginalPrice:0.00} | Since: {lastFallingPrice.Since.ToShortTimeString()}");
             }
-            this._logger.Verbose($"{symbol} @ {Math.Round(currentPrice, 2)} - ulMA1h: {upperLimitMA1h} | llMA1h: {lowerLimitMA1h} | plMA1h: {panicLimitMA1h} | distance&Trend: {distanceOkAndTrendPositive}");
+            this._logger.Verbose($"{symbol} @ {currentPrice:0.00} - ulMA1h: {upperLimitMA1h:0.0000} | llMA1h: {lowerLimitMA1h:0.0000} | plMA1h: {panicLimitMA1h:0.0000} | distance&Trend: {distanceOkAndTrendPositive}");
 
             // Panic
             if (stat3s.Slope5s < -2M
@@ -278,6 +278,8 @@ namespace trape.cli.trader.Analyze
                 Symbol = symbol,
                 EventTime = DateTime.UtcNow
             };
+
+            this._logger.Verbose($"{symbol} Recommennding: {action}");
 
             // Store recommendation temporarily for <c>Analyst</c>
             Recommendation lastRecommendation = null;
@@ -481,7 +483,7 @@ namespace trape.cli.trader.Analyze
 
                 var reco = recommendation.Action == Action.Buy ? "Buy :" : recommendation.Action.ToString();
 
-                this._logger.Verbose($"{recommendation.Symbol}: {reco} | S1h: {Math.Round(stat10m.Slope1h, 4)} | S2h: {Math.Round(stat10m.Slope2h, 4)} | MA1h: {Math.Round(stat10m.MovingAverage1h, 4)} | MA2h: {Math.Round(stat10m.MovingAverage2h, 4)} | MA6h: {Math.Round(stat2Hours.MovingAverage6h, 4)}");
+                this._logger.Verbose($"{recommendation.Symbol}: {reco} | S1h: {stat10m.Slope1h:0.0000} | S2h: {stat10m.Slope2h:0.0000} | MA1h: {stat10m.MovingAverage1h:0.0000} | MA2h: {stat10m.MovingAverage2h:0.0000} | MA6h: {stat2Hours.MovingAverage6h:0.0000}");
             }
         }
 

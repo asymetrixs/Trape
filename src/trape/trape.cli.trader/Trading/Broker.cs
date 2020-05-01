@@ -556,7 +556,7 @@ namespace trape.cli.trader.Trading
                 this._logger.Debug($"{this.Symbol} Sell: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
                 this._logger.Debug($"{this.Symbol} Sell: {aimToGetUSDT.HasValue} aimToGetUSDT has value: {aimToGetUSDT.Value}");
                 this._logger.Debug($"{this.Symbol} Sell: {recommendation.Action} recommendation");
-                this._logger.Debug($"{this.Symbol} Sell: {Math.Round(stopLossQuantity, 4)} Stop-Loss quantity");
+                this._logger.Debug($"{this.Symbol} Sell: {stopLossQuantity:0.0000)} Stop-Loss quantity");
                 if (aimToGetUSDT.HasValue)
                 {
                     this._logger.Debug($"{this.Symbol} Sell: {aimToGetUSDT >= symbolInfo.MinNotionalFilter.MinNotional} Value {aimToGetUSDT} > 0: {aimToGetUSDT > 0} and higher than {symbolInfo.MinNotionalFilter.MinNotional}");
@@ -691,11 +691,11 @@ namespace trape.cli.trader.Trading
         {
             if (this._timerTrading.Enabled)
             {
-                this._logger.Warning($"Trader for {symbolToTrade} is already active");
+                this._logger.Warning($"{symbolToTrade}: Broker is already active");
                 return;
             }
 
-            this._logger.Information($"Starting Trader for {symbolToTrade}");
+            this._logger.Information($"{symbolToTrade}: Starting Broker");
 
             if (this._buffer.GetSymbols().Contains(symbolToTrade))
             {
@@ -703,11 +703,11 @@ namespace trape.cli.trader.Trading
 
                 this._timerTrading.Start();
 
-                this._logger.Information($"Trader for {this.Symbol} started");
+                this._logger.Information($"{this.Symbol}: Broker started");
             }
             else
             {
-                this._logger.Error($"Trader for {symbolToTrade} cannot be started, symbol does not exist");
+                this._logger.Error($"{symbolToTrade}: Broker cannot be started, symbol does not exist");
             }
         }
 
@@ -715,11 +715,11 @@ namespace trape.cli.trader.Trading
         {
             if (!this._timerTrading.Enabled)
             {
-                this._logger.Warning($"Trader for {this.Symbol} is not active");
+                this._logger.Warning($"{this.Symbol}: Broker is not active");
                 return;
             }
 
-            this._logger.Information($"Stopping Trader for {this.Symbol}");
+            this._logger.Information($"{this.Symbol}: Stopping Broker");
 
             this._timerTrading.Stop();
 
@@ -728,7 +728,7 @@ namespace trape.cli.trader.Trading
 
             this._cancellationTokenSource.Cancel();
 
-            this._logger.Information($"Trader for {this.Symbol} stopped");
+            this._logger.Information($"{this.Symbol}: Broker stopped");
         }
 
         #endregion

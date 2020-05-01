@@ -245,7 +245,7 @@ namespace trape.cli.trader.Cache
                     {
                         if (currentPrice != -1)
                         {
-                            this._logger.Verbose($"{stat.Symbol}: Falling price added - {currentPrice} at {DateTime.UtcNow.ToShortTimeString()}");
+                            this._logger.Verbose($"{stat.Symbol}: Falling price added - {currentPrice.ToString("0.##")} at {DateTime.UtcNow.ToShortTimeString()}");
                             this._fallingPrices.Add(stat.Symbol, new FallingPrice(stat.Symbol, currentPrice, DateTime.UtcNow));
                         }
                     }
@@ -256,7 +256,7 @@ namespace trape.cli.trader.Cache
                     if (this._fallingPrices.ContainsKey(stat.Symbol))
                     {
                         this._fallingPrices.Remove(stat.Symbol, out var value);
-                        this._logger.Verbose($"{stat.Symbol}: Falling price removed - {value.OriginalPrice} < {currentPrice} at {DateTime.UtcNow.ToShortTimeString()}");
+                        this._logger.Verbose($"{stat.Symbol}: Falling price removed - {value.OriginalPrice.ToString("0.##")} < {currentPrice.ToString("0.##")} at {DateTime.UtcNow.ToShortTimeString()}");
                     }
                 }
             }
@@ -517,7 +517,7 @@ namespace trape.cli.trader.Cache
                                 await bestAskPrice.Add(bbt.BestAskPrice).ConfigureAwait(true);
                             }
 
-                            this._logger.Verbose($"Binance: book tick update - ask for {bbt.Symbol} is {bbt.BestAskPrice}");
+                            this._logger.Verbose($"Binance: book tick update - ask for {bbt.Symbol} is {bbt.BestAskPrice:0.00}");
                         }
 
                         // Update bid price
@@ -535,7 +535,7 @@ namespace trape.cli.trader.Cache
                                 await bestBidPrice.Add(bbt.BestBidPrice).ConfigureAwait(true);
                             }
 
-                            this._logger.Verbose($"Binance: book tick update - bid for {bbt.Symbol} is {bbt.BestBidPrice}");
+                            this._logger.Verbose($"Binance: book tick update - bid for {bbt.Symbol} is {bbt.BestBidPrice:0.00}");
                         }
                     }).ConfigureAwait(true);
 
