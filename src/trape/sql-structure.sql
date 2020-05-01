@@ -1411,45 +1411,61 @@ $$
 LANGUAGE plpgsql STRICT STABLE;
 
 
-CREATE OR REPLACE FUNCTION report_walking_profit()
-RETURNS TABLE (r_transaction_time TIMESTAMPTZ, r_walking_profit NUMERIC, r_lead_buy NUMERIC, r_lead_sell NUMERIC)
-AS
-$$
+
+
+CREATE OR REPLACE FUNCTION public.report_walking_profit(p_symbol text)
+    RETURNS TABLE(r_transaction_time timestamp with time zone,
+				  r_side text,
+				  r_turnover numeric,
+				  r_sum_buy numeric,
+				  r_sum_sell numeric,
+				  r_walking_profit numeric,
+				  r_lead_buy numeric,
+				  r_lead_sell numeric) 
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    STABLE STRICT 
+    ROWS 1000
+    
+AS $BODY$
 BEGIN
 
 	RETURN QUERY
 	WITH data AS (
 		SELECT transaction_time, bpo.side, bot.price * bot.quantity AS turnover FROM binance_order_trade bot
 		INNER JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
+		WHERE bpo.symbol = p_symbol
 		ORDER BY bpo.transaction_time ASC
 	)
-	SELECT 
-			transaction_time,		
-			ROUND((sum_sell - sum_buy), 8) AS walking_profit,
-			ROUND(LEAD(sum_buy, 1) OVER (ORDER BY transaction_time ASC), 8) AS lead_buy,
-			ROUND(LEAD(sum_sell, 1) OVER (ORDER BY transaction_time ASC), 8) AS lead_sell
+	SELECT transaction_time, side, 
+		ROUND(turnover, 8) AS turnover, 
+		ROUND(sum_buy, 8) AS sum_buy,
+		ROUND(sum_sell, 8) AS sum_sell,
+		ROUND(sum_sell - sum_buy, 8) as walking_profit,
+		ROUND(LEAD(sum_buy, 1) OVER (ORDER BY transaction_time ASC), 8) AS lead_buy,
+		ROUND(LEAD(sum_sell, 1) OVER (ORDER BY transaction_time ASC), 8) AS lead_sell
 			FROM (
 				SELECT transaction_time, side, turnover,
 					SUM(turnover) FILTER (WHERE side = 'Buy') OVER (ORDER BY transaction_time ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) sum_buy,
 					SUM(turnover) FILTER (WHERE side = 'Sell') OVER (ORDER BY transaction_time ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) sum_sell
 				FROM data
 	) a
-	ORDER BY transaction_time ASC, walking_profit ASC;
+	ORDER BY transaction_time ASC, lead_buy ASC NULLS LAST, lead_sell ASC NULLS LAST;
 END;
-$$
-LANGUAGE plpgsql STRICT STABLE;
+$BODY$;
 
 
-
-CREATE OR REPLACE FUNCTION report_profits()
+CREATE OR REPLACE FUNCTION report_profits(p_symbol text)
 RETURNS TABLE (r_date DATE, r_profit NUMERIC) AS
 $$
 BEGIN
-	RETURN QUERY SELECT r_transaction_time::DATE, ROUND(SUM(r_walking_profit), 8) FROM 
+	RETURN QUERY SELECT r_transaction_time::DATE, SUM(r_walking_profit) FROM 
 			(
-				SELECT * FROM report_walking_profit()
+				select * from report_walking_profit(p_symbol)
+				WHERE  r_side = 'Sell'
 			) b
-			WHERE r_walking_profit > 0 AND (r_lead_sell - r_lead_buy < 0 OR r_lead_sell IS NULL)
+			WHERE r_walking_profit > 0 AND (r_sum_buy < r_lead_buy OR r_lead_buy IS NULL)
 			GROUP BY r_transaction_time::DATE
 			ORDER BY r_transaction_time::DATE ASC;
 END;

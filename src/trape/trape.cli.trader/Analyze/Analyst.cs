@@ -185,12 +185,23 @@ namespace trape.cli.trader.Analyze
             decimal upperLimitMA1h = stat10m.MovingAverage1h * 1.0002M;
             decimal lowerLimitMA1h = stat10m.MovingAverage1h * 0.9998M;
             decimal panicLimitMA1h = stat10m.MovingAverage1h * 0.9975M;
+
+            // MA3h * 1.008 (0.8%) is higher than MA1h AND Slope1h and Slope3h are positive
+            var distanceOkAndTrendPositive = (stat10m.MovingAverage3h * 1.008M) > stat10m.MovingAverage1h
+                                                && stat10m.Slope1h > -0.0065M && stat10m.Slope3h > 0.009M;
+
             const decimal strongThreshold = 0.004M;
 
             // Make the decision
             var action = Action.Hold;
 
             var lastFallingPrice = this._buffer.GetLastFallingPrice(symbol);
+
+            if (lastFallingPrice != null)
+            {
+                this._logger.Verbose($"{symbol} - Last Falling Price Original: {Math.Round(lastFallingPrice.OriginalPrice, 4)} | Since: {lastFallingPrice.Since.ToShortTimeString()}");
+            }
+            this._logger.Verbose($"{symbol} @ {Math.Round(currentPrice, 2)} - ulMA1h: {upperLimitMA1h} | llMA1h: {lowerLimitMA1h} | plMA1h: {panicLimitMA1h} | distance&Trend: {distanceOkAndTrendPositive}");
 
             // Panic
             if (stat3s.Slope5s < -2M
@@ -215,19 +226,19 @@ namespace trape.cli.trader.Analyze
                 action = Action.PanicSell;
                 this._logger.Warning("Panic Mode");
             }
-            else if (stat10m.Slope1h > strongThreshold)
+            else if (stat10m.Slope1h > strongThreshold || distanceOkAndTrendPositive)
             {
-                action = StrongBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
+                action = StrongBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h, distanceOkAndTrendPositive);
             }
-            else if (stat10m.Slope1h > 0.0015M)
+            else if (stat10m.Slope1h > 0.0015M || distanceOkAndTrendPositive)
             {
-                action = NormalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
+                action = NormalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h, distanceOkAndTrendPositive);
             }
-            else if (stat10m.Slope1h < -strongThreshold)
+            else if (stat10m.Slope1h < -strongThreshold && !distanceOkAndTrendPositive)
             {
                 action = StrongSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
             }
-            else if (stat10m.Slope1h < -0.0015M)
+            else if (stat10m.Slope1h < -0.0015M && !distanceOkAndTrendPositive)
             {
                 action = NormalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
             }
@@ -300,7 +311,7 @@ namespace trape.cli.trader.Analyze
         /// <param name="stat10m">Stats 10 minutes</param>
         /// <param name="stat2h">Stats 2 hours</param>
         /// <param name="lowerLimitMA1h">Lower limit of moving average for 10 mintues</param>
-        /// <param name="upperLimitMA1h">Upperl imit of moving average for 10 minutes</param>
+        /// <param name="upperLimitMA1h">Upper limit of moving average for 10 minutes</param>
         /// <returns></returns>
         public Action NormalSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
         {
@@ -345,10 +356,11 @@ namespace trape.cli.trader.Analyze
         /// <param name="stat2m">Stats 2 minutes</param>
         /// <param name="stat10m">Stats 10 minutes</param>
         /// <param name="stat2h">Stats 2 hours</param>
-        /// <param name="lowerLimitMA1h">Lower limit of moving average for 10 mintues</param>
-        /// <param name="upperLimitMA1h">Upperl imit of moving average for 10 minutes</param>
+        /// <param name="lowerLimitMA1h">Lower limit of moving average of 1 hour</param>
+        /// <param name="upperLimitMA1h">Upper limit of moving average of 1 hour</param>
+        /// <param name="distanceOkAndTrendPositive">Distance is OK and trend is positive</param>
         /// <returns></returns>
-        public Action NormalBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
+        public Action NormalBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h, bool distanceOkAndTrendPositive)
         {
             #region Argument checks
 
@@ -367,7 +379,8 @@ namespace trape.cli.trader.Analyze
             // if moving average 1h is smaller than moving average 3h
             // or moving average 1h crossed moving average 3h within the last 6 minutes
             if (stat10m.MovingAverage1h < stat10m.MovingAverage3h
-                || (lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6)))
+                || (lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6))
+                || distanceOkAndTrendPositive)
             {
                 // Strong sell
                 action = Action.Buy;
@@ -392,7 +405,7 @@ namespace trape.cli.trader.Analyze
         /// <param name="stat10m">Stats 10 minutes</param>
         /// <param name="stat2h">Stats 2 hours</param>
         /// <param name="lowerLimitMA1h">Lower limit of moving average for 10 mintues</param>
-        /// <param name="upperLimitMA1h">Upperl imit of moving average for 10 minutes</param>
+        /// <param name="upperLimitMA1h">Upper limit of moving average for 10 minutes</param>
         /// <returns></returns>
         public Action StrongSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
         {
@@ -425,10 +438,11 @@ namespace trape.cli.trader.Analyze
         /// <param name="stat2m">Stats 2 minutes</param>
         /// <param name="stat10m">Stats 10 minutes</param>
         /// <param name="stat2h">Stats 2 hours</param>
-        /// <param name="lowerLimitMA1h">Lower limit of moving average for 10 mintues</param>
-        /// <param name="upperLimitMA1h">Upperl imit of moving average for 10 minutes</param>
+        /// <param name="lowerLimitMA1h">Lower limit of moving average of 1 hour</param>
+        /// <param name="upperLimitMA1h">Upper limit of moving average of 1 hour</param>
+        /// <param name="distanceOkAndTrendPositive">Distance is OK and trend is positive</param>
         /// <returns></returns>
-        public Action StrongBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
+        public Action StrongBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h, bool distanceOkAndTrendPositive)
         {
             #region Argument checks
 
@@ -445,10 +459,11 @@ namespace trape.cli.trader.Analyze
 
             var lastCrossing = this._buffer.GetLatest1hAnd3hCrossing(stat3s.Symbol);
 
-            // Strong buy also when crossing
+            // Strong buy when crossing
             if (stat10m.MovingAverage1h < stat10m.MovingAverage3h
                 || lowerLimitMA1h < stat10m.MovingAverage3h && stat10m.MovingAverage3h < upperLimitMA1h
-                || (lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6)))
+                || lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6)
+                || distanceOkAndTrendPositive)
             {
                 action = Action.StrongBuy;
             }

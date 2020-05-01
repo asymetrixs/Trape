@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
+using trape.cli.trader.DataLayer;
 using trape.cli.trader.Trading;
 using Trape.BinanceNet.Logger;
 

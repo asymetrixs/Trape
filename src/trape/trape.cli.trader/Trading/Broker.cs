@@ -147,9 +147,14 @@ namespace trape.cli.trader.Trading
 
             // Get recommendation
             var recommendation = this._analyst.GetRecommendation(this.Symbol);
-            if (null == recommendation || recommendation.Action == Analyze.Action.Hold)
+            if (null == recommendation)
             {
-                this._logger.Verbose($"{this.Symbol}: Waiting for recommendation");
+                this._logger.Verbose($"{this.Symbol}: No recommendation available.");
+                return;
+            }
+            else if (recommendation.Action == Analyze.Action.Hold)
+            {
+                this._logger.Verbose($"{this.Symbol}: Recommendation is hold.");
                 return;
             }
 
