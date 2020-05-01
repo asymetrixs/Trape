@@ -19,7 +19,7 @@ namespace Trape.BinanceNet.Logger
         public Logger(ILogger logger)
             : base()
         {
-            this._logger = logger;
+            this._logger = logger.ForContext(typeof(Binance.Net.BinanceClient));
         }
 
         #endregion
