@@ -45,7 +45,7 @@ select * from select_asset_status()
 select * from current_statement()
 select * from report_walking_profit('BTCUSDT')
 select * From report_profits('BTCUSDT')
-select * from report_last_decisions()
+select * from report_last_decisions() ORDER BY r_event_time DESC
 
 --"2020-04-23"	221.05418804
 --"2020-04-24"	252.19632958

@@ -188,8 +188,7 @@ namespace trape.cli.trader.Trading
 
                 // Get last orders
                 var lastOrders = await database.GetLastOrdersAsync(this.Symbol, this._cancellationTokenSource.Token).ConfigureAwait(false);
-                var lastOrder = lastOrders.Where(l => l.Symbol == this.Symbol).OrderByDescending(l => l.TransactionTime).FirstOrDefault();
-                var lastOrderWithin31Minutes = lastOrders.Where(l => l.Symbol == this.Symbol && l.Side == lastOrder.Side);
+                var lastOrder = lastOrders.OrderByDescending(l => l.TransactionTime).FirstOrDefault();
 
                 /*
                  * Rules
@@ -505,16 +504,25 @@ namespace trape.cli.trader.Trading
                 // Get best bid price
                 var bestBidPrice = this._buffer.GetBidPrice(this.Symbol);
 
-                // Do not sell below buying price
-                // Select trades from Buy-side
-                // And where buying price is smaller than selling price
-                // And where assets are available
+                // Normal - Do not sell below buying price
+                // - Where buying price is smaller than selling price * 0.998
+                // Stop-Loss - Limit loss
+                // - Where buying-price was 0.5% higher than current price
+                // And where assets are available and side is buy
+                // Select quantities
                 var availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy
-                                                            && l.Price < (bestBidPrice * 0.998M) /*0.2% less*/
+                                                            && (
+                                                                /* Normal: 0.2% lower */
+                                                                (l.Price < (bestBidPrice * 0.998M) /*  */)
+                                                                ||
+                                                                /* Stop-Loss: 0.5% higher */
+                                                                (l.Price > (bestBidPrice * 1.005M)
+                                                                    && recommendation.Action == Analyze.Action.StrongSell)
+                                                                )
                                                             && l.Quantity > l.Consumed)
                                                         .Sum(l => (l.Quantity - l.Consumed));
 
-                // Sell what is maximal possible (max or what was bought for less than it will be sold), because of rounding and commission reduct 1% from availableQuantity
+                // Sell what is maximal possible (from what was bought or (in case of discrepancy between recorded and actual value) what is possible
                 assetBalanceToSell = assetBalanceToSell < (availableAssetQuantity * 0.99M) ? assetBalanceToSell : (availableAssetQuantity * 0.99M);
 
                 // Panic Mode, sell everything
