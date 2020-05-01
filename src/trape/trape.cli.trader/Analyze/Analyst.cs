@@ -419,15 +419,7 @@ namespace trape.cli.trader.Analyze
 
             #endregion
 
-            // Advise to sell
-            var action = Action.Hold;
-
-            if (stat10m.MovingAverage1h > stat10m.MovingAverage3h)
-            {
-                action = Action.StrongSell;
-            }
-
-            return action;
+            return Action.StrongSell;
         }
 
         /// <summary>

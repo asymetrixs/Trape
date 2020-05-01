@@ -360,18 +360,18 @@ namespace trape.cli.trader.Trading
 
                 // Logging
                 this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestAskPrice:{Math.Round(bestAskPrice, symbolInfo.BaseAssetPrecision)};availableAmount:{availableUSDT}");
-                this._logger.Debug($"{this.Symbol} Buy : Checking conditions");
-                this._logger.Debug($"{this.Symbol} Buy : {null == lastOrder} lastOrder is null");
-                this._logger.Debug($"{this.Symbol} Buy : {lastOrder?.Side.ToString()} lastOrder side");
-                this._logger.Debug($"{this.Symbol} Buy : {lastOrder?.Price * requiredPriceDropforRebuy > bestAskPrice} lastOrder Price: {lastOrder?.Price} * {requiredPriceDropforRebuy} > {bestAskPrice}");
-                this._logger.Debug($"{this.Symbol} Buy : {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
-                this._logger.Debug($"{this.Symbol} Buy : {availableUSDT.HasValue} availableAmount has value: {availableUSDT.Value}");
-                this._logger.Debug($"{this.Symbol} Buy : {recommendation.Action} recommendation");
+                this._logger.Debug($"{this.Symbol} Buy: Checking conditions");
+                this._logger.Debug($"{this.Symbol} Buy: {null == lastOrder} lastOrder is null");
+                this._logger.Debug($"{this.Symbol} Buy: {lastOrder?.Side.ToString()} lastOrder side");
+                this._logger.Debug($"{this.Symbol} Buy: {lastOrder?.Price * requiredPriceDropforRebuy > bestAskPrice} lastOrder Price: {lastOrder?.Price} * {requiredPriceDropforRebuy} > {bestAskPrice}");
+                this._logger.Debug($"{this.Symbol} Buy: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
+                this._logger.Debug($"{this.Symbol} Buy: {availableUSDT.HasValue} availableAmount has value: {availableUSDT.Value}");
+                this._logger.Debug($"{this.Symbol} Buy: {recommendation.Action} recommendation");
                 if (availableUSDT.HasValue)
                 {
-                    this._logger.Debug($"{this.Symbol} Buy : {availableUSDT.Value >= symbolInfo.MinNotionalFilter.MinNotional} Value {availableUSDT.Value} > 0: {availableUSDT.Value > 0} and higher than minNotional {symbolInfo.MinNotionalFilter.MinNotional}");
-                    this._logger.Debug($"{this.Symbol} Buy : {symbolInfo.PriceFilter.MaxPrice >= availableUSDT.Value && availableUSDT.Value >= symbolInfo.PriceFilter.MinPrice} MaxPrice {symbolInfo.PriceFilter.MaxPrice} >= Amount {availableUSDT.Value} >= MinPrice {symbolInfo.PriceFilter.MinPrice}");
-                    this._logger.Debug($"{this.Symbol} Buy : {symbolInfo.LotSizeFilter.MaxQuantity >= availableUSDT / bestAskPrice && availableUSDT / bestAskPrice >= symbolInfo.LotSizeFilter.MinQuantity} MaxLOT {symbolInfo.LotSizeFilter.MaxQuantity} > Amount {availableUSDT / bestAskPrice} > MinLOT {symbolInfo.LotSizeFilter.MinQuantity}");
+                    this._logger.Debug($"{this.Symbol} Buy: {availableUSDT.Value >= symbolInfo.MinNotionalFilter.MinNotional} Value {availableUSDT.Value} > 0: {availableUSDT.Value > 0} and higher than minNotional {symbolInfo.MinNotionalFilter.MinNotional}");
+                    this._logger.Debug($"{this.Symbol} Buy: {symbolInfo.PriceFilter.MaxPrice >= availableUSDT.Value && availableUSDT.Value >= symbolInfo.PriceFilter.MinPrice} MaxPrice {symbolInfo.PriceFilter.MaxPrice} >= Amount {availableUSDT.Value} >= MinPrice {symbolInfo.PriceFilter.MinPrice}");
+                    this._logger.Debug($"{this.Symbol} Buy: {symbolInfo.LotSizeFilter.MaxQuantity >= availableUSDT / bestAskPrice && availableUSDT / bestAskPrice >= symbolInfo.LotSizeFilter.MinQuantity} MaxLOT {symbolInfo.LotSizeFilter.MaxQuantity} > Amount {availableUSDT / bestAskPrice} > MinLOT {symbolInfo.LotSizeFilter.MinQuantity}");
                 }
 
                 // For increased readability
@@ -394,13 +394,13 @@ namespace trape.cli.trader.Trading
                 var isLOTSizeValid = availableUSDT / bestAskPrice >= symbolInfo.LotSizeFilter.MinQuantity
                                         && availableUSDT / bestAskPrice <= symbolInfo.LotSizeFilter.MaxQuantity;
 
-                this._logger.Debug($"{this.Symbol} Buy : {isLastOrderNull} isLastOrderNull");
-                this._logger.Debug($"{this.Symbol} Buy : {isLastOrderSell} isLastOrderSell");
-                this._logger.Debug($"{this.Symbol} Buy : {isLastOrderBuyAndPriceDecreased} isLastOrderBuyAndPriceDecreased");
-                this._logger.Debug($"{this.Symbol} Buy : {shallFollowStrongBuy} shallFollowStrongBuy");
-                this._logger.Debug($"{this.Symbol} Buy : {isLogicValid} isLogicValid");
-                this._logger.Debug($"{this.Symbol} Buy : {isPriceRangeValid} isPriceRangeValid");
-                this._logger.Debug($"{this.Symbol} Buy : {isLOTSizeValid} isLOTSizeValid");
+                this._logger.Debug($"{this.Symbol} Buy: {isLastOrderNull} isLastOrderNull");
+                this._logger.Debug($"{this.Symbol} Buy: {isLastOrderSell} isLastOrderSell");
+                this._logger.Debug($"{this.Symbol} Buy: {isLastOrderBuyAndPriceDecreased} isLastOrderBuyAndPriceDecreased");
+                this._logger.Debug($"{this.Symbol} Buy: {shallFollowStrongBuy} shallFollowStrongBuy");
+                this._logger.Debug($"{this.Symbol} Buy: {isLogicValid} isLogicValid");
+                this._logger.Debug($"{this.Symbol} Buy: {isPriceRangeValid} isPriceRangeValid");
+                this._logger.Debug($"{this.Symbol} Buy: {isLOTSizeValid} isLOTSizeValid");
 
                 // Check conditions for buy
                 if (
@@ -505,25 +505,30 @@ namespace trape.cli.trader.Trading
                 var bestBidPrice = this._buffer.GetBidPrice(this.Symbol);
 
                 // Normal - Do not sell below buying price
-                // - Where buying price is smaller than selling price * 0.998
+                // - Where buying price is smaller than selling price * 0.998                
+                // Select quantities
+                var availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy
+                                                            && /* Normal: 0.2% lower */
+                                                                l.Price < (bestBidPrice * 0.998M)
+                                                            && l.Quantity > l.Consumed)
+                                                        .Sum(l => (l.Quantity - l.Consumed));
+
                 // Stop-Loss - Limit loss
                 // - Where buying-price was 0.5% higher than current price
                 // And where assets are available and side is buy
                 // Select quantities
-                var availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy
-                                                            && (
-                                                                /* Normal: 0.2% lower */
-                                                                (l.Price < (bestBidPrice * 0.998M) /*  */)
-                                                                ||
-                                                                /* Stop-Loss: 0.5% higher */
-                                                                (l.Price > (bestBidPrice * 1.005M)
-                                                                    && recommendation.Action == Analyze.Action.StrongSell)
-                                                                )
+                var stopLossQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy
+                                                            && /* Stop-Loss: 0.5% higher */
+                                                                l.Price > (bestBidPrice * 1.005M)
+                                                                    && recommendation.Action == Analyze.Action.StrongSell
                                                             && l.Quantity > l.Consumed)
                                                         .Sum(l => (l.Quantity - l.Consumed));
 
+                // Reduce by 1% due to possible differences between database and Binance
+                var sellAssetQuantity = (stopLossQuantity + availableAssetQuantity) * 0.99M;
+
                 // Sell what is maximal possible (from what was bought or (in case of discrepancy between recorded and actual value) what is possible
-                assetBalanceToSell = assetBalanceToSell < (availableAssetQuantity * 0.99M) ? assetBalanceToSell : (availableAssetQuantity * 0.99M);
+                assetBalanceToSell = Math.Min(assetBalanceToSell.GetValueOrDefault(), sellAssetQuantity);
 
                 // Panic Mode, sell everything
                 if (recommendation.Action == Analyze.Action.PanicSell)
@@ -551,6 +556,7 @@ namespace trape.cli.trader.Trading
                 this._logger.Debug($"{this.Symbol} Sell: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
                 this._logger.Debug($"{this.Symbol} Sell: {aimToGetUSDT.HasValue} aimToGetUSDT has value: {aimToGetUSDT.Value}");
                 this._logger.Debug($"{this.Symbol} Sell: {recommendation.Action} recommendation");
+                this._logger.Debug($"{this.Symbol} Sell: {Math.Round(stopLossQuantity, 4)} Stop-Loss quantity");
                 if (aimToGetUSDT.HasValue)
                 {
                     this._logger.Debug($"{this.Symbol} Sell: {aimToGetUSDT >= symbolInfo.MinNotionalFilter.MinNotional} Value {aimToGetUSDT} > 0: {aimToGetUSDT > 0} and higher than {symbolInfo.MinNotionalFilter.MinNotional}");
@@ -590,6 +596,8 @@ namespace trape.cli.trader.Trading
                 var isLOTSizeValid = assetBalanceToSell >= symbolInfo.LotSizeFilter.MinQuantity
                                         && assetBalanceToSell <= symbolInfo.LotSizeFilter.MaxQuantity;
 
+                var hasStopLossQuantity = stopLossQuantity > 0;
+
                 this._logger.Debug($"{this.Symbol} Sell: {isLastOrderNull} isLastOrderNull");
                 this._logger.Debug($"{this.Symbol} Sell: {isLastOrderBuy} isLastOrderBuy");
                 this._logger.Debug($"{this.Symbol} Sell: {isPanicking} isPanicking");
@@ -598,6 +606,7 @@ namespace trape.cli.trader.Trading
                 this._logger.Debug($"{this.Symbol} Sell: {isLogicValid} isLogicValid");
                 this._logger.Debug($"{this.Symbol} Sell: {isPriceRangeValid} isPriceRangeValid");
                 this._logger.Debug($"{this.Symbol} Sell: {isLOTSizeValid} isLOTSizeValid");
+                this._logger.Debug($"{this.Symbol} Sell: {hasStopLossQuantity} hasStopLossQuantity");
 
                 // Check conditions for sell
                 if (
@@ -607,6 +616,7 @@ namespace trape.cli.trader.Trading
                             || isPanicking
                             || isLastOrderSellAndPriceIncreased
                             || shallFollowStrongSell
+                            || hasStopLossQuantity
                         )
                         // Logic check
                         && isLogicValid
@@ -625,6 +635,10 @@ namespace trape.cli.trader.Trading
                     else if (recommendation.Action == Analyze.Action.TakeProfitsSell)
                     {
                         this._logger.Warning($"{this.Symbol}: TAKE PROFITS - issuing sell of {assetBalanceToSell} for {aimToGetUSDT.Value}");
+                    }
+                    if (hasStopLossQuantity)
+                    {
+                        this._logger.Warning($"{this.Symbol}: STOP LOSS - issuing sell of {assetBalanceToSell} for {aimToGetUSDT.Value} - (Stop Loss: {hasStopLossQuantity})");
                     }
 
                     // Place the order
