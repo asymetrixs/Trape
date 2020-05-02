@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using trape.cli.trader.Account;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Cache.Models;
 
@@ -25,6 +26,11 @@ namespace trape.cli.trader.Analyze
         /// Buffer
         /// </summary>
         private readonly IBuffer _buffer;
+
+        /// <summary>
+        /// Accountant
+        /// </summary>
+        private readonly IAccountant _accountant;
 
         /// <summary>
         /// Cancellation Token
@@ -70,15 +76,30 @@ namespace trape.cli.trader.Analyze
         /// </summary>
         /// <param name="logger">Logger</param>
         /// <param name="buffer">Buffer</param>
-        public Analyst(ILogger logger, IBuffer buffer)
+        public Analyst(ILogger logger, IBuffer buffer, IAccountant accountant)
         {
-            if (logger == null || buffer == null)
+            #region Argument checks
+
+            if (logger == null)
             {
-                throw new ArgumentNullException("Parameter cannot be NULL");
+                throw new ArgumentNullException(paramName: nameof(logger));
             }
+
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(paramName: nameof(buffer));
+            }
+
+            if (accountant == null)
+            {
+                throw new ArgumentNullException(paramName: nameof(accountant));
+            }
+
+            #endregion
 
             this._logger = logger.ForContext<Analyst>();
             this._buffer = buffer;
+            this._accountant = accountant;
             this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
             this._lastRecommendation = new Dictionary<string, Recommendation>();
             this._disposed = false;
@@ -453,11 +474,23 @@ namespace trape.cli.trader.Analyze
 
             var lastCrossing = this._buffer.GetLatest1hAnd3hCrossing(stat3s.Symbol);
 
+            // Check if funds are available
+            bool fundsAvailable = false;
+            var usdt = this._accountant.GetBalance("USDT").Result;
+            if (usdt != null)
+            {
+                if (usdt.Free > 200)
+                {
+                    fundsAvailable = true;
+                }
+            }
+
             // Strong buy when crossing
             if (stat10m.MovingAverage1h < stat10m.MovingAverage3h
                 || lowerLimitMA1h < stat10m.MovingAverage3h && stat10m.MovingAverage3h < upperLimitMA1h
                 || lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6)
-                || distanceOkAndTrendPositive)
+                || distanceOkAndTrendPositive
+                || (fundsAvailable && stat10m.Slope30m > 0.015M && stat10m.Slope1h > 0.005M && stat10m.Slope3h > 0.0035M))
             {
                 action = Action.StrongBuy;
             }

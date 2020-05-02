@@ -371,7 +371,7 @@ namespace trape.cli.trader.Cache
         {
             if (!this._bestAskPrices.ContainsKey(symbol))
             {
-                this._logger.Warning($"No ask price for {symbol}");
+                this._logger.Warning($"{symbol}: No asking price available");
                 return -1;
             }
             else
@@ -389,7 +389,7 @@ namespace trape.cli.trader.Cache
         {
             if (!this._bestBidPrices.ContainsKey(symbol))
             {
-                this._logger.Warning($"No bid price for {symbol}");
+                this._logger.Warning($"{symbol}: No bidding price available");
                 return -1;
             }
             else
@@ -414,7 +414,7 @@ namespace trape.cli.trader.Cache
 
             if (null == symbolInfo || symbolInfo.Status != SymbolStatus.Trading)
             {
-                this._logger.Warning($"No exchange info for {symbol}");
+                this._logger.Warning($"{symbol}: No exchange info available");
                 return null;
             }
 
@@ -517,7 +517,7 @@ namespace trape.cli.trader.Cache
                                 await bestAskPrice.Add(bbt.BestAskPrice).ConfigureAwait(true);
                             }
 
-                            this._logger.Verbose($"Binance: book tick update - ask for {bbt.Symbol} is {bbt.BestAskPrice:0.00}");
+                            this._logger.Verbose($"{bbt.Symbol}: Book tick update - asking is {bbt.BestAskPrice:0.00}");
                         }
 
                         // Update bid price
@@ -535,7 +535,7 @@ namespace trape.cli.trader.Cache
                                 await bestBidPrice.Add(bbt.BestBidPrice).ConfigureAwait(true);
                             }
 
-                            this._logger.Verbose($"Binance: book tick update - bid for {bbt.Symbol} is {bbt.BestBidPrice:0.00}");
+                            this._logger.Verbose($"{bbt.Symbol}: Book tick update - bidding is {bbt.BestBidPrice:0.00}");
                         }
                     }).ConfigureAwait(true);
 

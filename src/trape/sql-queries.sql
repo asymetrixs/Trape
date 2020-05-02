@@ -6,6 +6,8 @@ SELECT bpo.time_in_force, bpo.transaction_time, bpo.side, bpo.symbol, bot.price,
 LEFT JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
 ORDER BY binance_placed_order_id DESC, bpo.id DESC;
 
+WITH data2 AS
+(
 WITH data AS (
 	SELECT transaction_time::DATE,
 		ROUND(SUM(price * quantity) FILTER (WHERE side = 'Buy'), 8) AS buy,
@@ -26,6 +28,11 @@ WITH data AS (
 SELECT transaction_time, buy, sell, profit, LAG(profit, 1) OVER (ORDER BY transaction_time ASC), 
 	profit + LAG(profit, 1) OVER (ORDER BY transaction_time ASC) AS cleaned
 	FROM data
+)
+SELECT buy, sell, profit, cleaned,
+	cleaned	+ LAG(cleaned, 1) OVER (ORDER BY transaction_time ASC) AS day_profit
+FROM data2
+
 
 select buy.min as start, ROUND(buy.sum, 2) AS bought, ROUND(sell.sum, 2) AS sold, ROUND(sell.sum - buy.sum, 2) AS profit FROM
 (select min(transaction_time), sum(bot.price * quantity) from binance_order_trade bot
@@ -35,22 +42,21 @@ where side = 'Buy') buy,
 LEFT JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
 where side = 'Sell') sell
 
-SELECT AVG(sums) FROM (
-select SUM(bot.price * quantity) AS sums from binance_order_trade bot
-LEFT JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
-where side = 'Buy'
-GROUP BY binance_placed_order_id)a
-
 select * from select_asset_status()
 select * from current_statement()
 select * from report_walking_profit('BTCUSDT')
 select * From report_profits('BTCUSDT')
 select * from report_last_decisions() ORDER BY r_event_time DESC
 select * from select_last_orders('BTCUSDT')
-
+select * from stats_10m()
 --"2020-04-23"	221.05418804
 --"2020-04-24"	252.19632958
 --"2020-04-25"	250.26010998
+
+select decision, slope15m, slope30m, slope1h, slope3h, movav1h, movav3h 
+from recommendation
+where event_time > NOW() - INTERVAL '5 seconds'
+order by event_time desc
 
 select * from binance_order_trade order by binance_placed_order_id desc
 update binance_order_trade set consumed = quantity, consumed_price = 6630 where consumed != quantity
