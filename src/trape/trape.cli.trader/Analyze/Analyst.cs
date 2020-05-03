@@ -6,6 +6,7 @@ using System.Threading;
 using trape.cli.trader.Account;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Cache.Models;
+using trape.jobs;
 
 namespace trape.cli.trader.Analyze
 {
@@ -40,7 +41,7 @@ namespace trape.cli.trader.Analyze
         /// <summary>
         /// Timer when Analyst makes a new decision
         /// </summary>
-        private readonly System.Timers.Timer _timerRecommendationMaker;
+        private readonly Job _jobRecommendationMaker;
 
         /// <summary>
         /// The last recommendation for an symbol
@@ -108,12 +109,7 @@ namespace trape.cli.trader.Analyze
             this._logTrendLimiter = 61;
 
             // Set up timer that makes decisions, every second
-            this._timerRecommendationMaker = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 0, 0, 0, 100).TotalMilliseconds
-            };
-            this._timerRecommendationMaker.Elapsed += _makeRecommendation_Elapsed;
+            this._jobRecommendationMaker = new Job(new TimeSpan(0, 0, 0, 0, 100), _makeRecommendation, this._cancellationTokenSource.Token);
         }
 
         #endregion
@@ -125,7 +121,7 @@ namespace trape.cli.trader.Analyze
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _makeRecommendation_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _makeRecommendation()
         {
             // Check if free to go
             if (this._recommendationSynchronizer.CurrentCount == 0)
@@ -547,7 +543,7 @@ namespace trape.cli.trader.Analyze
         public void Start()
         {
             // Start recommendation maker
-            this._timerRecommendationMaker.Start();
+            this._jobRecommendationMaker.Start();
 
             this._logger.Information("Analyst started");
         }
@@ -558,7 +554,7 @@ namespace trape.cli.trader.Analyze
         public void Finish()
         {
             // Stop recommendation maker
-            this._timerRecommendationMaker.Stop();
+            this._jobRecommendationMaker.Terminate();
 
             // Terminate possible running tasks
             this._cancellationTokenSource.Cancel();

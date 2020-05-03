@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache.Models;
+using trape.jobs;
 
 namespace trape.cli.trader.Cache
 {
@@ -73,21 +74,21 @@ namespace trape.cli.trader.Cache
         /// </summary>
         private Dictionary<string, FallingPrice> _fallingPrices;
 
-        #region Timers
+        #region Jobs
 
-        private System.Timers.Timer _timerStats3s;
+        private readonly Job _jobStats3s;
 
-        private System.Timers.Timer _timerStats15s;
+        private readonly Job _jobStats15s;
 
-        private System.Timers.Timer _timerStats2m;
+        private readonly Job _jobStats2m;
 
-        private System.Timers.Timer _timerStats10m;
+        private readonly Job _jobStats10m;
 
-        private System.Timers.Timer _timerStats2h;
+        private readonly Job _jobStats2h;
 
-        private System.Timers.Timer _timerForCrossings;
+        private readonly Job _jobForCrossings;
 
-        private System.Timers.Timer _timerExchangeInfo;
+        private readonly Job _jobExchangeInfo;
 
         #endregion
 
@@ -134,73 +135,31 @@ namespace trape.cli.trader.Cache
             this._latestMA1hAnd3hCrossing = new List<LatestMA1hAndMA3hCrossing>();
             this._fallingPrices = new Dictionary<string, FallingPrice>();
 
-            #region Timer setup
+            #region Job setup
 
-            // Set up all timers that query the Database in different
+            // Set up all jobs that query the Database in different
             // intervals to get recent data
-
-            this._timerStats3s = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 0, 0, 0, 100).TotalMilliseconds
-            };
-            this._timerStats3s.Elapsed += _timerTrend3Seconds_Elapsed;
-
-            this._timerStats15s = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 0, 0, 0, 250).TotalMilliseconds
-            };
-            this._timerStats15s.Elapsed += _timerTrend15Seconds_Elapsed;
-
-            this._timerStats2m = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 0, 0, 0, 500).TotalMilliseconds
-            };
-            this._timerStats2m.Elapsed += _timerTrend2Minutes_Elapsed;
-
-            this._timerStats10m = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 0, 1).TotalMilliseconds
-            };
-            this._timerStats10m.Elapsed += _timerTrend10Minutes_Elapsed;
-
-            this._timerStats2h = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 0, 3).TotalMilliseconds
-            };
-            this._timerStats2h.Elapsed += _timerTrend2Hours_Elapsed;
-
-            this._timerForCrossings = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 0, 2).TotalMilliseconds
-            };
-            this._timerForCrossings.Elapsed += _timerForCrossing_Elapsed;
-
-            this._timerExchangeInfo = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 1, 0).TotalMilliseconds
-            };
-            this._timerExchangeInfo.Elapsed += _timerExchangeInfo_Elapsed;
+            this._jobStats3s = new Job(new TimeSpan(0, 0, 0, 0, 100), _trend3Seconds, this._cancellationTokenSource.Token);
+            this._jobStats15s = new Job(new TimeSpan(0, 0, 0, 0, 250), _trend15Seconds, this._cancellationTokenSource.Token);
+            this._jobStats2m = new Job(new TimeSpan(0, 0, 0, 0, 500), _trend2Minutes, this._cancellationTokenSource.Token);
+            this._jobStats10m = new Job(new TimeSpan(0, 0, 1), _trend10Minutes, this._cancellationTokenSource.Token);
+            this._jobStats2h = new Job(new TimeSpan(0, 0, 3), _trend2Hours, this._cancellationTokenSource.Token);
+            this._jobForCrossings = new Job(new TimeSpan(0, 0, 2), _forCrossing, this._cancellationTokenSource.Token);
+            this._jobExchangeInfo = new Job(new TimeSpan(0, 1, 0), _exchangeInfo, this._cancellationTokenSource.Token);
 
             #endregion
         }
 
         #endregion
 
-        #region Timer elapsed
+        #region Jobs
 
         /// <summary>
         /// Updates current prices
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _timerForCrossing_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _forCrossing()
         {
             this._logger.Verbose("Updating Moving Average 10m and Moving Average 30m crossing");
 
@@ -223,7 +182,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _timerTrend3Seconds_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _trend3Seconds()
         {
             this._logger.Verbose("Updating 3 seconds trend");
 
@@ -269,7 +228,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _timerTrend15Seconds_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _trend15Seconds()
         {
             this._logger.Verbose("Updating 15 seconds trend");
 
@@ -285,7 +244,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _timerTrend2Minutes_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _trend2Minutes()
         {
             this._logger.Verbose("Updating 2 minutes trend");
 
@@ -301,7 +260,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _timerTrend10Minutes_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _trend10Minutes()
         {
             this._logger.Verbose("Updating 10 minutes trend");
 
@@ -317,7 +276,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _timerTrend2Hours_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _trend2Hours()
         {
             this._logger.Verbose("Updating 2 hours trend");
 
@@ -333,7 +292,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _timerExchangeInfo_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _exchangeInfo()
         {
             var result = await this._binanceClient.GetExchangeInfoAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
@@ -648,15 +607,15 @@ namespace trape.cli.trader.Cache
             this._logger.Debug($"Subscribed to Book Ticker");
 
             // Starting of timers
-            this._timerStats3s.Start();
-            this._timerStats15s.Start();
-            this._timerStats2m.Start();
-            this._timerStats10m.Start();
-            this._timerStats2h.Start();
-            this._timerForCrossings.Start();
+            this._jobStats3s.Start();
+            this._jobStats15s.Start();
+            this._jobStats2m.Start();
+            this._jobStats10m.Start();
+            this._jobStats2h.Start();
+            this._jobForCrossings.Start();
 
             // Loading exchange information
-            this._timerExchangeInfo_Elapsed(null, null);
+            this._exchangeInfo();
 
             this._logger.Information("Buffer started");
         }
@@ -671,12 +630,12 @@ namespace trape.cli.trader.Cache
             this._cancellationTokenSource.Cancel();
 
             // Shutdown of timers
-            this._timerStats3s.Stop();
-            this._timerStats15s.Stop();
-            this._timerStats2m.Stop();
-            this._timerStats10m.Stop();
-            this._timerStats2h.Stop();
-            this._timerForCrossings.Stop();
+            this._jobStats3s.Terminate();
+            this._jobStats15s.Terminate();
+            this._jobStats2m.Terminate();
+            this._jobStats10m.Terminate();
+            this._jobStats2h.Terminate();
+            this._jobForCrossings.Terminate();
 
             this._logger.Information("Buffer stopped");
         }
@@ -707,11 +666,11 @@ namespace trape.cli.trader.Cache
 
             if (disposing)
             {
-                this._timerStats3s.Dispose();
-                this._timerStats15s.Dispose();
-                this._timerStats2m.Dispose();
-                this._timerStats10m.Dispose();
-                this._timerStats2h.Dispose();
+                this._jobStats3s.Dispose();
+                this._jobStats15s.Dispose();
+                this._jobStats2m.Dispose();
+                this._jobStats10m.Dispose();
+                this._jobStats2h.Dispose();
             }
 
             this._disposed = true;

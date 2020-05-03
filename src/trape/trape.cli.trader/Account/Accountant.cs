@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using trape.jobs;
 
 namespace trape.cli.trader.Account
 {
@@ -25,12 +26,12 @@ namespace trape.cli.trader.Account
         /// <summary>
         /// Account Info synchronizer
         /// </summary>
-        private readonly System.Timers.Timer _timerSynchronizeAccountInfo;
+        private readonly Job _jobSynchronizeAccountInfo;
 
         /// <summary>
         /// Binance connection keepalive
         /// </summary>
-        private readonly System.Timers.Timer _timerConnectionKeepAlive;
+        private readonly Job _jobConnectionKeepAlive;
 
         /// <summary>
         /// Binance Client
@@ -89,37 +90,27 @@ namespace trape.cli.trader.Account
             this._binanceClient = binanceClient;
             this._binanceSocketClient = binanceSocketClient;
 
-            #region Timer Setup
+            #region Job Setup
 
             // Create timer for account info synchronization
-            this._timerSynchronizeAccountInfo = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 0, 5).TotalMilliseconds
-            };
-            this._timerSynchronizeAccountInfo.Elapsed += _timerSynchronizeAccountInfo_Elapsed;
+            this._jobSynchronizeAccountInfo = new Job(new TimeSpan(0, 0, 5), _synchronizeAccountInfo);
 
             // Create timer for connection keep alive
-            this._timerConnectionKeepAlive = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 15, 0).TotalMilliseconds
-            };
-            this._timerConnectionKeepAlive.Elapsed += _timerConnectionKeepAlive_Elapsed;
+            this._jobConnectionKeepAlive = new Job(new TimeSpan(0, 15, 0), _connectionKeepAlive);
 
             #endregion
         }
 
         #endregion
 
-        #region Timer Elapsed
+        #region Jobs
 
         /// <summary>
         /// Sends ping to binance to keep the connection alive
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _timerConnectionKeepAlive_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _connectionKeepAlive()
         {
             // Test connection to binance
             var ping = await this._binanceClient.PingAsync(this._cancellationTokenSource.Token).ConfigureAwait(false);
@@ -150,7 +141,7 @@ namespace trape.cli.trader.Account
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _timerSynchronizeAccountInfo_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _synchronizeAccountInfo()
         {
             // Get latest account information
             var accountInfo = await this._binanceClient.GetAccountInfoAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
@@ -287,7 +278,7 @@ namespace trape.cli.trader.Account
             }
 
             // Run initial timer elapsed event
-            this._timerConnectionKeepAlive_Elapsed(null, null);
+            this._connectionKeepAlive();
 
             // Subscribe to socket events
             await this._binanceSocketClient.SubscribeToUserDataUpdatesAsync(this._binanceListenKey,
@@ -301,7 +292,7 @@ namespace trape.cli.trader.Account
             this._logger.Information("Binance Client is online");
 
             // Start timer
-            this._timerSynchronizeAccountInfo.Start();
+            this._jobSynchronizeAccountInfo.Start();
 
             this._logger.Debug("Accountant started");
         }
@@ -315,7 +306,7 @@ namespace trape.cli.trader.Account
             this._logger.Verbose("Stopping accountant");
 
             // Stop timer
-            this._timerSynchronizeAccountInfo.Stop();
+            this._jobSynchronizeAccountInfo.Terminate();
 
             // Wait until timer elapsed event finishes
             await Task.Delay(1000).ConfigureAwait(true);
@@ -351,7 +342,7 @@ namespace trape.cli.trader.Account
 
             if (disposing)
             {
-                this._timerSynchronizeAccountInfo.Dispose();
+                this._jobSynchronizeAccountInfo.Dispose();
                 this._binanceClient.Dispose();
             }
 

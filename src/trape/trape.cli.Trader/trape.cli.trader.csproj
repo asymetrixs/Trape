@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Trape.BinanceNet.Logger\Trape.BinanceNet.Logger.csproj" />
+    <ProjectReference Include="..\trape.jobs\trape.Jobs.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,6 +5,7 @@ using System.Threading;
 using trape.cli.trader.Account;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Market;
+using trape.jobs;
 
 namespace trape.cli.trader.Fees
 {
@@ -31,9 +32,9 @@ namespace trape.cli.trader.Fees
         private IBuffer _buffer;
 
         /// <summary>
-        /// Timer to check available BNB fees
+        /// Job to check available BNB fees
         /// </summary>
-        private System.Timers.Timer _timerFeeFundsChecker;
+        private Job _jobFeeFundsChecker;
 
         /// <summary>
         /// Cancellation Token Source
@@ -82,19 +83,14 @@ namespace trape.cli.trader.Fees
             this._cancellationTokenSource = new CancellationTokenSource();
             this._feeSymbol = "BNBUSDT";
 
-            this._timerFeeFundsChecker = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 5, 0).TotalMilliseconds
-            };
-            this._timerFeeFundsChecker.Elapsed += _timerFeesChecker_Elapsed;
+            this._jobFeeFundsChecker = new Job(new TimeSpan(0, 5, 0), _feesChecker);
         }
 
         #endregion
 
         #region Timer
 
-        private async void _timerFeesChecker_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _feesChecker()
         {
             // Get remaining BNB balance for trading
             var bnb = await this._accountant.GetBalance(this._feeSymbol.Replace("USDT", string.Empty)).ConfigureAwait(true);
@@ -152,7 +148,7 @@ namespace trape.cli.trader.Fees
         {
             this._logger.Information("Starting Fee Watchdog");
 
-            this._timerFeeFundsChecker.Start();
+            this._jobFeeFundsChecker.Start();
 
             this._logger.Information("Fee Watchdog started");
         }
@@ -161,12 +157,14 @@ namespace trape.cli.trader.Fees
         {
             this._logger.Information("Fee Watchdog stopping");
 
-            this._timerFeeFundsChecker.Stop();
+            this._jobFeeFundsChecker.Terminate();
 
             this._cancellationTokenSource.Cancel();
 
             this._logger.Information("Fee Watchdog stopped");
         }
+
+        // TODO: Consistency: Stop / Finish / Terminate
 
         #endregion
     }

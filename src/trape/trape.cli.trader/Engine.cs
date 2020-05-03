@@ -8,6 +8,7 @@ using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Fees;
 using trape.cli.trader.Trading;
+using trape.cli.trader.WatchDog;
 
 namespace trape.cli.trader
 {
@@ -49,6 +50,11 @@ namespace trape.cli.trader
         private IFeeWatchdog _feeWatchdog;
 
         /// <summary>
+        /// Checker
+        /// </summary>
+        private IChecker _checker;
+
+        /// <summary>
         /// Disposed
         /// </summary>
         private bool _disposed;
@@ -65,7 +71,9 @@ namespace trape.cli.trader
         /// <param name="analyst">Analyst</param>
         /// <param name="tradingTeam">Trading Team</param>
         /// <param name="accountant">Accountant</param>
-        public Engine(ILogger logger, IBuffer buffer, IAnalyst analyst, ITradingTeam tradingTeam, IAccountant accountant, IFeeWatchdog feeWatchdog)
+        /// <param name="feeWatchdog">Fee Watchdog</param>
+        /// <param name="checker">Checker</param>
+        public Engine(ILogger logger, IBuffer buffer, IAnalyst analyst, ITradingTeam tradingTeam, IAccountant accountant, IFeeWatchdog feeWatchdog, IChecker checker)
         {
             #region Argument checks
 
@@ -99,6 +107,11 @@ namespace trape.cli.trader
                 throw new ArgumentNullException(paramName: nameof(feeWatchdog));
             }
 
+            if (checker == null)
+            {
+                throw new ArgumentNullException(paramName: nameof(checker));
+            }
+
             #endregion
 
             this._logger = logger.ForContext<Engine>();
@@ -107,6 +120,7 @@ namespace trape.cli.trader
             this._tradingTeam = tradingTeam;
             this._accountant = accountant;
             this._feeWatchdog = feeWatchdog;
+            this._checker = checker;
         }
 
         #endregion

@@ -13,13 +13,15 @@ using trape.cli.trader.Cache;
 using trape.cli.trader.DataLayer;
 using trape.cli.trader.DataLayer.Models;
 using trape.cli.trader.Market;
+using trape.cli.trader.WatchDog;
+using trape.jobs;
 
 namespace trape.cli.trader.Trading
 {
     /// <summary>
     /// Does the actual trading taking into account the <c>Recommendation</c> of the <c>Analyst</c> and previous trades
     /// </summary>
-    public class Broker : IBroker
+    public class Broker : IBroker, IActive
     {
         #region Fields
 
@@ -49,9 +51,9 @@ namespace trape.cli.trader.Trading
         private readonly IBuffer _buffer;
 
         /// <summary>
-        /// Timer to check if sell/buy is recommended
+        /// Job to check if sell/buy is recommended
         /// </summary>
-        private System.Timers.Timer _timerTrading;
+        private Job _jobTrading;
 
         /// <summary>
         /// Minimum required increase of the price before another chunk is sold
@@ -67,6 +69,11 @@ namespace trape.cli.trader.Trading
         /// Symbol
         /// </summary>
         public string Symbol { get; private set; }
+
+        /// <summary>
+        /// Last time <c>Broker</c> was active
+        /// </summary>
+        public DateTime LastActive { get; private set; }
 
         /// <summary>
         /// Cancellation Token Source
@@ -117,25 +124,22 @@ namespace trape.cli.trader.Trading
             this._canTrade = new SemaphoreSlim(1, 1);
 
             // Set up timer
-            this._timerTrading = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 0, 0, 0, 100).TotalMilliseconds
-            };
-            this._timerTrading.Elapsed += _timerTrading_Elapsed;
+            this._jobTrading = new Job(new TimeSpan(0, 0, 0, 0, 100), _trading);
         }
 
         #endregion
 
-        #region Timer Elapsed
+        #region Jobs
 
         /// <summary>
         /// Checks the <c>Recommendation</c> of the <c>Analyst</c> and previous trades and decides whether to buy, wait or sell
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _timerTrading_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _trading()
         {
+            this.LastActive = DateTime.UtcNow;
+
             // Check if Symbol is set
             if (string.IsNullOrEmpty(this.Symbol))
             {
@@ -619,7 +623,7 @@ namespace trape.cli.trader.Trading
         /// <param name="symbolToTrade">Symbol to trade</param>
         public void Start(string symbolToTrade)
         {
-            if (this._timerTrading.Enabled)
+            if (this._jobTrading.Enabled)
             {
                 this._logger.Warning($"{symbolToTrade}: Broker is already active");
                 return;
@@ -631,7 +635,7 @@ namespace trape.cli.trader.Trading
             {
                 this.Symbol = symbolToTrade;
 
-                this._timerTrading.Start();
+                this._jobTrading.Start();
 
                 this._logger.Information($"{this.Symbol}: Broker started");
             }
@@ -647,7 +651,7 @@ namespace trape.cli.trader.Trading
         /// <returns></returns>
         public async Task Finish()
         {
-            if (!this._timerTrading.Enabled)
+            if (!this._jobTrading.Enabled)
             {
                 this._logger.Warning($"{this.Symbol}: Broker is not active");
                 return;
@@ -655,7 +659,7 @@ namespace trape.cli.trader.Trading
 
             this._logger.Information($"{this.Symbol}: Stopping Broker");
 
-            this._timerTrading.Stop();
+            this._jobTrading.Terminate();
 
             // Give time for running task to end
             await Task.Delay(1000).ConfigureAwait(false);
@@ -691,7 +695,7 @@ namespace trape.cli.trader.Trading
 
             if (disposing)
             {
-                this._timerTrading.Dispose();
+                this._jobTrading.Dispose();
             }
 
             this._disposed = true;

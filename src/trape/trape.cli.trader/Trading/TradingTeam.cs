@@ -4,13 +4,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache;
+using trape.cli.trader.WatchDog;
+using trape.jobs;
 
 namespace trape.cli.trader.Trading
 {
     /// <summary>
     /// Starts, stops, and manages the <c>Brokers</c>
     /// </summary>
-    public class TradingTeam : ITradingTeam
+    public class TradingTeam : ITradingTeam, IActive
     {
         #region Fields
 
@@ -35,9 +37,14 @@ namespace trape.cli.trader.Trading
         private readonly IBuffer _buffer;
 
         /// <summary>
-        /// Timer to check for new/obsolete Symbols
+        /// Job to check for new/obsolete Symbols
         /// </summary>
-        private readonly System.Timers.Timer _timerSymbolCheck;
+        private readonly Job _jobSymbolCheck;
+
+        /// <summary>
+        /// Last active
+        /// </summary>
+        public DateTime LastActive { get; private set; }
 
         #endregion
 
@@ -69,25 +76,22 @@ namespace trape.cli.trader.Trading
             this._team = new List<IBroker>();
 
             // Timer
-            this._timerSymbolCheck = new System.Timers.Timer()
-            {
-                Interval = new TimeSpan(0, 0, 5).TotalMilliseconds,
-                AutoReset = true
-            };
-            this._timerSymbolCheck.Elapsed += _timerSymbolCheck_Elapsed;
+            this._jobSymbolCheck = new Job(new TimeSpan(0, 0, 5), _brokerCheck);
         }
 
         #endregion
 
-        #region Timer Elapsed
+        #region Jobs
 
         /// <summary>
         /// Checks for new and obsolete Symbols and creates new <c>Broker</c>s or disposes them.
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _timerSymbolCheck_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void _brokerCheck()
         {
+            this.LastActive = DateTime.UtcNow;
+
             this._logger.Verbose("Checking trading team...");
 
             var database = Pool.DatabasePool.Get();
@@ -104,18 +108,25 @@ namespace trape.cli.trader.Trading
                 this._logger.Debug($"Found {availableSymbols.Count} symbols to trade");
             }
 
-            var obsoleteTraders = this._team.Where(t => !availableSymbols.Contains(t.Symbol));
+            var obsoleteBrokers = this._team.Where(t => !availableSymbols.Contains(t.Symbol));
 
-            this._logger.Verbose($"Found {obsoleteTraders.Count()} obsolete brokers");
+            this._logger.Verbose($"Found {obsoleteBrokers.Count()} obsolete brokers");
 
             // Remove obsolete brokers
-            foreach (var obsoleteTrader in obsoleteTraders)
+            foreach (var obsoleteBroker in obsoleteBrokers)
             {
-                this._logger.Information($"{obsoleteTrader.Symbol}: Removing Broker from the trading team");
+                this._logger.Information($"{obsoleteBroker.Symbol}: Removing Broker from the trading team");
 
-                this._team.Remove(obsoleteTrader);
-                await obsoleteTrader.Finish().ConfigureAwait(true);
-                obsoleteTrader.Dispose();
+                this._team.Remove(obsoleteBroker);
+                await obsoleteBroker.Finish().ConfigureAwait(true);
+
+                if (obsoleteBroker is Broker)
+                {
+                    var checker = Program.Services.GetService(typeof(IChecker)) as IChecker;
+                    checker.Add(obsoleteBroker as Broker);
+                }
+
+                obsoleteBroker.Dispose();
             }
 
             var tradedSymbols = this._team.Select(t => t.Symbol);
@@ -126,13 +137,19 @@ namespace trape.cli.trader.Trading
             // Add new brokers
             foreach (var missingSymbol in missingSymbols)
             {
-                var trader = Program.Services.GetService(typeof(IBroker)) as IBroker;
+                var broker = Program.Services.GetService(typeof(IBroker)) as IBroker;
+                var checker = Program.Services.GetService(typeof(IChecker)) as IChecker;
 
                 this._logger.Information($"{missingSymbol}: Adding Broker to the trading team.");
 
-                this._team.Add(trader);
+                this._team.Add(broker);
 
-                trader.Start(missingSymbol);
+                if (broker is Broker)
+                {
+                    checker.Add(broker as Broker);
+                }
+
+                broker.Start(missingSymbol);
             }
 
             this._logger.Verbose($"Trading Team checked: {this._team.Count()} Broker online");
@@ -142,24 +159,37 @@ namespace trape.cli.trader.Trading
 
         #region Start / Stop
 
+        /// <summary>
+        /// Start
+        /// </summary>
         public void Start()
         {
             this._logger.Debug("Starting trading team");
 
             // Call once manually to set up the traders
-            _timerSymbolCheck_Elapsed(null, null);
+            _brokerCheck();
 
             // Start timer for regular checks
-            this._timerSymbolCheck.Start();
+            this._jobSymbolCheck.Start();
+
+            var checker = Program.Services.GetService(typeof(IChecker)) as IChecker;
+            checker.Add(this);
 
             this._logger.Debug("Trading team started");
         }
 
+        /// <summary>
+        /// Finish
+        /// </summary>
+        /// <returns></returns>
         public async Task Finish()
         {
             this._logger.Debug("Stopping trading team");
 
-            this._timerSymbolCheck.Stop();
+            var checker = Program.Services.GetService(typeof(IChecker)) as IChecker;
+            checker.Remove(this);
+
+            this._jobSymbolCheck.Terminate();
 
             foreach (var trader in this._team)
             {
@@ -199,6 +229,7 @@ namespace trape.cli.trader.Trading
                 {
                     trader.Dispose();
                 }
+                this._jobSymbolCheck.Dispose();
             }
 
             this._disposed = true;

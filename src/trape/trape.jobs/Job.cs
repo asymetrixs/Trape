@@ -111,6 +111,17 @@ namespace trape.jobs
         /// </summary>
         public TimeSpan ExecutionInterval { get; private set; }
 
+        /// <summary>
+        /// Enabled
+        /// </summary>
+        public bool Enabled
+        {
+            get
+            {
+                return this._timer.Enabled;
+            }
+        }
+
         #endregion
 
         #region Methods
@@ -155,7 +166,7 @@ namespace trape.jobs
         /// <summary>
         /// Stop job
         /// </summary>
-        public void Stop()
+        public void Terminate()
         {
             this._timer.Stop();
         }
