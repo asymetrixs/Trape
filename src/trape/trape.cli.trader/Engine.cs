@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
+using trape.cli.trader.Fees;
 using trape.cli.trader.Trading;
 
 namespace trape.cli.trader
@@ -43,6 +44,11 @@ namespace trape.cli.trader
         private IAccountant _accountant;
 
         /// <summary>
+        /// Fee Watchdog
+        /// </summary>
+        private IFeeWatchdog _feeWatchdog;
+
+        /// <summary>
         /// Disposed
         /// </summary>
         private bool _disposed;
@@ -59,18 +65,48 @@ namespace trape.cli.trader
         /// <param name="analyst">Analyst</param>
         /// <param name="tradingTeam">Trading Team</param>
         /// <param name="accountant">Accountant</param>
-        public Engine(ILogger logger, IBuffer buffer, IAnalyst analyst, ITradingTeam tradingTeam, IAccountant accountant)
+        public Engine(ILogger logger, IBuffer buffer, IAnalyst analyst, ITradingTeam tradingTeam, IAccountant accountant, IFeeWatchdog feeWatchdog)
         {
-            if (logger == null || buffer == null || analyst == null || tradingTeam == null)
+            #region Argument checks
+
+            if (logger == null)
             {
-                throw new ArgumentNullException("Parameter cannot be NULL");
+                throw new ArgumentNullException(paramName: nameof(logger));
             }
+
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(paramName: nameof(buffer));
+            }
+
+            if (analyst == null)
+            {
+                throw new ArgumentNullException(paramName: nameof(analyst));
+            }
+
+            if (tradingTeam == null)
+            {
+                throw new ArgumentNullException(paramName: nameof(tradingTeam));
+            }
+
+            if (accountant == null)
+            {
+                throw new ArgumentNullException(paramName: nameof(accountant));
+            }
+
+            if (feeWatchdog == null)
+            {
+                throw new ArgumentNullException(paramName: nameof(feeWatchdog));
+            }
+
+            #endregion
 
             this._logger = logger.ForContext<Engine>();
             this._buffer = buffer;
             this._analyst = analyst;
             this._tradingTeam = tradingTeam;
             this._accountant = accountant;
+            this._feeWatchdog = feeWatchdog;
         }
 
         #endregion
@@ -94,6 +130,8 @@ namespace trape.cli.trader
 
             this._tradingTeam.Start();
 
+            this._feeWatchdog.Start();
+
             this._logger.Information("Engine is started");
         }
 
@@ -105,6 +143,8 @@ namespace trape.cli.trader
         public async override Task StopAsync(CancellationToken cancellationToken)
         {
             this._logger.Information("Engine is stopping");
+
+            this._feeWatchdog.Finish();
 
             await this._tradingTeam.Finish().ConfigureAwait(true);
 

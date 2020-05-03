@@ -220,9 +220,9 @@ namespace trape.cli.trader.Analyze
 
             if (lastFallingPrice != null)
             {
-                this._logger.Verbose($"{symbol} - Last Falling Price Original: {lastFallingPrice.OriginalPrice:0.00} | Since: {lastFallingPrice.Since.ToShortTimeString()}");
+                this._logger.Verbose($"{symbol}: Last Falling Price Original: {lastFallingPrice.OriginalPrice:0.00} | Since: {lastFallingPrice.Since.ToShortTimeString()}");
             }
-            this._logger.Verbose($"{symbol} @ {currentPrice:0.00} - ulMA1h: {upperLimitMA1h:0.0000} | llMA1h: {lowerLimitMA1h:0.0000} | plMA1h: {panicLimitMA1h:0.0000} | distance&Trend: {distanceOkAndTrendPositive}");
+            this._logger.Verbose($"{symbol}: {currentPrice:0.00} - ulMA1h: {upperLimitMA1h:0.0000} | llMA1h: {lowerLimitMA1h:0.0000} | plMA1h: {panicLimitMA1h:0.0000} | distance&Trend: {distanceOkAndTrendPositive}");
 
             // Panic
             if (stat3s.Slope5s < -2M
@@ -282,13 +282,13 @@ namespace trape.cli.trader.Analyze
             // Print strategy changes
             if (this._lastStrategy[symbol] != action)
             {
-                this._logger.Information($"{symbol} Switching stategy: {this._lastStrategy[symbol]} -> {action}");
+                this._logger.Information($"{symbol}: {currentPrice:0.00} - Switching stategy: {this._lastStrategy[symbol]} -> {action}");
                 this._lastStrategy[symbol] = action;
             }
             // Print strategy every hour in log
             else if (now.Minute == 0 && now.Second == 0 && now.Millisecond < 100)
             {
-                this._logger.Information($"{symbol} Stategy: {action}");
+                this._logger.Information($"{symbol}: Stategy: {action}");
             }
 
             // Instantiate new recommendation
@@ -300,7 +300,7 @@ namespace trape.cli.trader.Analyze
                 EventTime = DateTime.UtcNow
             };
 
-            this._logger.Verbose($"{symbol} Recommennding: {action}");
+            this._logger.Verbose($"{symbol}: Recommending: {action}");
 
             // Store recommendation temporarily for <c>Analyst</c>
             Recommendation lastRecommendation = null;

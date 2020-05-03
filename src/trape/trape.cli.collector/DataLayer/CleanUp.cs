@@ -6,11 +6,7 @@ using trape.jobs;
 
 namespace trape.cli.collector.DataLayer
 {
-#if DEBUG
-    [Job(0, 1, 0)]
-#else
     [Job(0, 5, 0)]
-#endif
     class CleanUp : IJob
     {
         /// <summary>

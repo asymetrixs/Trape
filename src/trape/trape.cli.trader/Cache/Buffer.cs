@@ -371,7 +371,17 @@ namespace trape.cli.trader.Cache
         {
             if (!this._bestAskPrices.ContainsKey(symbol))
             {
-                this._logger.Warning($"{symbol}: No asking price available");
+                this._logger.Debug($"{symbol}: No asking price available");
+
+                // Get price from Binance
+                var result = this._binanceClient.GetPrice("symbol");
+                if (result.Success)
+                {
+                    return result.Data.Price;
+                }
+
+                this._logger.Warning($"{symbol}: Could not fetch price from Binance");
+
                 return -1;
             }
             else

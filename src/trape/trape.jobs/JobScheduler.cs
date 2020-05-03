@@ -1,27 +1,51 @@
 ﻿using System;
 using System.Threading;
 
-
 namespace trape.jobs
 {
     class JobScheduler : IDisposable
     {
+        #region Fields
+
+        /// <summary>
+        /// Job being executed
+        /// </summary>
         private IJob _job;
 
+        /// <summary>
+        /// Timer to execute job
+        /// </summary>
         private System.Timers.Timer _timer;
 
+        /// <summary>
+        /// Synchronization
+        /// </summary>
         private readonly SemaphoreSlim _execute;
 
+        /// <summary>
+        /// Cancellation Token Source
+        /// </summary>
         private readonly CancellationTokenSource _cancellationTokenSource;
 
+        /// <summary>
+        /// Disposed
+        /// </summary>
         private bool _disposed;
+
+        #endregion
+
+        #region Constructor
 
         internal JobScheduler(IJob job)
         {
-            if (null == job)
+            #region Argument checks
+
+            if (job == null)
             {
-                throw new ArgumentNullException("Job cannot be NULL.");
+                throw new ArgumentNullException(paramName: nameof(job));
             }
+
+            #endregion
 
             this._disposed = false;
             this._execute = new SemaphoreSlim(1, 1);
@@ -30,6 +54,7 @@ namespace trape.jobs
 
             TimeSpan timeInterval = default;
 
+            // Find the interval
             foreach (var attr in job.GetType().GetCustomAttributes(true))
             {
                 if (attr is JobAttribute)
@@ -44,6 +69,7 @@ namespace trape.jobs
                 throw new InvalidOperationException("Job must have a valid interval configured.");
             }
 
+            // Set up timer
             this._timer = new System.Timers.Timer
             {
                 Interval = timeInterval.TotalMilliseconds,
@@ -52,6 +78,15 @@ namespace trape.jobs
             this._timer.Elapsed += _timer_Elapsed;
         }
 
+        #endregion
+
+        #region Timer Elapsed
+
+        /// <summary>
+        /// Execute the registered job
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void _timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             await this._execute.WaitAsync().ConfigureAwait(false);
@@ -66,12 +101,19 @@ namespace trape.jobs
             }
             finally
             {
-                
+
             }
 
             this._execute.Release();
         }
 
+        #endregion
+
+        #region Start / Stop / Terminate
+
+        /// <summary>
+        /// Starts the timer
+        /// </summary>
         internal void Start()
         {
             if (!this._timer.Enabled)
@@ -80,6 +122,9 @@ namespace trape.jobs
             }
         }
 
+        /// <summary>
+        /// Stops the timer
+        /// </summary>
         internal void Stop()
         {
             if (this._timer.Enabled)
@@ -88,6 +133,9 @@ namespace trape.jobs
             }
         }
 
+        /// <summary>
+        /// Terminates the task
+        /// </summary>
         internal void Terminate()
         {
             if (!this._cancellationTokenSource.IsCancellationRequested)
@@ -95,6 +143,10 @@ namespace trape.jobs
                 this._cancellationTokenSource.Cancel();
             }
         }
+
+        #endregion
+
+        #region Dispose
 
         /// <summary>
         /// Public implementation of Dispose pattern callable by consumers.
@@ -131,5 +183,7 @@ namespace trape.jobs
 
             this._disposed = true;
         }
+
+        #endregion
     }
 }

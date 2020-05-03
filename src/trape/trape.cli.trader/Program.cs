@@ -12,6 +12,8 @@ using trape.cli.trader.Account;
 using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
 using trape.cli.trader.DataLayer;
+using trape.cli.trader.Fees;
+using trape.cli.trader.Market;
 using trape.cli.trader.Trading;
 using Trape.BinanceNet.Logger;
 
@@ -110,6 +112,8 @@ namespace trape.cli.trader
                     services.AddTransient<IBroker, Broker>();
                     services.AddSingleton<ITradingTeam, TradingTeam>();
                     services.AddSingleton<IAccountant, Accountant>();
+                    services.AddTransient<IStockExchange, StockExchange>();
+                    services.AddTransient<IFeeWatchdog, FeeWatchdog>();
 
                     services.AddSingleton<IBinanceClient>(new BinanceClient(new BinanceClientOptions()
                     {

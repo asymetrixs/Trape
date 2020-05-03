@@ -3,15 +3,38 @@ using System.Collections.Generic;
 
 namespace trape.jobs
 {
+    /// <summary>
+    /// Job Manager
+    /// </summary>
     public class JobManager : IJobManager
     {
+        #region Fields
+
+        /// <summary>
+        /// Schedulers
+        /// </summary>
         private List<JobScheduler> _schedulers;
 
+        #endregion
+
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the <c>JobManager</c> class.
+        /// </summary>
         public JobManager()
         {
             _schedulers = new List<JobScheduler>();
         }
 
+        #endregion
+
+        #region Methods
+
+        /// <summary>
+        /// Starts a job
+        /// </summary>
+        /// <param name="job"></param>
         public void Start(IJob job)
         {
             if (null == job)
@@ -24,6 +47,9 @@ namespace trape.jobs
             scheduler.Start();
         }
 
+        /// <summary>
+        /// Starts all registered jobs
+        /// </summary>
         public void StartAll()
         {
             // Start all jobs
@@ -33,6 +59,9 @@ namespace trape.jobs
             }
         }
 
+        /// <summary>
+        /// Stops all registered jobs
+        /// </summary>
         public void StopAll()
         {
             // Start all jobs
@@ -42,6 +71,9 @@ namespace trape.jobs
             }
         }
 
+        /// <summary>
+        /// Terminates all jobs
+        /// </summary>
         public void TerminateAll()
         {
             // Terminate all jobs
@@ -50,6 +82,10 @@ namespace trape.jobs
                 job.Stop();
                 job.Terminate();
             }
+
+            this._schedulers.Clear();
         }
+
+        #endregion
     }
 }
