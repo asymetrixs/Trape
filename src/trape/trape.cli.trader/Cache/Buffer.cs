@@ -333,7 +333,7 @@ namespace trape.cli.trader.Cache
                 this._logger.Debug($"{symbol}: No asking price available");
 
                 // Get price from Binance
-                var result = this._binanceClient.GetPrice("symbol");
+                var result = this._binanceClient.GetPrice(symbol);
                 if (result.Success)
                 {
                     return result.Data.Price;

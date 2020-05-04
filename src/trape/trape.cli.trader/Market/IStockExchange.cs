@@ -1,6 +1,6 @@
-﻿using Binance.Net.Objects;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
+using trape.cli.trader.DataLayer.Models;
 
 namespace trape.cli.trader.Market
 {
@@ -9,7 +9,6 @@ namespace trape.cli.trader.Market
     /// </summary>
     public interface IStockExchange
     {
-        Task PlaceOrder(string symbol, OrderSide orderSide, OrderType orderType, decimal quoteOrderQuantity, decimal price,
-            CancellationToken cancellationToken);
+        Task PlaceOrder(Order order, CancellationToken cancellationToken = default);
     }
 }

@@ -75,7 +75,7 @@ namespace trape.cli.trader.DataLayer
         #endregion
 
         #region Methods
-
+        // TODO: use POCOs and Framework functionality
         public async Task InsertAsync(Analyze.Recommendation recommendation, Stats3s stat3s, Stats15s stat15s, Stats2m stat2m,
             Stats10m stat10m, Stats2h stat2h, CancellationToken cancellationToken)
 

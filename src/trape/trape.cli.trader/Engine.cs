@@ -146,6 +146,9 @@ namespace trape.cli.trader
 
             this._feeWatchdog.Start();
 
+            var checker = Program.Services.GetService(typeof(IChecker)) as IChecker;
+            checker.Start();
+
             this._logger.Information("Engine is started");
         }
 
@@ -157,6 +160,9 @@ namespace trape.cli.trader
         public async override Task StopAsync(CancellationToken cancellationToken)
         {
             this._logger.Information("Engine is stopping");
+
+            var checker = Program.Services.GetService(typeof(IChecker)) as IChecker;
+            checker.Terminate();
 
             this._feeWatchdog.Finish();
 

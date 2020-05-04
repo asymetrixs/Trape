@@ -49,6 +49,11 @@ namespace trape.cli.trader.Account
         private BinanceAccountInfo _binanceAccountInfo;
 
         /// <summary>
+        /// Last time the binance account info was updated
+        /// </summary>
+        private DateTime _binanceAccountInfoUpdated;
+
+        /// <summary>
         /// Stream account info
         /// </summary>
         private BinanceStreamAccountInfo _binanceStreamAccountInfo;
@@ -89,6 +94,7 @@ namespace trape.cli.trader.Account
             this._cancellationTokenSource = new CancellationTokenSource();
             this._binanceClient = binanceClient;
             this._binanceSocketClient = binanceSocketClient;
+            this._binanceAccountInfoUpdated = default;
 
             #region Job Setup
 
@@ -148,6 +154,7 @@ namespace trape.cli.trader.Account
             if (accountInfo.Success)
             {
                 this._binanceAccountInfo = accountInfo.Data;
+                this._binanceAccountInfoUpdated = DateTime.UtcNow;
             }
 
             this._logger.Verbose("Account info synchronized");
@@ -232,17 +239,22 @@ namespace trape.cli.trader.Account
             return bac?.Balances.SingleOrDefault(b => b.Asset == asset);
         }
 
+        /// <summary>
+        /// Returns the latest account information
+        /// </summary>
+        /// <returns></returns>
         public async Task<BinanceAccountInfo> GetAccountInfo()
         {
             var bac = this._binanceAccountInfo;
 
-            if (null == bac || this._binanceAccountInfo.UpdateTime < DateTime.UtcNow.AddSeconds(-3))
+            if (null == bac || this._binanceAccountInfoUpdated < DateTime.UtcNow.AddSeconds(-6))
             {
                 var accountInfoRequest = await this._binanceClient.GetAccountInfoAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(true);
 
                 if (accountInfoRequest.Success)
                 {
                     this._binanceAccountInfo = accountInfoRequest.Data;
+                    this._binanceAccountInfoUpdated = DateTime.UtcNow;
 
                     this._logger.Debug($"Requested account info");
                 }
@@ -277,7 +289,7 @@ namespace trape.cli.trader.Account
                 this._logger.Verbose("Connection ok, ListenKey received");
             }
 
-            // Run initial timer elapsed event
+            // Run initial keep alive
             this._connectionKeepAlive();
 
             // Subscribe to socket events
@@ -291,8 +303,9 @@ namespace trape.cli.trader.Account
 
             this._logger.Information("Binance Client is online");
 
-            // Start timer
+            // Start jobs
             this._jobSynchronizeAccountInfo.Start();
+            this._jobConnectionKeepAlive.Start();
 
             this._logger.Debug("Accountant started");
         }
@@ -305,8 +318,9 @@ namespace trape.cli.trader.Account
         {
             this._logger.Verbose("Stopping accountant");
 
-            // Stop timer
+            // Stop jobs
             this._jobSynchronizeAccountInfo.Terminate();
+            this._jobConnectionKeepAlive.Terminate();
 
             // Wait until timer elapsed event finishes
             await Task.Delay(1000).ConfigureAwait(true);

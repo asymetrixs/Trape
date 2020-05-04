@@ -8,6 +8,18 @@ namespace trape.cli.trader.DataLayer.Models
     /// </summary>
     public class Order
     {
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the <c>Order</c> class.
+        /// </summary>
+        public Order()
+        {
+            this.NewClientOrderId = Guid.NewGuid().ToString("N");
+        }
+
+        #endregion
+
         #region Properties
 
         /// <summary>
@@ -48,7 +60,7 @@ namespace trape.cli.trader.DataLayer.Models
         /// <summary>
         /// New client order id
         /// </summary>
-        public string NewClientOrderId { get; set; }
+        public string NewClientOrderId { get; }
 
         /// <summary>
         /// Order response type
@@ -56,10 +68,10 @@ namespace trape.cli.trader.DataLayer.Models
         public OrderResponseType OrderResponseType { get; set; }
 
         /// <summary>
-        /// Time in force
+        /// [IGNORED] Time in force
         /// </summary>
         public TimeInForce TimeInForce { get; set; }
-
+             
         #endregion
     }
 }

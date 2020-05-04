@@ -176,6 +176,7 @@ namespace trape.cli.trader.Analyze
             var s2h = this._buffer.Stats2h;
 
             // Extract data for current symbol
+            // TODO: First or defaut;
             var stat3s = s3s.SingleOrDefault(t => t.Symbol == symbol);
             var stat15s = s15s.SingleOrDefault(t => t.Symbol == symbol);
             var stat2m = s2m.SingleOrDefault(t => t.Symbol == symbol);

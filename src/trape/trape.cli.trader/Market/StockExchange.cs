@@ -14,7 +14,7 @@ namespace trape.cli.trader.Market
     /// <summary>
     /// Stock exchange class
     /// </summary>
-    class StockExchange : IStockExchange
+    public class StockExchange : IStockExchange
     {
         #region Fields
 
@@ -64,41 +64,30 @@ namespace trape.cli.trader.Market
         /// <summary>
         /// Place the order at Binance
         /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <param name="orderSide">Side</param>
-        /// <param name="orderType">Type</param>
-        /// <param name="quoteOrderQuantity">Quantity in the currency the Asset is traded against, e.g. BTCUSDT -> USDT</param>
-        /// <param name="price">Current Price of one entity</param>
+        /// <param name="Order">Order</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        public async Task PlaceOrder(string symbol, OrderSide orderSide, OrderType orderType, decimal quoteOrderQuantity, decimal price,
-            CancellationToken cancellationToken)
+        public async Task PlaceOrder(Order order, CancellationToken cancellationToken = default)
         {
+            #region Argument checks
+
+            _ = order ?? throw new ArgumentNullException(paramName: nameof(order));
+
+            #endregion
+            // https://nsubstitute.github.io/help/getting-started/
             var database = Pool.DatabasePool.Get();
 
             try
             {
-                var newClientOrderId = Guid.NewGuid().ToString("N");
-
                 // Place the order
-                var placedOrder = await this._binanceClient.PlaceOrderAsync(symbol, orderSide, orderType,
-                    quoteOrderQuantity, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
+                var placedOrder = await this._binanceClient.PlaceOrderAsync(order.Symbol, order.Side, order.Type,
+                    quoteOrderQuantity: order.QuoteOrderQuantity, newClientOrderId: order.NewClientOrderId, orderResponseType: OrderResponseType.Full,
                     ct: cancellationToken).ConfigureAwait(true);
 
                 // Log order in custom format
-                await database.InsertAsync(new Order()
-                {
-                    Symbol = symbol,
-                    Side = OrderSide.Sell,
-                    Type = OrderType.Limit,
-                    QuoteOrderQuantity = quoteOrderQuantity,
-                    Price = price,
-                    NewClientOrderId = newClientOrderId,
-                    OrderResponseType = OrderResponseType.Full,
-                    TimeInForce = TimeInForce.ImmediateOrCancel
-                }, cancellationToken).ConfigureAwait(true);
+                await database.InsertAsync(order, cancellationToken).ConfigureAwait(true);
 
-                await LogOrder(database, newClientOrderId, placedOrder, cancellationToken);
+                await LogOrder(database, order.NewClientOrderId, placedOrder, cancellationToken).ConfigureAwait(true);
             }
             catch (Exception e)
             {
@@ -118,23 +107,15 @@ namespace trape.cli.trader.Market
         /// <param name="placedOrder">Placed order or null if none</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        private async Task LogOrder(ITrapeContext database, string newClientOrderId, WebCallResult<BinancePlacedOrder> placedOrder, CancellationToken cancellationToken)
+        private async Task LogOrder(ITrapeContext database, string newClientOrderId, WebCallResult<BinancePlacedOrder> placedOrder, CancellationToken cancellationToken = default)
         {
             #region Argument checks
 
-            if (database == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(database));
-            }
+            _ = database ?? throw new ArgumentNullException(paramName: nameof(database));
 
             if (string.IsNullOrEmpty(newClientOrderId))
             {
                 throw new ArgumentNullException(paramName: nameof(newClientOrderId));
-            }
-
-            if (cancellationToken == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(cancellationToken));
             }
 
             #endregion
@@ -148,22 +129,25 @@ namespace trape.cli.trader.Market
                     using (var context1 = LogContext.PushProperty("placedOrder.Error", placedOrder.Error))
                     using (var context2 = LogContext.PushProperty("placedOrder.Data", placedOrder.Data))
                     {
-                        this._logger.Error($"Order {newClientOrderId} was malformed");
+                        this._logger.Error($"Order {newClientOrderId} caused an error");
                     }
 
+                    // Error Codes: https://github.com/binance-exchange/binance-official-api-docs/blob/master/errors.md
+
                     // Logging
-                    this._logger.Error(placedOrder.Error?.Code.ToString());
-                    this._logger.Error(placedOrder.Error?.Message);
+                    this._logger.Error($"{placedOrder.Error?.Code.ToString()}: {placedOrder.Error?.Message}");
                     this._logger.Error(placedOrder.Error?.Data?.ToString());
 
                     if (placedOrder.Data != null)
                     {
                         this._logger.Warning($"PlacedOrder: {placedOrder.Data.Symbol};{placedOrder.Data.Side};{placedOrder.Data.Type} > ClientOrderId:{placedOrder.Data.ClientOrderId} CummulativeQuoteQuantity:{placedOrder.Data.CummulativeQuoteQuantity} OriginalQuoteOrderQuantity:{placedOrder.Data.OriginalQuoteOrderQuantity} Status:{placedOrder.Data.Status}");
                     }
+
+                    // TODO: 1015 - TOO_MANY_ORDERS
                 }
                 else
                 {
-                    await database.InsertAsync(placedOrder.Data, cancellationToken).ConfigureAwait(false);
+                    await database.InsertAsync(placedOrder.Data, cancellationToken).ConfigureAwait(true);
                 }
             }
         }

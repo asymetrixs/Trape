@@ -1,6 +1,7 @@
 ﻿using Serilog;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using trape.jobs;
 
 namespace trape.cli.trader.WatchDog
@@ -64,7 +65,7 @@ namespace trape.cli.trader.WatchDog
         {
             this._watching.Add(watchMe);
 
-            this._logger.Information($"Added: {watchMe.GetType().BaseType}");
+            this._logger.Information($"Added: {watchMe.GetType().Name}");
         }
 
         /// <summary>
@@ -75,7 +76,7 @@ namespace trape.cli.trader.WatchDog
         {
             this._watching.Remove(watchMe);
 
-            this._logger.Information($"Removed: {watchMe.GetType().BaseType}");
+            this._logger.Information($"Removed: {watchMe.GetType().Name}");
         }
 
         /// <summary>
@@ -88,16 +89,23 @@ namespace trape.cli.trader.WatchDog
             // Check all objects
             foreach (var watchMe in this._watching)
             {
-                this._logger.Verbose($"Checking: {watchMe.GetType().BaseType}");
+                this._logger.Verbose($"Checking: {watchMe.GetType().Name}");
 
                 if (watchMe.LastActive < DateTime.UtcNow.AddMinutes(-1))
                 {
-                    this._logger.Fatal($"Instance inactive: {watchMe.GetType()} {watchMe.GetType().BaseType}");
+                    this._logger.Fatal($"Instance inactive: {watchMe.GetType().Name}");
                     this._logger.Error($"Hard reset initiated");
 
                     // Hard exit
                     Environment.Exit(3);
                 }
+            }
+
+            // Output once per hour
+            if (DateTime.UtcNow.Minute == 0 && DateTime.UtcNow.Second < 5)
+            {
+                var jobs = string.Join(',', this._watching.Select(w => w.GetType().Name)).TrimEnd(',');
+                this._logger.Information($"Checked {this._watching.Count} jobs: {jobs}");
             }
         }
 
