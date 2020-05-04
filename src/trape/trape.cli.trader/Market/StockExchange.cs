@@ -14,7 +14,7 @@ namespace trape.cli.trader.Market
     /// <summary>
     /// Stock exchange class
     /// </summary>
-    class StockExchange : IStockExchange
+    public class StockExchange : IStockExchange
     {
         #region Fields
 
@@ -82,15 +82,15 @@ namespace trape.cli.trader.Market
 
                 // Place the order
                 var placedOrder = await this._binanceClient.PlaceOrderAsync(symbol, orderSide, orderType,
-                    quoteOrderQuantity, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
+                    quoteOrderQuantity: quoteOrderQuantity, newClientOrderId: newClientOrderId, orderResponseType: OrderResponseType.Full,
                     ct: cancellationToken).ConfigureAwait(true);
 
                 // Log order in custom format
                 await database.InsertAsync(new Order()
                 {
                     Symbol = symbol,
-                    Side = OrderSide.Sell,
-                    Type = OrderType.Limit,
+                    Side = orderSide,
+                    Type = orderType,
                     QuoteOrderQuantity = quoteOrderQuantity,
                     Price = price,
                     NewClientOrderId = newClientOrderId,
@@ -98,7 +98,7 @@ namespace trape.cli.trader.Market
                     TimeInForce = TimeInForce.ImmediateOrCancel
                 }, cancellationToken).ConfigureAwait(true);
 
-                await LogOrder(database, newClientOrderId, placedOrder, cancellationToken);
+                await LogOrder(database, newClientOrderId, placedOrder, cancellationToken).ConfigureAwait(true);
             }
             catch (Exception e)
             {
@@ -148,18 +148,26 @@ namespace trape.cli.trader.Market
                     using (var context1 = LogContext.PushProperty("placedOrder.Error", placedOrder.Error))
                     using (var context2 = LogContext.PushProperty("placedOrder.Data", placedOrder.Data))
                     {
-                        this._logger.Error($"Order {newClientOrderId} was malformed");
+                        this._logger.Error($"Order {newClientOrderId} caused an error");
                     }
 
+                    // Error Codes: https://github.com/binance-exchange/binance-official-api-docs/blob/master/errors.md
+
                     // Logging
-                    this._logger.Error(placedOrder.Error?.Code.ToString());
-                    this._logger.Error(placedOrder.Error?.Message);
+                    this._logger.Error($"{placedOrder.Error?.Code.ToString()}: {placedOrder.Error?.Message}");
                     this._logger.Error(placedOrder.Error?.Data?.ToString());
 
                     if (placedOrder.Data != null)
                     {
                         this._logger.Warning($"PlacedOrder: {placedOrder.Data.Symbol};{placedOrder.Data.Side};{placedOrder.Data.Type} > ClientOrderId:{placedOrder.Data.ClientOrderId} CummulativeQuoteQuantity:{placedOrder.Data.CummulativeQuoteQuantity} OriginalQuoteOrderQuantity:{placedOrder.Data.OriginalQuoteOrderQuantity} Status:{placedOrder.Data.Status}");
                     }
+
+                    // TODO: 1015 - TOO_MANY_ORDERS
+
+                    // Wait 60 seconds
+                    this._logger.Error("Waiting...");
+                    await Task.Delay(new TimeSpan(0, 0, 10));
+                    this._logger.Error("Done waiting");
                 }
                 else
                 {

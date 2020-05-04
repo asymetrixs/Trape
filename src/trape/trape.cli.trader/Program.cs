@@ -121,7 +121,7 @@ namespace trape.cli.trader
                     {
                         ApiCredentials = new ApiCredentials(Config.GetValue("binance:apikey"),
                                                         Config.GetValue("binance:secretkey")),
-                        LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
+                        LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Debug,
                         LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) },
                         AutoTimestamp = true,
                         AutoTimestampRecalculationInterval = new TimeSpan(0, 5, 0),
