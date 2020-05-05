@@ -377,12 +377,18 @@ namespace trape.cli.trader.Trading
                         && isLOTSizeValid
                     )
                 {
-                    this._logger.Debug($"{this.Symbol}: Issuing order to buy");
-                    this._logger.Debug($"symbol:{this.Symbol};bestAskPrice:{bestAskPrice};quantity:{availableUSDT}");
+                    this._logger.Information($"{this.Symbol} @ {bestAskPrice:0.00}: {recommendation.Action} - Issuing buy for {availableUSDT.Value}");
 
                     // Get stock exchange and place order
                     var stockExchange = Program.Services.GetService(typeof(IStockExchange)) as IStockExchange;
-                    await stockExchange.PlaceOrder(this.Symbol, OrderSide.Buy, OrderType.Market, availableUSDT.Value, bestAskPrice, this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    await stockExchange.PlaceOrder(new Order()
+                    {
+                        Symbol = this.Symbol,
+                        Side = OrderSide.Buy,
+                        Type = OrderType.Market,
+                        QuoteOrderQuantity = availableUSDT.Value,
+                        Price = bestAskPrice
+                    }, this._cancellationTokenSource.Token).ConfigureAwait(true);
 
                     this._logger.Debug($"{this.Symbol}: Issued order to buy");
                 }
@@ -592,7 +598,14 @@ namespace trape.cli.trader.Trading
 
                     // Get stock exchange and place order
                     var stockExchange = Program.Services.GetService(typeof(IStockExchange)) as IStockExchange;
-                    await stockExchange.PlaceOrder(this.Symbol, OrderSide.Sell, OrderType.Market, aimToGetUSDT.Value, bestBidPrice, this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    await stockExchange.PlaceOrder(new Order()
+                    {
+                        Symbol = this.Symbol,
+                        Side = OrderSide.Sell,
+                        Type = OrderType.Market,
+                        QuoteOrderQuantity = aimToGetUSDT.Value,
+                        Price = bestBidPrice
+                    }, this._cancellationTokenSource.Token).ConfigureAwait(true);
 
                     this._logger.Debug($"{this.Symbol}: Issued order to sell");
                 }
