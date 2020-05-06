@@ -6,6 +6,7 @@ using Serilog.Context;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using trape.cli.trader.Cache;
 using trape.cli.trader.DataLayer;
 using trape.cli.trader.DataLayer.Models;
 
@@ -24,6 +25,11 @@ namespace trape.cli.trader.Market
         private ILogger _logger;
 
         /// <summary>
+        /// Buffer
+        /// </summary>
+        private IBuffer _buffer;
+
+        /// <summary>
         /// Binance Client
         /// </summary>
         private IBinanceClient _binanceClient;
@@ -36,24 +42,20 @@ namespace trape.cli.trader.Market
         /// Initializes a new instance of the <c>StockExchange</c> class.
         /// </summary>
         /// <param name="logger">Logger</param>
+        /// /// <param name="buffer">Buffer</param>
         /// <param name="binanceClient">Binance Client</param>
-        public StockExchange(ILogger logger, IBinanceClient binanceClient)
+        public StockExchange(ILogger logger, IBuffer buffer, IBinanceClient binanceClient)
         {
             #region Argument checks
 
-            if (logger == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(logger));
-            }
+            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            if (binanceClient == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(binanceClient));
-            }
+            _ = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
 
             #endregion
 
             this._logger = logger.ForContext(typeof(StockExchange));
+            this._buffer = buffer;
             this._binanceClient = binanceClient;
         }
 
@@ -148,6 +150,7 @@ namespace trape.cli.trader.Market
                 else
                 {
                     await database.InsertAsync(placedOrder.Data, cancellationToken).ConfigureAwait(true);
+                    this._buffer.AddOpenOrder(new Cache.Models.OpenOrder(placedOrder.Data.ClientOrderId, placedOrder.Data.Symbol, placedOrder.Data.OriginalQuoteOrderQuantity));
                 }
             }
         }

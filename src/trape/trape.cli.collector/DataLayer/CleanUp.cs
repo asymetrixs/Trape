@@ -14,7 +14,7 @@ namespace trape.cli.collector.DataLayer
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task Execute(CancellationToken cancellationToken)
+        public async Task Execute(CancellationToken cancellationToken = default)
         {
             var logger = Program.Services.GetRequiredService<ILogger>().ForContext<CleanUp>();
             var database = Pool.DatabasePool.Get();

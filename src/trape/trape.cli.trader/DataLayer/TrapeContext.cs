@@ -43,10 +43,11 @@ namespace trape.cli.trader.DataLayer
         public TrapeContext(ILogger logger)
             : base()
         {
-            if (logger == null)
-            {
-                throw new ArgumentNullException("Paramter cannot be NULL");
-            }
+            #region Argument checks
+
+            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
+
+            #endregion
 
             this._logger = logger.ForContext<TrapeContext>();
             this._connectionString = Config.GetConnectionString("CoinTradeDB");
@@ -77,12 +78,17 @@ namespace trape.cli.trader.DataLayer
         #region Methods
         // TODO: use POCOs and Framework functionality
         public async Task InsertAsync(Analyze.Recommendation recommendation, Stats3s stat3s, Stats15s stat15s, Stats2m stat2m,
-            Stats10m stat10m, Stats2h stat2h, CancellationToken cancellationToken)
+            Stats10m stat10m, Stats2h stat2h, CancellationToken cancellationToken = default)
 
         {
             #region Argument checks
 
-            if (null == stat3s || null == stat15s || null == stat2m || null == stat10m || null == stat2h || null == recommendation)
+            if (stat3s == null
+                || stat15s == null
+                || stat2m == null
+                || stat10m == null
+                || stat2h == null
+                || recommendation == null)
             {
                 return;
             }
@@ -188,7 +194,7 @@ namespace trape.cli.trader.DataLayer
             }
         }
 
-        public async Task<IEnumerable<Stats3s>> Get3SecondsTrendAsync(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats3s>> Get3SecondsTrendAsync(CancellationToken cancellationToken = default)
         {
             var trends = new List<Stats3s>();
             IDisposable pushedProperty = null;
@@ -272,7 +278,7 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<IEnumerable<Stats15s>> Get15SecondsTrendAsync(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats15s>> Get15SecondsTrendAsync(CancellationToken cancellationToken = default)
         {
             var trends = new List<Stats15s>();
             IDisposable pushedProperty = null;
@@ -356,7 +362,7 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<IEnumerable<Stats2m>> Get2MinutesTrendAsync(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats2m>> Get2MinutesTrendAsync(CancellationToken cancellationToken = default)
         {
             var trends = new List<Stats2m>();
             IDisposable pushedProperty = null;
@@ -440,7 +446,7 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<IEnumerable<Stats10m>> Get10MinutesTrendAsync(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats10m>> Get10MinutesTrendAsync(CancellationToken cancellationToken = default)
         {
             var trends = new List<Stats10m>();
             IDisposable pushedProperty = null;
@@ -524,7 +530,7 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<IEnumerable<Stats2h>> Get2HoursTrendAsync(CancellationToken cancellationToken)
+        public async Task<IEnumerable<Stats2h>> Get2HoursTrendAsync(CancellationToken cancellationToken = default)
         {
             var trends = new List<Stats2h>();
             IDisposable pushedProperty = null;
@@ -608,7 +614,7 @@ namespace trape.cli.trader.DataLayer
             return trends;
         }
 
-        public async Task<decimal> GetCurrentPriceAsync(string symbol, CancellationToken cancellationToken)
+        public async Task<decimal> GetCurrentPriceAsync(string symbol, CancellationToken cancellationToken = default)
         {
             var price = default(decimal);
             IDisposable pushedProperty = null;
@@ -668,7 +674,7 @@ namespace trape.cli.trader.DataLayer
             return price;
         }
 
-        public async Task<IEnumerable<LatestMA10mAndMA30mCrossing>> GetLatestMA10mAndMA30mCrossing(CancellationToken cancellationToken)
+        public async Task<IEnumerable<LatestMA10mAndMA30mCrossing>> GetLatestMA10mAndMA30mCrossing(CancellationToken cancellationToken = default)
         {
             var latestCrossings = new List<LatestMA10mAndMA30mCrossing>();
             IDisposable pushedProperty = null;
@@ -740,7 +746,79 @@ namespace trape.cli.trader.DataLayer
             return latestCrossings;
         }
 
-        public async Task<IEnumerable<LatestMA1hAndMA3hCrossing>> GetLatestMA1hAndMA3hCrossing(CancellationToken cancellationToken)
+        public async Task<IEnumerable<LatestMA30mAndMA1hCrossing>> GetLatestMA30mAndMA1hCrossing(CancellationToken cancellationToken = default)
+        {
+            var latestCrossings = new List<LatestMA30mAndMA1hCrossing>();
+            IDisposable pushedProperty = null;
+
+            using (var con = new NpgsqlConnection(this._connectionString))
+            {
+                using (var com = new NpgsqlCommand("get_latest_ma30m_ma1h_crossing", con))
+                {
+                    try
+                    {
+                        this._logger.Verbose($"Executing {com.CommandText}");
+
+                        com.CommandType = CommandType.StoredProcedure;
+
+                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+                        using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
+                        {
+                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                            {
+                                pushedProperty = LogContext.PushProperty("reader", reader);
+
+                                // Skip if values are NULL
+                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+                                    )
+                                {
+                                    continue;
+                                }
+
+                                latestCrossings.Add(new LatestMA30mAndMA1hCrossing(
+                                    reader.GetString(0),
+                                    reader.GetDateTime(1),
+                                    reader.GetDecimal(2),
+                                    reader.GetDecimal(3)));
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // nothing
+                    }
+                    catch (PostgresException px)
+                    {
+                        if (px.MessageText != "canceling statement due to user request")
+                        {
+                            this._logger.Fatal(px, px.Message, com.CommandText);
+                        }
+                    }
+                    catch (NpgsqlException ne)
+                    {
+                        this._logger.Fatal(ne, ne.Message, com.CommandText);
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"General Exception: {e.Message}");
+                    }
+                    finally
+                    {
+                        pushedProperty?.Dispose();
+
+                        con.Close();
+                    }
+                }
+            }
+
+            return latestCrossings;
+        }
+
+        public async Task<IEnumerable<LatestMA1hAndMA3hCrossing>> GetLatestMA1hAndMA3hCrossing(CancellationToken cancellationToken = default)
         {
             var latestCrossings = new List<LatestMA1hAndMA3hCrossing>();
             IDisposable pushedProperty = null;
@@ -812,11 +890,11 @@ namespace trape.cli.trader.DataLayer
             return latestCrossings;
         }
 
-        public async Task InsertAsync(IEnumerable<BinanceStreamBalance> binanceStreamBalances, CancellationToken cancellationToken)
+        public async Task InsertAsync(IEnumerable<BinanceStreamBalance> binanceStreamBalances, CancellationToken cancellationToken = default)
         {
             #region Argument checks
 
-            if (null == binanceStreamBalances || !binanceStreamBalances.Any())
+            if (binanceStreamBalances == null || !binanceStreamBalances.Any())
             {
                 return;
             }
@@ -890,12 +968,12 @@ namespace trape.cli.trader.DataLayer
             }
         }
 
-        public async Task InsertAsync(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate, CancellationToken cancellationToken)
+        public async Task InsertAsync(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate, CancellationToken cancellationToken = default)
 
         {
             #region Argument checks
 
-            if (null == binanceStreamBalanceUpdate)
+            if (binanceStreamBalanceUpdate == null)
             {
                 return;
             }
@@ -959,12 +1037,12 @@ namespace trape.cli.trader.DataLayer
         }
 
 
-        public async Task InsertAsync(BinanceStreamOrderList binanceStreamOrderList, CancellationToken cancellationToken)
+        public async Task InsertAsync(BinanceStreamOrderList binanceStreamOrderList, CancellationToken cancellationToken = default)
 
         {
             #region Argument checks
 
-            if (null == binanceStreamOrderList)
+            if (binanceStreamOrderList == null)
             {
                 return;
             }
@@ -1074,12 +1152,12 @@ namespace trape.cli.trader.DataLayer
             }
         }
 
-        public async Task InsertAsync(BinanceStreamOrderUpdate binanceStreamOrderUpdate, CancellationToken cancellationToken)
+        public async Task InsertAsync(BinanceStreamOrderUpdate binanceStreamOrderUpdate, CancellationToken cancellationToken = default)
 
         {
             #region Argument checks
 
-            if (null == binanceStreamOrderUpdate)
+            if (binanceStreamOrderUpdate == null)
             {
                 return;
             }
@@ -1168,11 +1246,11 @@ namespace trape.cli.trader.DataLayer
             }
         }
 
-        public async Task InsertAsync(Order order, CancellationToken cancellationToken)
+        public async Task InsertAsync(Order order, CancellationToken cancellationToken = default)
         {
             #region Argument checks
 
-            if (null == order)
+            if (order == null)
             {
                 return;
             }
@@ -1239,11 +1317,11 @@ namespace trape.cli.trader.DataLayer
             }
         }
 
-        public async Task InsertAsync(BinancePlacedOrder binancePlacedOrder, CancellationToken cancellationToken)
+        public async Task InsertAsync(BinancePlacedOrder binancePlacedOrder, CancellationToken cancellationToken = default)
         {
             #region Argument checks
 
-            if (null == binancePlacedOrder)
+            if (binancePlacedOrder == null)
             {
                 return;
             }
@@ -1404,7 +1482,7 @@ namespace trape.cli.trader.DataLayer
             }
         }
 
-        public async Task<IEnumerable<LastOrder>> GetLastOrdersAsync(string symbol, CancellationToken cancellationToken)
+        public async Task<IEnumerable<LastOrder>> GetLastOrdersAsync(string symbol, CancellationToken cancellationToken = default)
         {
             var list = new List<LastOrder>();
 
@@ -1469,8 +1547,8 @@ namespace trape.cli.trader.DataLayer
             return list;
         }
 
-        
-        public async Task<decimal> GetPriceOn(string symbol, DateTime dateTime, CancellationToken cancellationToken)
+
+        public async Task<decimal> GetPriceOn(string symbol, DateTime dateTime, CancellationToken cancellationToken = default)
         {
             var price = default(decimal);
             IDisposable pushedProperty = null;

@@ -61,20 +61,11 @@ namespace trape.cli.trader.Fees
         {
             #region Arguments check
 
-            if (logger == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(logger));
-            }
+            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            if (accountant == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(accountant));
-            }
+            _ = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(buffer));
-            }
+            _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             #endregion
 

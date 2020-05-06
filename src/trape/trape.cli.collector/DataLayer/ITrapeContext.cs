@@ -20,7 +20,7 @@ namespace trape.cli.collector.DataLayer
         /// <param name="binanceStreamTick"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task Insert(BinanceStreamTick binanceStreamTick, CancellationToken cancellationToken);
+        Task Insert(BinanceStreamTick binanceStreamTick, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Inserts <c>BinanceStreamKlineData</c> instances into the database
@@ -28,7 +28,7 @@ namespace trape.cli.collector.DataLayer
         /// <param name="binanceStreamKlineData"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task Insert(BinanceStreamKlineData binanceStreamKlineData, CancellationToken cancellationToken);
+        Task Insert(BinanceStreamKlineData binanceStreamKlineData, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Inserts <c>BinanceBookTick</c> instances into the database
@@ -36,13 +36,13 @@ namespace trape.cli.collector.DataLayer
         /// <param name="binanceBookTick"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task Insert(BinanceBookTick binanceBookTick, CancellationToken cancellationToken);
+        Task Insert(BinanceBookTick binanceBookTick, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Cleans up the <c>BinanceBookTick</c>s
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task<int> CleanUpBookTicks(CancellationToken cancellationToken);
+        Task<int> CleanUpBookTicks(CancellationToken cancellationToken = default);
     }
 }

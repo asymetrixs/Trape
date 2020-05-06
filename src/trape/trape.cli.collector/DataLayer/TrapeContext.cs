@@ -45,10 +45,7 @@ namespace trape.cli.collector.DataLayer
         {
             #region Argument checks
 
-            if (null == logger)
-            {
-                throw new ArgumentNullException(paramName: nameof(logger));
-            }
+            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
             #endregion
 
@@ -84,12 +81,16 @@ namespace trape.cli.collector.DataLayer
         /// <param name="binanceStreamTick"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task Insert(BinanceStreamTick binanceStreamTick, CancellationToken cancellationToken)
+        public async Task Insert(BinanceStreamTick binanceStreamTick, CancellationToken cancellationToken = default)
         {
-            if (null == binanceStreamTick)
+            #region Argument checks
+
+            if (binanceStreamTick == null)
             {
                 return;
             }
+
+            #endregion
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
@@ -155,12 +156,16 @@ namespace trape.cli.collector.DataLayer
         /// <param name="binanceStreamKlineData"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task Insert(BinanceStreamKlineData binanceStreamKlineData, CancellationToken cancellationToken)
+        public async Task Insert(BinanceStreamKlineData binanceStreamKlineData, CancellationToken cancellationToken = default)
         {
-            if (null == binanceStreamKlineData)
+            #region Argument checks
+
+            if (binanceStreamKlineData == null)
             {
                 return;
             }
+
+            #endregion
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
@@ -221,12 +226,16 @@ namespace trape.cli.collector.DataLayer
         /// <param name="binanceBookTick"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task Insert(BinanceBookTick binanceBookTick, CancellationToken cancellationToken)
+        public async Task Insert(BinanceBookTick binanceBookTick, CancellationToken cancellationToken = default)
         {
-            if (null == binanceBookTick)
+            #region Argument checks
+
+            if (binanceBookTick == null)
             {
                 return;
             }
+
+            #endregion
 
             using (var con = new NpgsqlConnection(this._connectionString))
             {
@@ -275,7 +284,7 @@ namespace trape.cli.collector.DataLayer
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<int> CleanUpBookTicks(CancellationToken cancellationToken)
+        public async Task<int> CleanUpBookTicks(CancellationToken cancellationToken = default)
         {
             using (var con = new NpgsqlConnection(this._connectionString))
             {

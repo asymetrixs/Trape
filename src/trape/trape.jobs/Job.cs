@@ -56,7 +56,7 @@ namespace trape.jobs
         /// <param name="executionInterval">Execution interval</param>
         /// <param name="action">Action to execute</param>
         /// <param name="cancellationToken">Cancellation Token</param>
-        public Job(TimeSpan executionInterval, Action action, CancellationToken cancellationToken)
+        public Job(TimeSpan executionInterval, Action action, CancellationToken cancellationToken = default)
         {
             Setup(executionInterval, action, cancellationToken);
         }
@@ -67,24 +67,11 @@ namespace trape.jobs
         /// <param name="executionInterval"></param>
         /// <param name="action"></param>
         /// <param name="cancellationToken"></param>
-        private void Setup(TimeSpan executionInterval, Action action, CancellationToken cancellationToken)
+        private void Setup(TimeSpan executionInterval, Action action, CancellationToken cancellationToken = default)
         {
             #region Argument checks
 
-            if (executionInterval == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(executionInterval));
-            }
-
-            if (action == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(action));
-            }
-
-            if (cancellationToken == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(cancellationToken));
-            }
+            _ = action ?? throw new ArgumentNullException(paramName: nameof(action));
 
             #endregion
 

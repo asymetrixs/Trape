@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Cache.Models;
@@ -81,20 +82,11 @@ namespace trape.cli.trader.Analyze
         {
             #region Argument checks
 
-            if (logger == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(logger));
-            }
+            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(buffer));
-            }
+            _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
-            if (accountant == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(accountant));
-            }
+            _ = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
             #endregion
 
@@ -153,12 +145,16 @@ namespace trape.cli.trader.Analyze
         /// </summary>
         /// <param name="symbol">Symbol to evaluate</param>
         /// <returns></returns>
-        private async System.Threading.Tasks.Task _recommend(string symbol)
+        private async Task _recommend(string symbol)
         {
+            #region Argument checks
+
             if (string.IsNullOrEmpty(symbol))
             {
                 return;
             }
+
+            #endregion
 
             // Placeholder for strategy
             if (!this._lastStrategy.ContainsKey(symbol))
@@ -168,20 +164,12 @@ namespace trape.cli.trader.Analyze
 
             var database = Pool.DatabasePool.Get();
 
-            // Reference current buffer data
-            var s3s = this._buffer.Stats3s;
-            var s15s = this._buffer.Stats15s;
-            var s2m = this._buffer.Stats2m;
-            var s10m = this._buffer.Stats10m;
-            var s2h = this._buffer.Stats2h;
-
-            // Extract data for current symbol
-            // TODO: First or defaut;
-            var stat3s = s3s.SingleOrDefault(t => t.Symbol == symbol);
-            var stat15s = s15s.SingleOrDefault(t => t.Symbol == symbol);
-            var stat2m = s2m.SingleOrDefault(t => t.Symbol == symbol);
-            var stat10m = s10m.SingleOrDefault(t => t.Symbol == symbol);
-            var stat2h = s2h.SingleOrDefault(t => t.Symbol == symbol);
+            // Get stats
+            var stat3s = this._buffer.Stats3sFor(symbol);
+            var stat15s = this._buffer.Stats15sFor(symbol);
+            var stat2m = this._buffer.Stats2mFor(symbol);
+            var stat10m = this._buffer.Stats10mFor(symbol);
+            var stat2h = this._buffer.Stats2hFor(symbol);
 
             // Check that data is valud
             if (stat3s == null || !stat3s.IsValid()
@@ -244,19 +232,19 @@ namespace trape.cli.trader.Analyze
                 action = Action.PanicSell;
                 this._logger.Warning("Panic Mode");
             }
-            else if (stat10m.Slope1h > strongThreshold || distanceOkAndTrendPositive)
+            else if (stat10m.Slope30m > strongThreshold || distanceOkAndTrendPositive)
             {
                 action = StrongBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h, distanceOkAndTrendPositive);
             }
-            else if (stat10m.Slope1h > 0.0015M || distanceOkAndTrendPositive)
+            else if (stat10m.Slope30m > 0.0015M || distanceOkAndTrendPositive)
             {
                 action = NormalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h, distanceOkAndTrendPositive);
             }
-            else if (stat10m.Slope1h < -strongThreshold && !distanceOkAndTrendPositive)
+            else if (stat10m.Slope30m < -strongThreshold && !distanceOkAndTrendPositive)
             {
                 action = StrongSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
             }
-            else if (stat10m.Slope1h < -0.0015M && !distanceOkAndTrendPositive)
+            else if (stat10m.Slope30m < -0.0015M && !distanceOkAndTrendPositive)
             {
                 action = NormalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
             }
@@ -347,11 +335,11 @@ namespace trape.cli.trader.Analyze
 
             var action = Action.Hold;
 
-            var lastCrossing = this._buffer.GetLatest1hAnd3hCrossing(stat3s.Symbol);
+            var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
 
             // if moving average 1h is greater than moving average 3h
             // or moving average 1h crossed moving average 3h within the last 6 minutes
-            if (stat10m.MovingAverage1h > stat10m.MovingAverage3h
+            if (stat10m.MovingAverage30m > stat10m.MovingAverage1h
                 || (lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6)))
             {
                 // Strong sell
@@ -394,11 +382,11 @@ namespace trape.cli.trader.Analyze
 
             var action = Action.Hold;
 
-            var lastCrossing = this._buffer.GetLatest1hAnd3hCrossing(stat3s.Symbol);
+            var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
 
             // if moving average 1h is smaller than moving average 3h
             // or moving average 1h crossed moving average 3h within the last 6 minutes
-            if (stat10m.MovingAverage1h < stat10m.MovingAverage3h
+            if (stat10m.MovingAverage30m < stat10m.MovingAverage1h
                 || (lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6))
                 || distanceOkAndTrendPositive)
             {
@@ -469,7 +457,7 @@ namespace trape.cli.trader.Analyze
             // Advise to sell
             var action = Action.Hold;
 
-            var lastCrossing = this._buffer.GetLatest1hAnd3hCrossing(stat3s.Symbol);
+            var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
 
             // Check if funds are available
             bool fundsAvailable = false;
@@ -483,11 +471,11 @@ namespace trape.cli.trader.Analyze
             }
 
             // Strong buy when crossing
-            if (stat10m.MovingAverage1h < stat10m.MovingAverage3h
-                || lowerLimitMA1h < stat10m.MovingAverage3h && stat10m.MovingAverage3h < upperLimitMA1h
-                || lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6)
+            if (stat10m.MovingAverage30m < stat10m.MovingAverage1h
+                || lowerLimitMA1h < stat10m.MovingAverage30m && stat10m.MovingAverage1h < upperLimitMA1h && stat2m.Slope5m > 0
+                || lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6) && stat2m.Slope5m > 0
                 || distanceOkAndTrendPositive
-                || (fundsAvailable && stat10m.Slope30m > 0.015M && stat10m.Slope1h > 0.005M && stat10m.Slope3h > 0.0035M))
+                || (fundsAvailable && stat2m.Slope15m > 0.015M && stat10m.Slope30m > 0.005M && stat10m.Slope1h > 0.0035M))
             {
                 action = Action.StrongBuy;
             }

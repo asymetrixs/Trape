@@ -37,10 +37,11 @@ namespace trape.jobs
         /// <param name="job"></param>
         public void Start(IJob job)
         {
-            if (null == job)
-            {
-                throw new ArgumentNullException("Paramter cannot be NULL");
-            }
+            #region Argument checks
+
+            _ = job ?? throw new ArgumentNullException(paramName: nameof(job));
+
+            #endregion
 
             var scheduler = new JobScheduler(job);
             this._schedulers.Add(scheduler);

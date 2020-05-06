@@ -10,6 +10,6 @@ namespace trape.jobs
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task Execute(CancellationToken cancellationToken);
+        Task Execute(CancellationToken cancellationToken = default);
     }
 }

@@ -108,10 +108,19 @@ namespace trape.cli.trader.Trading
         /// <param name="buffer">Buffer</param>
         public Broker(ILogger logger, IAccountant accountant, IAnalyst analyst, IBuffer buffer, IBinanceClient binanceClient)
         {
-            if (logger == null || accountant == null || analyst == null || buffer == null || binanceClient == null)
-            {
-                throw new ArgumentNullException("Parameter cannot be NULL");
-            }
+            #region Argument checks
+
+            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
+
+            _ = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
+
+            _ = analyst ?? throw new ArgumentNullException(paramName: nameof(analyst));
+
+            _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+
+            _ = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
+
+            #endregion
 
             this._logger = logger.ForContext<Broker>();
             this._accountant = accountant;
@@ -210,7 +219,11 @@ namespace trape.cli.trader.Trading
                 if (recommendation.Action == Analyze.Action.Buy
                     || recommendation.Action == Analyze.Action.StrongBuy)
                 {
-                    await this.Buy(recommendation, symbolInfo, database, newClientOrderId, lastOrder).ConfigureAwait(true);
+                    // Buy
+                    await this.Buy(recommendation, symbolInfo, database, lastOrder).ConfigureAwait(true);
+
+                    // But check if profit sells can be made
+                    await this.Sell(recommendation, lastOrders, symbolInfo, database, Analyze.Action.TakeProfitsSell).ConfigureAwait(true);
                 }
                 // Sell
                 else if (recommendation.Action == Analyze.Action.Sell
@@ -218,7 +231,7 @@ namespace trape.cli.trader.Trading
                     || recommendation.Action == Analyze.Action.PanicSell
                     || recommendation.Action == Analyze.Action.TakeProfitsSell)
                 {
-                    await this.Sell(recommendation, lastOrders, symbolInfo, database, newClientOrderId, lastOrder).ConfigureAwait(true);
+                    await this.Sell(recommendation, lastOrders, symbolInfo, database, Analyze.Action.None, lastOrder).ConfigureAwait(true);
                 }
 
                 // Log recommended action, use for strong recommendations
@@ -256,32 +269,19 @@ namespace trape.cli.trader.Trading
         /// <param name="recommendation">Recommendation</param>
         /// <param name="symbolInfo">Symbol information</param>
         /// <param name="database">Database conneciton</param>
-        /// <param name="newClientOrderId">Generated new client order id</param>
         /// <param name="lastOrder">Last order, if any</param>
+        /// 
         /// <returns>Placed order or null if none placed</returns>
-        public async Task Buy(Recommendation recommendation, BinanceSymbol symbolInfo, ITrapeContext database, string newClientOrderId, LastOrder lastOrder = null)
+        public async Task Buy(Recommendation recommendation, BinanceSymbol symbolInfo, ITrapeContext database,
+            LastOrder lastOrder = null)
         {
             #region Argument checks
 
-            if (recommendation == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(recommendation));
-            }
+            _ = recommendation ?? throw new ArgumentNullException(paramName: nameof(recommendation));
 
-            if (symbolInfo == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(symbolInfo));
-            }
+            _ = symbolInfo ?? throw new ArgumentNullException(paramName: nameof(symbolInfo));
 
-            if (database == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(database));
-            }
-
-            if (string.IsNullOrEmpty(newClientOrderId))
-            {
-                throw new ArgumentNullException(paramName: nameof(newClientOrderId));
-            }
+            _ = database ?? throw new ArgumentNullException(paramName: nameof(database));
 
             #endregion
 
@@ -318,7 +318,7 @@ namespace trape.cli.trader.Trading
                 var bestAskPrice = this._buffer.GetAskPrice(this.Symbol);
 
                 // Logging
-                this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestAskPrice:{Math.Round(bestAskPrice, symbolInfo.BaseAssetPrecision)};availableAmount:{availableUSDT}");
+                this._logger.Debug($"{this.Symbol} Buy: {recommendation.Action} bestAskPrice:{Math.Round(bestAskPrice, symbolInfo.BaseAssetPrecision)};availableAmount:{availableUSDT}");
                 this._logger.Verbose($"{this.Symbol} Buy: Checking conditions");
                 this._logger.Verbose($"{this.Symbol} Buy: {null == lastOrder} lastOrder is null");
                 this._logger.Verbose($"{this.Symbol} Buy: {lastOrder?.Side.ToString()} lastOrder side");
@@ -409,34 +409,18 @@ namespace trape.cli.trader.Trading
         /// <param name="newClientOrderId">Generated new client order id</param>
         /// <param name="lastOrder">Last order, if any</param>
         /// <returns>Placed order or null if none placed</returns>
-        public async Task<WebCallResult<BinancePlacedOrder>> Sell(Recommendation recommendation, IEnumerable<LastOrder> lastOrders, BinanceSymbol symbolInfo, ITrapeContext database, string newClientOrderId, LastOrder lastOrder = null)
+        public async Task<WebCallResult<BinancePlacedOrder>> Sell(Recommendation recommendation, IEnumerable<LastOrder> lastOrders,
+            BinanceSymbol symbolInfo, ITrapeContext database, Analyze.Action profitAction, LastOrder lastOrder = null)
         {
             #region Argument checks
 
-            if (recommendation == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(recommendation));
-            }
+            _ = recommendation ?? throw new ArgumentNullException(paramName: nameof(recommendation));
 
-            if (lastOrders == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(lastOrders));
-            }
+            _ = lastOrders ?? throw new ArgumentNullException(paramName: nameof(lastOrders));
 
-            if (symbolInfo == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(symbolInfo));
-            }
+            _ = symbolInfo ?? throw new ArgumentNullException(paramName: nameof(symbolInfo));
 
-            if (database == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(database));
-            }
-
-            if (string.IsNullOrEmpty(newClientOrderId))
-            {
-                throw new ArgumentNullException(paramName: nameof(newClientOrderId));
-            }
+            _ = database ?? throw new ArgumentNullException(paramName: nameof(database));
 
             #endregion
 
@@ -452,7 +436,7 @@ namespace trape.cli.trader.Trading
 
                 if (recommendation.Action == Analyze.Action.PanicSell)
                 {
-                    this._logger.Warning($"{this.Symbol}: PANICKING - but no asset free for sale");
+                    this._logger.Warning($"{this.Symbol}: PANICKING - but no asset free to sell");
                 }
             }
             else
@@ -461,23 +445,54 @@ namespace trape.cli.trader.Trading
                 var bestBidPrice = this._buffer.GetBidPrice(this.Symbol);
 
                 // Normal - Do not sell below buying price
-                // - Where buying price is smaller than selling price * 0.998                
+                // - Where buying price * 1.002 (0.2%) is smaller than bidding price
                 // Select quantities
                 var availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy
-                                                            && /* Normal: 0.2% lower */
-                                                                l.Price < (bestBidPrice * 0.998M)
+                                                            && /* Bid price is 0.2% higher */
+                                                                l.Price * 1.002M < bestBidPrice
                                                             && l.Quantity > l.Consumed)
                                                         .Sum(l => (l.Quantity - l.Consumed));
+
+
+                if (profitAction == Analyze.Action.TakeProfitsSell)
+                {
+                    this._logger.Verbose($"{this.Symbol}: Checking Buy-TakerProfitsSell");
+
+                    var stat3s = this._buffer.Stats3sFor(this.Symbol);
+                    var stat15s = this._buffer.Stats15sFor(this.Symbol);
+                    var stat2m = this._buffer.Stats2mFor(this.Symbol);
+                    var stat10m = this._buffer.Stats10mFor(this.Symbol);
+                    var stat2h = this._buffer.Stats2hFor(this.Symbol);
+
+                    // if recently falling
+                    if (stat2m.Slope10m < -0.015M
+                        && stat15s.Slope3m < -0.05M
+                        && stat15s.MovingAverage1m < 0)
+                    {
+                        availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy
+                                                                && /* Bid price is 0.6% higher */
+                                                                    l.Price * 1.006M < bestBidPrice
+                                                                && l.Quantity > l.Consumed)
+                                                            .Sum(l => (l.Quantity - l.Consumed));
+                        this._logger.Information($"{this.Symbol}: Buy-TakerProfitsSell for {availableAssetQuantity:0.00}");
+                    }
+                    else
+                    {
+                        availableAssetQuantity = 0;
+                    }
+                }
 
                 // Stop-Loss - Limit loss
                 // - Where buying-price was 0.5% higher than current price
                 // And where assets are available and side is buy
                 // Select quantities
                 var stopLossQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy
-                                                            && /* Stop-Loss: 0.5% higher */
-                                                                l.Price > (bestBidPrice * 1.005M)
+                                                            && /* Stop-Loss: 1.0% lower */
+                                                                l.Price * 0.99M > bestBidPrice
                                                                     && recommendation.Action == Analyze.Action.StrongSell
-                                                            && l.Quantity > l.Consumed)
+                                                            && l.Quantity > l.Consumed
+                                                            // Only if not in upwards trend
+                                                            && profitAction != Analyze.Action.TakeProfitsSell)
                                                         .Sum(l => (l.Quantity - l.Consumed));
 
                 // Reduce by 1% due to possible differences between database and Binance
@@ -505,13 +520,18 @@ namespace trape.cli.trader.Trading
                     assetBalanceToSell = assetBalance?.Free * 0.75M < assetBalanceToSell ? assetBalanceToSell : assetBalance?.Free * 0.75M;
                 }
 
+                // Wait until previous trades were handled
+                var lockedOpenOrderAmount = this._buffer.GetOpenOrderValue(this.Symbol);
+                assetBalanceToSell = lockedOpenOrderAmount == 0 ? assetBalanceToSell : 0;
+
+
                 // Sell as much required to get this total USDT price
                 var aimToGetUSDT = assetBalanceToSell * bestBidPrice;
                 // Round to a valid value
                 aimToGetUSDT = Math.Round(aimToGetUSDT.Value, symbolInfo.BaseAssetPrecision, MidpointRounding.ToZero);
 
                 // Logging
-                this._logger.Debug($"{this.Symbol}: {recommendation.Action} bestBidPrice:{Math.Round(bestBidPrice, symbolInfo.BaseAssetPrecision)};assetBalance.Free:{assetBalance?.Free};sellQuoteOrderQuantity:{assetBalanceToSell};sellToGetUSDT:{aimToGetUSDT}");
+                this._logger.Debug($"{this.Symbol} Sell: {recommendation.Action} bestBidPrice:{Math.Round(bestBidPrice, symbolInfo.BaseAssetPrecision)};assetBalance.Free:{assetBalance?.Free:0.00};sellQuoteOrderQuantity:{assetBalanceToSell:0.00};sellToGetUSDT:{aimToGetUSDT:0.00};lockedOpenOrderAmount:{lockedOpenOrderAmount:0.00}");
                 this._logger.Verbose($"{this.Symbol} Sell: Checking conditions");
                 this._logger.Verbose($"{this.Symbol} Sell: {null == lastOrder} lastOrder is null");
                 this._logger.Verbose($"{this.Symbol} Sell: {lastOrder?.Side.ToString()} lastOrder side");

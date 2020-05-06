@@ -1,5 +1,6 @@
 ﻿using Binance.Net.Interfaces;
 using Binance.Net.Objects;
+using Microsoft.EntityFrameworkCore.Internal;
 using Serilog;
 using System;
 using System.Collections.Concurrent;
@@ -65,6 +66,11 @@ namespace trape.cli.trader.Cache
         private IEnumerable<LatestMA10mAndMA30mCrossing> _latestMA10mAnd30mCrossing;
 
         /// <summary>
+        /// Time when moving average 10m and moving average 30m crossed last
+        /// </summary>
+        private IEnumerable<LatestMA30mAndMA1hCrossing> _latestMA30mAnd1hCrossing;
+
+        /// <summary>
         /// Time when moving average 1h and moving average 3h crossed last
         /// </summary>
         private IEnumerable<LatestMA1hAndMA3hCrossing> _latestMA1hAnd3hCrossing;
@@ -73,6 +79,11 @@ namespace trape.cli.trader.Cache
         /// Holds the last time per symbol when the price dropped for the first time
         /// </summary>
         private Dictionary<string, FallingPrice> _fallingPrices;
+
+        /// <summary>
+        /// Cache for open orders
+        /// </summary>
+        private Dictionary<string, OpenOrder> _openOrders;
 
         #region Jobs
 
@@ -94,15 +105,15 @@ namespace trape.cli.trader.Cache
 
         #region Stats
 
-        public IEnumerable<Stats3s> Stats3s { get; private set; }
+        private IEnumerable<Stats3s> _stats3s;
 
-        public IEnumerable<Stats15s> Stats15s { get; private set; }
+        private IEnumerable<Stats15s> _stats15s;
 
-        public IEnumerable<Stats2m> Stats2m { get; private set; }
+        private IEnumerable<Stats2m> _stats2m;
 
-        public IEnumerable<Stats10m> Stats10m { get; private set; }
+        private IEnumerable<Stats10m> _stats10m;
 
-        public IEnumerable<Stats2h> Stats2h { get; private set; }
+        private IEnumerable<Stats2h> _stats2h;
 
         #endregion
 
@@ -118,10 +129,15 @@ namespace trape.cli.trader.Cache
         /// <param name="binanceSocketClient">Binance Socket Client</param>
         public Buffer(ILogger logger, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
         {
-            if (null == logger || null == binanceClient || null == binanceSocketClient)
-            {
-                throw new ArgumentNullException("Parameter cannot be NULL");
-            }
+            #region Argument checks
+
+            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
+
+            _ = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
+
+            _ = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
+
+            #endregion
 
             this._logger = logger.ForContext<Buffer>();
             this._binanceClient = binanceClient;
@@ -132,8 +148,10 @@ namespace trape.cli.trader.Cache
             this._bestBidPrices = new ConcurrentDictionary<string, BestPrice>();
             this._binanceExchangeInfo = null;
             this._latestMA10mAnd30mCrossing = new List<LatestMA10mAndMA30mCrossing>();
+            this._latestMA30mAnd1hCrossing = new List<LatestMA30mAndMA1hCrossing>();
             this._latestMA1hAnd3hCrossing = new List<LatestMA1hAndMA3hCrossing>();
             this._fallingPrices = new Dictionary<string, FallingPrice>();
+            this._openOrders = new Dictionary<string, OpenOrder>();
 
             #region Job setup
 
@@ -165,12 +183,14 @@ namespace trape.cli.trader.Cache
 
             var database = Pool.DatabasePool.Get();
             var awaitLatestMA10mAndMA30mCrossing = database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token);
+            var awaitLatestMA30mAndMA1hCrossing = database.GetLatestMA30mAndMA1hCrossing(this._cancellationTokenSource.Token);
             var awaitLatestMA1hAndMA3hCrossing = database.GetLatestMA1hAndMA3hCrossing(this._cancellationTokenSource.Token);
 
             // Execute in parallel
             await Task.WhenAll(awaitLatestMA10mAndMA30mCrossing, awaitLatestMA1hAndMA3hCrossing).ConfigureAwait(false);
 
             this._latestMA10mAnd30mCrossing = awaitLatestMA10mAndMA30mCrossing.Result;
+            this._latestMA30mAnd1hCrossing = awaitLatestMA30mAndMA1hCrossing.Result;
             this._latestMA1hAnd3hCrossing = awaitLatestMA1hAndMA3hCrossing.Result;
             Pool.DatabasePool.Put(database);
 
@@ -187,11 +207,11 @@ namespace trape.cli.trader.Cache
             this._logger.Verbose("Updating 3 seconds trend");
 
             var database = Pool.DatabasePool.Get();
-            this.Stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this._stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
 
             // Set falling prices
-            foreach (var stat in this.Stats3s)
+            foreach (var stat in this._stats3s)
             {
                 var currentPrice = this.GetBidPrice(stat.Symbol);
 
@@ -233,7 +253,7 @@ namespace trape.cli.trader.Cache
             this._logger.Verbose("Updating 15 seconds trend");
 
             var database = Pool.DatabasePool.Get();
-            this.Stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this._stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Updated 15 seconds trend");
@@ -249,7 +269,7 @@ namespace trape.cli.trader.Cache
             this._logger.Verbose("Updating 2 minutes trend");
 
             var database = Pool.DatabasePool.Get();
-            this.Stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this._stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Updated 2 minutes trend");
@@ -265,7 +285,7 @@ namespace trape.cli.trader.Cache
             this._logger.Verbose("Updating 10 minutes trend");
 
             var database = Pool.DatabasePool.Get();
-            this.Stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this._stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Updated 10 minutes trend");
@@ -281,7 +301,7 @@ namespace trape.cli.trader.Cache
             this._logger.Verbose("Updating 2 hours trend");
 
             var database = Pool.DatabasePool.Get();
-            this.Stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this._stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             Pool.DatabasePool.Put(database);
 
             this._logger.Verbose("Updated 2 hours trend");
@@ -307,18 +327,119 @@ namespace trape.cli.trader.Cache
         #region Methods
 
         /// <summary>
+        /// Stores open orders
+        /// </summary>
+        /// <param name="openOrder">Open order</param>
+        public void AddOpenOrder(OpenOrder openOrder)
+        {
+            if (this._openOrders.ContainsKey(openOrder.GUID))
+            {
+                this._openOrders.Remove(openOrder.GUID);
+            }
+
+            this._openOrders.Add(openOrder.GUID, openOrder);
+        }
+
+        /// <summary>
+        /// Removes an open order
+        /// </summary>
+        /// <param name="clientOrderId">Id of open order</param>
+        public void RemoveOpenOrder(string clientOrderId)
+        {
+            this._openOrders.Remove(clientOrderId);
+        }
+
+        /// <summary>
+        /// Returns the currently blocked
+        /// </summary>
+        public decimal GetOpenOrderValue(string symbol)
+        {
+            return this._openOrders.Where(o => o.Value.Symbol == symbol).Sum(o => o.Value.EstimatedQuoteOrderQuantity);
+        }
+
+        /// <summary>
+        /// Stats3s
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        public Stats3s Stats3sFor(string symbol)
+        {
+            // Reference current buffer data
+            var s3s = this._stats3s;
+
+            // Extract data for current symbol
+            return s3s.FirstOrDefault(t => t.Symbol == symbol);
+        }
+
+        /// <summary>
+        /// Stats15s
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        public Stats15s Stats15sFor(string symbol)
+        {
+            // Reference current buffer dat
+            var s15s = this._stats15s;
+
+            // Extract data for current symbol
+            return s15s.FirstOrDefault(t => t.Symbol == symbol);
+        }
+
+        /// <summary>
+        /// Stats2m
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        public Stats2m Stats2mFor(string symbol)
+        {
+            // Reference current buffer data
+            var s2m = this._stats2m;
+
+            // Extract data for current symbol
+            return s2m.FirstOrDefault(t => t.Symbol == symbol);
+        }
+
+        /// <summary>
+        /// Stats10m
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        public Stats10m Stats10mFor(string symbol)
+        {
+            // Reference current buffer data
+            var s10m = this._stats10m;
+
+            // Extract data for current symbol
+            return s10m.FirstOrDefault(t => t.Symbol == symbol);
+        }
+
+        /// <summary>
+        /// Stats2h
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        public Stats2h Stats2hFor(string symbol)
+        {
+            // Reference current buffer data
+            var s2h = this._stats2h;
+
+            // Extract data for current symbol            
+            return s2h.FirstOrDefault(t => t.Symbol == symbol);
+        }
+
+        /// <summary>
         /// Returns the available symbols the buffer has data for
         /// </summary>
         /// <returns>List of symbols</returns>
         public IEnumerable<string> GetSymbols()
         {
             // Take symbols that are we have data for
-            if (null == this.Stats10m)
+            if (this._stats10m == null)
             {
                 return new List<string>();
             }
 
-            return this.Stats10m.Where(t => t.IsValid()).Select(t => t.Symbol);
+            return this._stats10m.Where(t => t.IsValid()).Select(t => t.Symbol);
         }
 
         /// <summary>
@@ -381,7 +502,7 @@ namespace trape.cli.trader.Cache
 
             var symbolInfo = this._binanceExchangeInfo.Symbols.SingleOrDefault(s => s.Name == symbol);
 
-            if (null == symbolInfo || symbolInfo.Status != SymbolStatus.Trading)
+            if (symbolInfo == null || symbolInfo.Status != SymbolStatus.Trading)
             {
                 this._logger.Warning($"{symbol}: No exchange info available");
                 return null;
@@ -399,6 +520,18 @@ namespace trape.cli.trader.Cache
         {
             // Save ref
             var latest = this._latestMA10mAnd30mCrossing;
+            return latest.SingleOrDefault(s => s.Symbol == symbol);
+        }
+
+        /// <summary>
+        /// Returns the last time Slope 30m and Slope 1h were crossing
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        public LatestMA30mAndMA1hCrossing GetLatest30mAnd1hCrossing(string symbol)
+        {
+            // Save ref
+            var latest = this._latestMA30mAnd1hCrossing;
             return latest.SingleOrDefault(s => s.Symbol == symbol);
         }
 
@@ -445,11 +578,11 @@ namespace trape.cli.trader.Cache
             // Initial loading
             this._logger.Debug("Preloading buffer");
             var database = Pool.DatabasePool.Get();
-            this.Stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this.Stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this.Stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this.Stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this.Stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this._stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this._stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this._stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this._stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+            this._stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this._latestMA10mAnd30mCrossing = await database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
             Pool.DatabasePool.Put(database);
@@ -457,7 +590,7 @@ namespace trape.cli.trader.Cache
 
             this._logger.Debug("Buffer preloaded");
 
-            this._logger.Information($"Symbols to subscribe to are {String.Join(',', this.Stats2h.Select(s => s.Symbol))}, starting the subscription process");
+            this._logger.Information($"Symbols to subscribe to are {String.Join(',', this._stats2h.Select(s => s.Symbol))}, starting the subscription process");
 
             // Tries 30 times to subscribe to the ticker
             var countTillHardExit = 30;
@@ -466,7 +599,7 @@ namespace trape.cli.trader.Cache
                 try
                 {
                     // Subscribe to all symbols
-                    await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this.Stats2h.Select(s => s.Symbol), async (BinanceBookTick bbt) =>
+                    await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this._stats2h.Select(s => s.Symbol), async (BinanceBookTick bbt) =>
                     {
                         var askPriceAdded = false;
                         var bidPriceAdded = false;
@@ -520,9 +653,9 @@ namespace trape.cli.trader.Cache
                     // Log what stats are missing
                     #region Log invalid stats
 
-                    if (this.Stats3s != null)
+                    if (this._stats3s != null)
                     {
-                        foreach (var s in this.Stats3s)
+                        foreach (var s in this._stats3s)
                         {
                             if (!s.IsValid())
                             {
@@ -534,9 +667,9 @@ namespace trape.cli.trader.Cache
                             }
                         }
                     }
-                    if (this.Stats15s != null)
+                    if (this._stats15s != null)
                     {
-                        foreach (var s in this.Stats3s)
+                        foreach (var s in this._stats3s)
                         {
                             if (!s.IsValid())
                             {
@@ -548,9 +681,9 @@ namespace trape.cli.trader.Cache
                             }
                         }
                     }
-                    if (this.Stats2m != null)
+                    if (this._stats2m != null)
                     {
-                        foreach (var s in this.Stats3s)
+                        foreach (var s in this._stats3s)
                         {
                             if (!s.IsValid())
                             {
@@ -562,9 +695,9 @@ namespace trape.cli.trader.Cache
                             }
                         }
                     }
-                    if (this.Stats10m != null)
+                    if (this._stats10m != null)
                     {
-                        foreach (var s in this.Stats3s)
+                        foreach (var s in this._stats3s)
                         {
                             if (!s.IsValid())
                             {
@@ -576,9 +709,9 @@ namespace trape.cli.trader.Cache
                             }
                         }
                     }
-                    if (this.Stats2h != null)
+                    if (this._stats2h != null)
                     {
-                        foreach (var s in this.Stats3s)
+                        foreach (var s in this._stats3s)
                         {
                             if (!s.IsValid())
                             {

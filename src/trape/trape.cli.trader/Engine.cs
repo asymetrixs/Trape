@@ -77,40 +77,19 @@ namespace trape.cli.trader
         {
             #region Argument checks
 
-            if (logger == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(logger));
-            }
+            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(buffer));
-            }
+            _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
-            if (analyst == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(analyst));
-            }
+            _ = analyst ?? throw new ArgumentNullException(paramName: nameof(analyst));
 
-            if (tradingTeam == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(tradingTeam));
-            }
+            _ = tradingTeam ?? throw new ArgumentNullException(paramName: nameof(tradingTeam));
 
-            if (accountant == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(accountant));
-            }
+            _ = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            if (feeWatchdog == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(feeWatchdog));
-            }
+            _ = feeWatchdog ?? throw new ArgumentNullException(paramName: nameof(feeWatchdog));
 
-            if (checker == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(checker));
-            }
+            _ = checker ?? throw new ArgumentNullException(paramName: nameof(checker));
 
             #endregion
 
@@ -157,7 +136,7 @@ namespace trape.cli.trader
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async override Task StopAsync(CancellationToken cancellationToken)
+        public async override Task StopAsync(CancellationToken cancellationToken = default)
         {
             this._logger.Information("Engine is stopping");
 

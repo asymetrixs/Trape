@@ -91,15 +91,9 @@ namespace trape.cli.collector.DataCollection
         {
             #region Argument checks
 
-            if (logger == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(logger));
-            }
+            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            if (binanceSocketClient == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
-            }
+            _ = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
 
             #endregion
 
@@ -230,7 +224,7 @@ namespace trape.cli.collector.DataCollection
         /// <param name="bst">Binance Stream Tick</param>
         /// <param name="cancellationToken">Canellation Token</param>
         /// <returns></returns>
-        public static async Task Save(BinanceStreamTick bst, CancellationToken cancellationToken)
+        public static async Task Save(BinanceStreamTick bst, CancellationToken cancellationToken = default)
         {
             var database = Pool.DatabasePool.Get();
             await database.Insert(bst, cancellationToken).ConfigureAwait(false);
@@ -243,7 +237,7 @@ namespace trape.cli.collector.DataCollection
         /// <param name="bskd">Binance Stream Kline Data</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        public static async Task Save(BinanceStreamKlineData bskd, CancellationToken cancellationToken)
+        public static async Task Save(BinanceStreamKlineData bskd, CancellationToken cancellationToken = default)
         {
             var database = Pool.DatabasePool.Get();
             await database.Insert(bskd, cancellationToken).ConfigureAwait(false);
@@ -256,7 +250,7 @@ namespace trape.cli.collector.DataCollection
         /// <param name="bbt">Binance Book Tick</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        public static async Task Save(BinanceBookTick bbt, CancellationToken cancellationToken)
+        public static async Task Save(BinanceBookTick bbt, CancellationToken cancellationToken = default)
         {
             var database = Pool.DatabasePool.Get();
             await database.Insert(bbt, cancellationToken).ConfigureAwait(false);
@@ -299,7 +293,7 @@ namespace trape.cli.collector.DataCollection
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public override async Task StopAsync(CancellationToken cancellationToken)
+        public override async Task StopAsync(CancellationToken cancellationToken = default)
         {
             this._shutdown = true;
 

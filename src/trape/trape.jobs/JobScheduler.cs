@@ -40,10 +40,7 @@ namespace trape.jobs
         {
             #region Argument checks
 
-            if (job == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(job));
-            }
+            _ = job ?? throw new ArgumentNullException(paramName: nameof(job));
 
             #endregion
 

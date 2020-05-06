@@ -41,10 +41,7 @@ namespace trape.cli.trader.WatchDog
         {
             #region Argument checks
 
-            if (logger == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(logger));
-            }
+            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
             #endregion
 

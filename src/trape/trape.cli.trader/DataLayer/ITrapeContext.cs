@@ -32,42 +32,42 @@ namespace trape.cli.trader.DataLayer
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
         Task InsertAsync(Analyze.Recommendation recommendation, Stats3s trend3Seconds, Stats15s trend15Seconds,
-        Stats2m trend2Minutes, Stats10m trend10Minutes, Stats2h trend2Hours, CancellationToken cancellationToken);
+            Stats2m trend2Minutes, Stats10m trend10Minutes, Stats2h trend2Hours, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns stats based on 3 seconds
         /// </summary>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task<IEnumerable<Stats3s>> Get3SecondsTrendAsync(CancellationToken cancellationToken);
+        Task<IEnumerable<Stats3s>> Get3SecondsTrendAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns stats based on 15 seconds
         /// </summary>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task<IEnumerable<Stats15s>> Get15SecondsTrendAsync(CancellationToken cancellationToken);
+        Task<IEnumerable<Stats15s>> Get15SecondsTrendAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns stats based on 2 minutes
         /// </summary>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task<IEnumerable<Stats2m>> Get2MinutesTrendAsync(CancellationToken cancellationToken);
+        Task<IEnumerable<Stats2m>> Get2MinutesTrendAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns stats based on 10 minutes
         /// </summary>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task<IEnumerable<Stats10m>> Get10MinutesTrendAsync(CancellationToken cancellationToken);
+        Task<IEnumerable<Stats10m>> Get10MinutesTrendAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns stats based on 2 hours
         /// </summary>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task<IEnumerable<Stats2h>> Get2HoursTrendAsync(CancellationToken cancellationToken);
+        Task<IEnumerable<Stats2h>> Get2HoursTrendAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns a list latest current prices for a symbol
@@ -75,21 +75,28 @@ namespace trape.cli.trader.DataLayer
         /// <param name="symbol">Symbol</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task<decimal> GetCurrentPriceAsync(string symbol, CancellationToken cancellationToken);
+        Task<decimal> GetCurrentPriceAsync(string symbol, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns per symbol the last time when the 10m moving average crossed the 30m moving average
         /// </summary>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task<IEnumerable<LatestMA10mAndMA30mCrossing>> GetLatestMA10mAndMA30mCrossing(CancellationToken cancellationToken);
+        Task<IEnumerable<LatestMA10mAndMA30mCrossing>> GetLatestMA10mAndMA30mCrossing(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Returns per symbol the last time when the 30m moving average crossed the 1h moving average
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation Token</param>
+        /// <returns></returns>
+        Task<IEnumerable<LatestMA30mAndMA1hCrossing>> GetLatestMA30mAndMA1hCrossing(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns per symbol the last time when the 3h moving average crossed the 3h moving average
         /// </summary>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task<IEnumerable<LatestMA1hAndMA3hCrossing>> GetLatestMA1hAndMA3hCrossing(CancellationToken cancellationToken);
+        Task<IEnumerable<LatestMA1hAndMA3hCrossing>> GetLatestMA1hAndMA3hCrossing(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Stores <c>BinanceStreamBalance</c> in the database
@@ -97,7 +104,7 @@ namespace trape.cli.trader.DataLayer
         /// <param name="binanceStreamBalances">Binance Stream Balances</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task InsertAsync(IEnumerable<BinanceStreamBalance> binanceStreamBalances, CancellationToken cancellationToken);
+        Task InsertAsync(IEnumerable<BinanceStreamBalance> binanceStreamBalances, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Stores <c>BinanceStreamBalanceUpdate</c> in the database
@@ -105,7 +112,7 @@ namespace trape.cli.trader.DataLayer
         /// <param name="binanceStreamBalanceUpdate">Binance Stream Balances</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task InsertAsync(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate, CancellationToken cancellationToken);
+        Task InsertAsync(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Stores <c>BinanceStreamOrderList</c> in the database
@@ -113,7 +120,7 @@ namespace trape.cli.trader.DataLayer
         /// <param name="binanceStreamOrderList">Binance Stream Balances</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task InsertAsync(BinanceStreamOrderList binanceStreamOrderList, CancellationToken cancellationToken);
+        Task InsertAsync(BinanceStreamOrderList binanceStreamOrderList, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Stores <c>BinanceStreamOrderUpdate</c> in the database
@@ -121,7 +128,7 @@ namespace trape.cli.trader.DataLayer
         /// <param name="binanceStreamOrderUpdate">Binance Stream Balances</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task InsertAsync(BinanceStreamOrderUpdate binanceStreamOrderUpdate, CancellationToken cancellationToken);
+        Task InsertAsync(BinanceStreamOrderUpdate binanceStreamOrderUpdate, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Stores <c>Order</c> in the database
@@ -129,7 +136,7 @@ namespace trape.cli.trader.DataLayer
         /// <param name="order">Binance Stream Balances</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task InsertAsync(Order order, CancellationToken cancellationToken);
+        Task InsertAsync(Order order, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Stores <c>BinancePlacedOrder</c> in the database
@@ -137,7 +144,7 @@ namespace trape.cli.trader.DataLayer
         /// <param name="binancePlacedOrder">Binance Stream Balances</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task InsertAsync(BinancePlacedOrder binancePlacedOrder, CancellationToken cancellationToken);
+        Task InsertAsync(BinancePlacedOrder binancePlacedOrder, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Queries the database for a list of last orders
@@ -145,7 +152,7 @@ namespace trape.cli.trader.DataLayer
         /// <param name="symbol">Symbol</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task<IEnumerable<LastOrder>> GetLastOrdersAsync(string symbol, CancellationToken cancellationToken);
+        Task<IEnumerable<LastOrder>> GetLastOrdersAsync(string symbol, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns the averaged price for the <paramref name="symbol"/> on <paramref name="dateTime"/>.
@@ -154,6 +161,6 @@ namespace trape.cli.trader.DataLayer
         /// <param name="dateTime">Date</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        Task<decimal> GetPriceOn(string symbol, DateTime dateTime, CancellationToken cancellationToken);
+        Task<decimal> GetPriceOn(string symbol, DateTime dateTime, CancellationToken cancellationToken = default);
     }
 }

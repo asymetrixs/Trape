@@ -59,15 +59,9 @@ namespace trape.cli.trader.Trading
         {
             #region Argument checks
 
-            if (logger == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(logger));
-            }
+            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(paramName: nameof(buffer));
-            }
+            _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             #endregion
 

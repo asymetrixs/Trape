@@ -12,31 +12,6 @@ namespace trape.cli.trader.Cache
     public interface IBuffer : IDisposable
     {
         /// <summary>
-        /// Holds ultra short term stats
-        /// </summary>
-        IEnumerable<Stats3s> Stats3s { get; }
-
-        /// <summary>
-        /// Holds short term stats
-        /// </summary>
-        IEnumerable<Stats15s> Stats15s { get; }
-
-        /// <summary>
-        /// Holds medium term stats
-        /// </summary>
-        IEnumerable<Stats2m> Stats2m { get; }
-
-        /// <summary>
-        /// Holds long term stats
-        /// </summary>
-        IEnumerable<Stats10m> Stats10m { get; }
-
-        /// <summary>
-        /// Holds ultra long term stats
-        /// </summary>
-        IEnumerable<Stats2h> Stats2h { get; }
-
-        /// <summary>
         /// Starts a buffer
         /// </summary>
         /// <returns></returns>
@@ -66,6 +41,58 @@ namespace trape.cli.trader.Cache
         /// <param name="symbol">Symbol</param>
         /// <returns>Bid price of the symol</returns>
         decimal GetBidPrice(string symbol);
+
+        /// <summary>
+        /// Stores open orders
+        /// </summary>
+        /// <param name="openOrder"></param>
+        void AddOpenOrder(OpenOrder openOrder);
+
+        /// <summary>
+        /// Removes an open order
+        /// </summary>
+        /// <param name="clientOrderId">Id of open order</param>
+        void RemoveOpenOrder(string clientOrderId);
+
+        /// <summary>
+        /// Returns the currently blocked
+        /// </summary>
+        decimal GetOpenOrderValue(string symbol);
+
+        /// <summary>
+        /// Stats3s
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        Stats3s Stats3sFor(string symbol);
+
+        /// <summary>
+        /// Stats15s
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        Stats15s Stats15sFor(string symbol);
+
+        /// <summary>
+        /// Stats2m
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        Stats2m Stats2mFor(string symbol);
+
+        /// <summary>
+        /// Stats10m
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        Stats10m Stats10mFor(string symbol);
+
+        /// <summary>
+        /// Stats2h
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        Stats2h Stats2hFor(string symbol);
 
         /// <summary>
         /// Returns exchange information for a symbol

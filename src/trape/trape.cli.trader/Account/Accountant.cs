@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using trape.cli.trader.Cache;
 using trape.jobs;
 
 namespace trape.cli.trader.Account
@@ -64,6 +65,11 @@ namespace trape.cli.trader.Account
         private readonly ILogger _logger;
 
         /// <summary>
+        /// Buffer
+        /// </summary>
+        private readonly IBuffer _buffer;
+
+        /// <summary>
         /// Cancellation Token Source
         /// </summary>
         private readonly CancellationTokenSource _cancellationTokenSource;
@@ -83,14 +89,20 @@ namespace trape.cli.trader.Account
         /// <param name="logger">Logger</param>
         /// <param name="binanceClient">Binance Client</param>
         /// <param name="binanceSocketClient">Binance Socket Client</param>
-        public Accountant(ILogger logger, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
+        public Accountant(ILogger logger, IBuffer buffer, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
         {
-            if (logger == null || binanceClient == null || binanceSocketClient == null)
-            {
-                throw new ArgumentNullException("Parameter cannot be NULL");
-            }
+            #region Argument checks
+
+            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
+
+            _ = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
+
+            _ = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
+
+            #endregion
 
             this._logger = logger.ForContext<Accountant>();
+            this._buffer = buffer;
             this._cancellationTokenSource = new CancellationTokenSource();
             this._binanceClient = binanceClient;
             this._binanceSocketClient = binanceSocketClient;
@@ -184,6 +196,14 @@ namespace trape.cli.trader.Account
             await database.InsertAsync(binanceStreamOrderUpdate, this._cancellationTokenSource.Token).ConfigureAwait(false);
             Pool.DatabasePool.Put(database);
 
+            if (binanceStreamOrderUpdate.Status == OrderStatus.Filled
+                || binanceStreamOrderUpdate.Status == OrderStatus.Rejected
+                || binanceStreamOrderUpdate.Status == OrderStatus.Expired
+                || binanceStreamOrderUpdate.Status == OrderStatus.Canceled)
+            {
+                this._buffer.RemoveOpenOrder(binanceStreamOrderUpdate.ClientOrderId);
+            }
+
             this._logger.Verbose("Received Binance Stream Order Update");
         }
 
@@ -247,7 +267,7 @@ namespace trape.cli.trader.Account
         {
             var bac = this._binanceAccountInfo;
 
-            if (null == bac || this._binanceAccountInfoUpdated < DateTime.UtcNow.AddSeconds(-6))
+            if (bac == null || this._binanceAccountInfoUpdated < DateTime.UtcNow.AddSeconds(-6))
             {
                 var accountInfoRequest = await this._binanceClient.GetAccountInfoAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(true);
 

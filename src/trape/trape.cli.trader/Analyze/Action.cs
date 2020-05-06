@@ -6,6 +6,10 @@
     public enum Action
     {
         /// <summary>
+        /// None
+        /// </summary>
+        None,
+        /// <summary>
         /// Hold
         /// </summary>
         Hold,

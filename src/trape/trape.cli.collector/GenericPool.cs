@@ -31,10 +31,11 @@ namespace trape.cli.collector
         /// <param name="ctor">Constructor or factory to create new instances</param>
         internal ObjectPool(Func<T> ctor)
         {
-            if (ctor == null)
-            {
-                throw new ArgumentException("Parameter ctor cannot be NULL");
-            }
+            #region Argument checks
+
+            _ = ctor ?? throw new ArgumentNullException(paramName: nameof(ctor));
+
+            #endregion
 
             this.ctor = ctor;
             this.objects = new ConcurrentBag<T>();
