@@ -196,7 +196,87 @@ namespace trape.cli.trader.Account
             var database = Pool.DatabasePool.Get();
             try
             {
+                // Save Order Update
                 database.OrderUpdates.Add(Translator.Translate(binanceStreamOrderUpdate));
+
+                // If sell and filled, remove quantity from buy
+                if (binanceStreamOrderUpdate.Side == OrderSide.Sell && binanceStreamOrderUpdate.Status == OrderStatus.Filled)
+                {
+                    // Get trades where assets were bought
+                    var buyTrades = database.PlacedOrders
+                                    .Where(p => p.Side == datalayer.Enums.OrderSide.Buy
+                                        && p.Symbol == binanceStreamOrderUpdate.Symbol)
+                                    .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity
+                                                                && f.Price <= binanceStreamOrderUpdate.Price))
+                                    .OrderByDescending(t => t.Price);
+
+                    var soldQuantity = binanceStreamOrderUpdate.AccumulatedQuantityOfFilledTrades;
+
+                    // Fill trades with sold quantity
+                    foreach(var trade in buyTrades)
+                    {
+                        var freeQuantity = trade.Quantity - trade.ConsumedQuantity;
+
+                        // Free quantity is more than soldQuantity, substract all from one trade
+                        if(freeQuantity > soldQuantity)
+                        {
+                            trade.ConsumedQuantity -= soldQuantity;
+                            soldQuantity = 0;
+                            break;
+                        }
+                        else
+                        {
+                            // Substract what is available
+                            // Substract what can be used for the trade
+                            soldQuantity -= (trade.Quantity - trade.ConsumedQuantity);
+                            trade.ConsumedQuantity = trade.Quantity;                            
+                        }
+
+                        if(soldQuantity == 0)
+                        {
+                            break;
+                        }
+                    }
+
+                    // In case it was sold over price, remove from smallest over price first
+                    if(soldQuantity != 0)
+                    {
+                        // Get trades where assets were bought
+                        var overPriceBuyTrades = database.PlacedOrders
+                                        .Where(p => p.Side == datalayer.Enums.OrderSide.Buy
+                                            && p.Symbol == binanceStreamOrderUpdate.Symbol)
+                                        .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity
+                                                                    && f.Price > binanceStreamOrderUpdate.Price))
+                                        .OrderBy(t => t.Price);
+                        
+                        // Fill trades with sold quantity
+                        foreach (var trade in overPriceBuyTrades)
+                        {
+                            var freeQuantity = trade.Quantity - trade.ConsumedQuantity;
+
+                            // Free quantity is more than soldQuantity, substract all from one trade
+                            if (freeQuantity > soldQuantity)
+                            {
+                                trade.ConsumedQuantity -= soldQuantity;
+                                soldQuantity = 0;
+                                break;
+                            }
+                            else
+                            {
+                                // Substract what is available
+                                // Substract what can be used for the trade
+                                soldQuantity -= (trade.Quantity - trade.ConsumedQuantity);
+                                trade.ConsumedQuantity = trade.Quantity;
+                            }
+
+                            if (soldQuantity == 0)
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 await database.SaveChangesAsync();
             }
             catch (Exception e)
@@ -210,7 +290,7 @@ namespace trape.cli.trader.Account
                 Pool.DatabasePool.Put(database);
             }
 
-
+            // Clear blocked amount
             if (binanceStreamOrderUpdate.Status == OrderStatus.Filled
                 || binanceStreamOrderUpdate.Status == OrderStatus.Rejected
                 || binanceStreamOrderUpdate.Status == OrderStatus.Expired

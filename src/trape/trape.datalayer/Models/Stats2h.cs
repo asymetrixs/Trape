@@ -1,92 +1,72 @@
-﻿namespace trape.datalayer.Models
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace trape.datalayer.Models
 {
     /// <summary>
     /// [Deprecated] Class for stats of based on 2 hours refresh
     /// </summary>
     public sealed class Stats2h
     {
-        #region Constructor
-
-        /// <summary>
-        /// Initializes a new instance of the <c>Stats2h</c> class.
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <param name="dataBasis">Data Basis</param>
-        /// <param name="slope6h">Slope 6 hours</param>
-        /// <param name="slope12h">Slope 12 hours</param>
-        /// <param name="slope18h">Slope 18 hours</param>
-        /// <param name="slope1d">Slope 1 day</param>
-        /// <param name="movav6h">Moving Average 6 hours</param>
-        /// <param name="movav12h">Moving Average 12 hours</param>
-        /// <param name="movav18h">Moving Average 18 hours</param>
-        /// <param name="movav1d">Moving Average 1 day</param>
-        public Stats2h(string symbol, int dataBasis, decimal slope6h, decimal slope12h, decimal slope18h, decimal slope1d,
-            decimal movav6h, decimal movav12h, decimal movav18h, decimal movav1d)
-        {
-            this.Symbol = symbol;
-            this.DataBasis = dataBasis;
-            this.Slope6h = slope6h;
-            this.Slope12h = slope12h;
-            this.Slope18h = slope18h;
-            this.Slope1d = slope1d;
-            this.MovingAverage6h = movav6h;
-            this.MovingAverage12h = movav12h;
-            this.MovingAverage18h = movav18h;
-            this.MovingAverage1d = movav1d;
-        }
-
-        #endregion
-
         #region Properties
 
         /// <summary>
         /// Symbol
         /// </summary>
+        [Column("r_symbol")]
         public string Symbol { get; private set; }
 
         /// <summary>
         /// Data Basis
         /// </summary>
+        [Column("r_databasis")]
         public int DataBasis { get; private set; }
 
         /// <summary>
         /// [Deprecated] Slope 6 hours
         /// </summary>
+        [Column("r_slope_6h")]
         public decimal Slope6h { get; private set; }
 
         /// <summary>
         /// [Deprecated] Slope 12 hours
         /// </summary>
+        [Column("r_slope_12h")]
         public decimal Slope12h { get; private set; }
 
         /// <summary>
         /// [Deprecated] Slope 18 hours
         /// </summary>
+        [Column("r_slope_18h")]
         public decimal Slope18h { get; private set; }
 
         /// <summary>
         /// [Deprecated] Slope 1 day
         /// </summary>
+        [Column("r_slope_1d")]
         public decimal Slope1d { get; private set; }
 
         /// <summary>
         /// [Deprecated] Moving Average 6 hours
         /// </summary>
+        [Column("r_movav_6h")]
         public decimal MovingAverage6h { get; private set; }
 
         /// <summary>
         /// [Deprecated] Moving Average 12 hours
         /// </summary>
+        [Column("r_movav_12h")]
         public decimal MovingAverage12h { get; private set; }
 
         /// <summary>
         /// [Deprecated] Moving Average 18 hours
         /// </summary>
+        [Column("r_movav_18h")]
         public decimal MovingAverage18h { get; private set; }
 
         /// <summary>
         /// [Deprecated] Moving Average 1 day
         /// </summary>
+        [Column("r_movav_1d")]
         public decimal MovingAverage1d { get; private set; }
 
         #endregion

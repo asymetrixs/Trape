@@ -99,7 +99,7 @@ namespace trape.cli.trader.Trading
             }
             else
             {
-                this._logger.Debug($"Found {availableSymbols.Count} symbols to trade");
+                this._logger.Debug($"Found {availableSymbols.Count()} symbols to trade");
             }
 
             var obsoleteBrokers = this._team.Where(t => !availableSymbols.Contains(t.Symbol));

@@ -11,8 +11,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using trape.datalayer;
 using trape.jobs;
 using trape.mapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace trape.cli.collector.DataCollection
 {
@@ -76,7 +78,7 @@ namespace trape.cli.collector.DataCollection
         /// <summary>
         /// Checks periodically if symbols have to be added or dropped
         /// </summary>
-        private System.Timers.Timer _timerSubscriptionManager;
+        private Job _jobSubscriptionManager;
 
         /// <summary>
         /// Holds list of active subscriptions
@@ -114,12 +116,7 @@ namespace trape.cli.collector.DataCollection
             #region Timer Setup
 
             // Check every five seconds
-            this._timerSubscriptionManager = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = new TimeSpan(0, 0, 5).TotalMilliseconds
-            };
-            this._timerSubscriptionManager.Elapsed += _timerSubscriptionManager_Elapsed;
+            this._jobSubscriptionManager = new Job(new TimeSpan(0, 0, 5), async () => await _manage());
 
             #endregion
 
@@ -134,7 +131,7 @@ namespace trape.cli.collector.DataCollection
                 }
             );
 
-            this._binanceStreamKlineDataBuffer = new ActionBlock<BinanceStreamKlineData>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(false),
+            this._binanceStreamKlineDataBuffer = new ActionBlock<BinanceStreamKlineData>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(true),
                 new ExecutionDataflowBlockOptions()
                 {
                     MaxDegreeOfParallelism = 4,
@@ -142,7 +139,7 @@ namespace trape.cli.collector.DataCollection
                     SingleProducerConstrained = false
                 });
 
-            this._binanceBookTickBuffer = new ActionBlock<BinanceBookTick>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(false),
+            this._binanceBookTickBuffer = new ActionBlock<BinanceBookTick>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(true),
                 new ExecutionDataflowBlockOptions()
                 {
                     MaxDegreeOfParallelism = 4,
@@ -151,16 +148,6 @@ namespace trape.cli.collector.DataCollection
                 });
 
             #endregion
-        }
-
-        /// <summary>
-        /// Checks periodically if subscriptions missing or obsolete
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private async void _timerSubscriptionManager_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
-        {
-            await _manage().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -174,11 +161,10 @@ namespace trape.cli.collector.DataCollection
             // Get symbols from database
             string[] requiredSymbols = default;
 
-            var database = Pool.DatabasePool.Get();
+            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
             try
             {
                 requiredSymbols = database.Symbols.Where(s => s.IsCollectionActive).Select(s => s.Name).ToArray();
-                await database.SaveChangesAsync();
             }
             catch (Exception e)
             {
@@ -186,10 +172,23 @@ namespace trape.cli.collector.DataCollection
                 logger.ForContext(typeof(CollectionManager));
                 logger.Error(e.Message, e);
             }
-            finally
-            {
-                Pool.DatabasePool.Put(database);
-            }
+
+            //var database = Pool.DatabasePool.Get();
+            //try
+            //{
+
+            //    await database.SaveChangesAsync();
+            //}
+            //catch (Exception e)
+            //{
+            //    var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
+            //    logger.ForContext(typeof(CollectionManager));
+            //    logger.Error(e.Message, e);
+            //}
+            //finally
+            //{
+            //    Pool.DatabasePool.Put(database);
+            //}
 
 
             // Stop timer, because it may take a while
@@ -204,7 +203,7 @@ namespace trape.cli.collector.DataCollection
             {
                 // TODO: Sanity check if symbol exists on Binance
 
-                this._logger.Verbose($"Holding {this._activeSubscriptions.Count()} symbols with a total of {this._activeSubscriptions.Sum(s => s.Value.Count)} subscriptions");
+                this._logger.Debug($"Holding {this._activeSubscriptions.Count()} symbols with a total of {this._activeSubscriptions.Sum(s => s.Value.Count)} subscriptions");
 
                 // Subscribe to missing symbols
                 foreach (var requiredSymbol in requiredSymbols)
@@ -249,11 +248,11 @@ namespace trape.cli.collector.DataCollection
         /// <returns></returns>
         public static async Task Save(BinanceStreamTick bst, CancellationToken cancellationToken = default)
         {
-            var database = Pool.DatabasePool.Get();
+            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
             try
             {
                 database.Ticks.Add(Translator.Translate(bst));
-                await database.SaveChangesAsync();
+                database.SaveChanges();
             }
             catch (Exception e)
             {
@@ -261,10 +260,8 @@ namespace trape.cli.collector.DataCollection
                 logger.ForContext(typeof(CollectionManager));
                 logger.Error(e.Message, e);
             }
-            finally
-            {
-                Pool.DatabasePool.Put(database);
-            }
+
+            await Task.CompletedTask.ConfigureAwait(true);
         }
 
         /// <summary>
@@ -275,11 +272,11 @@ namespace trape.cli.collector.DataCollection
         /// <returns></returns>
         public static async Task Save(BinanceStreamKlineData bskd, CancellationToken cancellationToken = default)
         {
-            var database = Pool.DatabasePool.Get();
+            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
             try
             {
                 database.Klines.Add(Translator.Translate(bskd));
-                await database.SaveChangesAsync();
+                database.SaveChanges();
             }
             catch (Exception e)
             {
@@ -287,10 +284,8 @@ namespace trape.cli.collector.DataCollection
                 logger.ForContext(typeof(CollectionManager));
                 logger.Error(e.Message, e);
             }
-            finally
-            {
-                Pool.DatabasePool.Put(database);
-            }
+
+            await Task.CompletedTask.ConfigureAwait(true);
         }
 
         /// <summary>
@@ -301,11 +296,11 @@ namespace trape.cli.collector.DataCollection
         /// <returns></returns>
         public static async Task Save(BinanceBookTick bbt, CancellationToken cancellationToken = default)
         {
-            var database = Pool.DatabasePool.Get();
+            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
             try
             {
                 database.BookTicks.Add(Translator.Translate(bbt));
-                await database.SaveChangesAsync();
+                await database.SaveChangesAsync(cancellationToken).ConfigureAwait(true);
             }
             catch (Exception e)
             {
@@ -313,10 +308,8 @@ namespace trape.cli.collector.DataCollection
                 logger.ForContext(typeof(CollectionManager));
                 logger.Error(e.Message, e);
             }
-            finally
-            {
-                Pool.DatabasePool.Put(database);
-            }
+
+            await Task.CompletedTask.ConfigureAwait(true);
         }
 
         #endregion
@@ -363,12 +356,12 @@ namespace trape.cli.collector.DataCollection
             await this._startStop.WaitAsync().ConfigureAwait(true);
 
             // Check if timer is enabled. If not it is checking/un-/subscribing, so wait.
-            while (!this._timerSubscriptionManager.Enabled)
+            while (!this._jobSubscriptionManager.Enabled)
             {
                 await Task.Delay(1000).ConfigureAwait(true);
             }
             // immediately stop timer
-            this._timerSubscriptionManager.Stop();
+            this._jobSubscriptionManager.Terminate();
 
             try
             {

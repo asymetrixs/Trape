@@ -40,7 +40,7 @@ namespace trape.cli.collector
             // Setup IoC container
             var app = CreateHostBuilder().Build();
             Services = app.Services;
-            
+
             // Initialize pool
             Pool.Initialize();
 
@@ -62,7 +62,7 @@ namespace trape.cli.collector
                 logger.Error(e, e.Message);
             }
 
-            Pool.DatabasePool.ClearUnused();
+            //Pool.DatabasePool.ClearUnused();
 
             logger.Information("Shut down complete");
         }
@@ -102,10 +102,11 @@ namespace trape.cli.collector
                 .UseSystemd()
                 .ConfigureServices((hostContext, services) =>
                 {
+                    services.BuildServiceProvider(new ServiceProviderOptions() { ValidateOnBuild = true, ValidateScopes = true });
                     services.AddTransient<ITrapeContextCreator, TrapeContextDiCreator>();
                     services.AddSingleton(dbContextOptionsBuilder.Options);
                     services.AddDbContext<TrapeContext>();
-                    
+
                     services.AddSingleton(Config.Current);
                     //services.AddTransient<ITrapeContext, TrapeContext>();
                     services.AddSingleton(Log.Logger);

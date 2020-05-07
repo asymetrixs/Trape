@@ -8,6 +8,8 @@ using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Exceptions;
 using System;
+using System.Data.Common;
+using System.Net.Security;
 using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Analyze;
@@ -111,9 +113,15 @@ namespace trape.cli.trader
                 .UseSystemd()
                 .ConfigureServices((hostContext, services) =>
                 {
+                    services.BuildServiceProvider(new ServiceProviderOptions() { ValidateOnBuild = true, ValidateScopes = true });
                     services.AddTransient<ITrapeContextCreator, TrapeContextDiCreator>();
                     services.AddSingleton(dbContextOptionsBuilder.Options);
-                    services.AddDbContext<TrapeContext>();
+                    services.AddDbContextPool<TrapeContext>(options =>
+                    {
+                        options.UseNpgsql(Config.GetConnectionString("trape-db"));
+                        options.EnableDetailedErrors(false);
+                        options.EnableSensitiveDataLogging(false);
+                    }, 128);
 
                     services.AddSingleton(Log.Logger);
                     services.AddSingleton<IBuffer, Cache.Buffer>();

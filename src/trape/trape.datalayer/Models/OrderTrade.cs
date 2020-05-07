@@ -32,7 +32,7 @@
         /// </summary>
         public decimal ConsumedQuantity { get; set; }
 
-        public int PlacedOrderId { get; set; }
+        public long PlacedOrderId { get; set; }
 
         public virtual PlacedOrder PlacedOrder { get; set; }
     }

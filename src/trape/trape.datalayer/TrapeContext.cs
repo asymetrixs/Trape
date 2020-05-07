@@ -4,8 +4,11 @@ using Npgsql.NameTranslation;
 using Serilog;
 using Serilog.Context;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.datalayer.Models;
@@ -25,12 +28,17 @@ namespace trape.datalayer
 
         #region Constructor
 
+        public TrapeContext(DbContextOptions<TrapeContext> options)
+            : base(options)
+        {
+        }
+
         /// <summary>
         /// Initializes a new instance of the <c>TrapeContext</c> class.
         /// </summary>
         /// <param name="options"></param>
         public TrapeContext(DbContextOptions<TrapeContext> options, ILogger logger)
-            : base(options)
+        : base(options)
         {
             #region Argument checks
 
@@ -79,6 +87,30 @@ namespace trape.datalayer
             {
                 return;
             }
+
+            modelBuilder.Entity<Stats3s>()
+                .HasNoKey();
+
+            modelBuilder.Entity<Stats15s>()
+                .HasNoKey();
+
+            modelBuilder.Entity<Stats2m>()
+                .HasNoKey();
+
+            modelBuilder.Entity<Stats10m>()
+                .HasNoKey();
+
+            modelBuilder.Entity<Stats2h>()
+                .HasNoKey();
+
+            modelBuilder.Entity<LatestMA10mAndMA30mCrossing>()
+                .HasNoKey();
+
+            modelBuilder.Entity<LatestMA30mAndMA1hCrossing>()
+                .HasNoKey();
+
+            modelBuilder.Entity<LatestMA1hAndMA3hCrossing>()
+                .HasNoKey();
 
             // AccountInfo
             modelBuilder.Entity<AccountInfo>()
@@ -266,7 +298,7 @@ namespace trape.datalayer
                 // Generate SQL statement
                 var sql = $"DELETE FROM {tableName} WHERE {columName} < NOW() - INTERVAL '24 hours'";
 
-                affectedRows = await base.Database.ExecuteSqlRawAsync(sql, cancellationToken).ConfigureAwait(false);
+                affectedRows = await this.Database.ExecuteSqlRawAsync(sql, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -279,698 +311,669 @@ namespace trape.datalayer
 
         public async Task<IEnumerable<Stats3s>> Get3SecondsTrendAsync(CancellationToken cancellationToken = default)
         {
-            var trends = new List<Stats3s>();
-            IDisposable pushedProperty = null;
+            return await Task.FromResult(this.Set<Stats3s>().FromSqlRaw("SELECT * FROM stats_3s();").AsNoTracking().AsEnumerable());
 
-            using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
-            {
-                using (var com = new NpgsqlCommand("stats_3s", con))
-                {
-                    try
-                    {
-                        this._logger.Verbose($"Executing {com.CommandText}");
+            #region old
+            //IDisposable pushedProperty = null;
 
-                        com.CommandType = CommandType.StoredProcedure;
+            //using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
+            //{
+            //    using (var com = new NpgsqlCommand("stats_3s", con))
+            //    {
+            //        try
+            //        {
+            //            this._logger.Verbose($"Executing {com.CommandText}");
 
-                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+            //            com.CommandType = CommandType.StoredProcedure;
 
-                        using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
-                        {
-                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                            {
-                                // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
-                                    )
-                                {
-                                    continue;
-                                }
+            //            await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-                                pushedProperty = LogContext.PushProperty("reader", reader);
+            //            using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
+            //            {
+            //                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            //                {
+            //                    // Skip if values are NULL
+            //                    if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
+            //                        )
+            //                    {
+            //                        continue;
+            //                    }
 
-                                trends.Add(new Stats3s(
-                                    reader.GetString(0),
-                                    reader.GetInt32(1),
-                                    reader.GetDecimal(2),
-                                    reader.GetDecimal(3),
-                                    reader.GetDecimal(4),
-                                    reader.GetDecimal(5),
-                                    reader.GetDecimal(6),
-                                    reader.GetDecimal(7),
-                                    reader.GetDecimal(8),
-                                    reader.GetDecimal(9)));
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // nothing
-                    }
-                    catch (PostgresException px)
-                    {
-                        if (px.MessageText != "canceling statement due to user request")
-                        {
-                            this._logger.Fatal(px, px.Message, com.CommandText);
-                        }
-                    }
-                    catch (NpgsqlException ne)
-                    {
-                        this._logger.Fatal(ne, ne.Message, com.CommandText);
-                    }
-                    catch (Exception e)
-                    {
-                        this._logger.Fatal($"General Exception: {e.Message}");
-                    }
-                    finally
-                    {
-                        pushedProperty?.Dispose();
+            //                    pushedProperty = LogContext.PushProperty("reader", reader);
 
-                        con.Close();
-                    }
-                }
-            }
+            //                    trends.Add(new Stats3s(
+            //                        reader.GetString(0),
+            //                        reader.GetInt32(1),
+            //                        reader.GetDecimal(2),
+            //                        reader.GetDecimal(3),
+            //                        reader.GetDecimal(4),
+            //                        reader.GetDecimal(5),
+            //                        reader.GetDecimal(6),
+            //                        reader.GetDecimal(7),
+            //                        reader.GetDecimal(8),
+            //                        reader.GetDecimal(9)));
+            //                }
+            //            }
+            //        }
+            //        catch (OperationCanceledException)
+            //        {
+            //            // nothing
+            //        }
+            //        catch (PostgresException px)
+            //        {
+            //            if (px.MessageText != "canceling statement due to user request")
+            //            {
+            //                this._logger.Fatal(px, px.Message, com.CommandText);
+            //            }
+            //        }
+            //        catch (NpgsqlException ne)
+            //        {
+            //            this._logger.Fatal(ne, ne.Message, com.CommandText);
+            //        }
+            //        catch (Exception e)
+            //        {
+            //            this._logger.Fatal($"General Exception: {e.Message}");
+            //        }
+            //        finally
+            //        {
+            //            pushedProperty?.Dispose();
 
-            return trends;
+            //            con.Close();
+            //        }
+            //    }
+            //}
+
+            //return trends;
+            #endregion
         }
 
         public async Task<IEnumerable<Stats15s>> Get15SecondsTrendAsync(CancellationToken cancellationToken = default)
         {
-            var trends = new List<Stats15s>();
-            IDisposable pushedProperty = null;
+            return await Task.FromResult(this.Set<Stats15s>().FromSqlRaw("SELECT * FROM stats_15s();").AsNoTracking().AsEnumerable());
 
-            using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
-            {
-                using (var com = new NpgsqlCommand("stats_15s", con))
-                {
-                    try
-                    {
-                        this._logger.Verbose($"Executing {com.CommandText}");
+            #region old
+            //var trends = new List<Stats15s>();
+            //IDisposable pushedProperty = null;
 
-                        com.CommandType = CommandType.StoredProcedure;
+            //using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
+            //{
+            //    using (var com = new NpgsqlCommand("stats_15s", con))
+            //    {
+            //        try
+            //        {
+            //            this._logger.Verbose($"Executing {com.CommandText}");
 
-                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+            //            com.CommandType = CommandType.StoredProcedure;
 
-                        using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
-                        {
-                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                            {
-                                // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
-                                    )
-                                {
-                                    continue;
-                                }
+            //            await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-                                pushedProperty = LogContext.PushProperty("reader", reader);
+            //            using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
+            //            {
+            //                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            //                {
+            //                    // Skip if values are NULL
+            //                    if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
+            //                        )
+            //                    {
+            //                        continue;
+            //                    }
 
-                                trends.Add(new Stats15s(
-                                    reader.GetString(0),
-                                    reader.GetInt32(1),
-                                    reader.GetDecimal(2),
-                                    reader.GetDecimal(3),
-                                    reader.GetDecimal(4),
-                                    reader.GetDecimal(5),
-                                    reader.GetDecimal(6),
-                                    reader.GetDecimal(7),
-                                    reader.GetDecimal(8),
-                                    reader.GetDecimal(9)));
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // nothing
-                    }
-                    catch (PostgresException px)
-                    {
-                        if (px.MessageText != "canceling statement due to user request")
-                        {
-                            this._logger.Fatal(px, px.Message, com.CommandText);
-                        }
-                    }
-                    catch (NpgsqlException ne)
-                    {
-                        this._logger.Fatal(ne, ne.Message, com.CommandText);
-                    }
-                    catch (Exception e)
-                    {
-                        this._logger.Fatal($"General Exception: {e.Message}");
-                    }
-                    finally
-                    {
-                        pushedProperty?.Dispose();
+            //                    pushedProperty = LogContext.PushProperty("reader", reader);
 
-                        con.Close();
-                    }
-                }
-            }
+            //                    trends.Add(new Stats15s(
+            //                        reader.GetString(0),
+            //                        reader.GetInt32(1),
+            //                        reader.GetDecimal(2),
+            //                        reader.GetDecimal(3),
+            //                        reader.GetDecimal(4),
+            //                        reader.GetDecimal(5),
+            //                        reader.GetDecimal(6),
+            //                        reader.GetDecimal(7),
+            //                        reader.GetDecimal(8),
+            //                        reader.GetDecimal(9)));
+            //                }
+            //            }
+            //        }
+            //        catch (OperationCanceledException)
+            //        {
+            //            // nothing
+            //        }
+            //        catch (PostgresException px)
+            //        {
+            //            if (px.MessageText != "canceling statement due to user request")
+            //            {
+            //                this._logger.Fatal(px, px.Message, com.CommandText);
+            //            }
+            //        }
+            //        catch (NpgsqlException ne)
+            //        {
+            //            this._logger.Fatal(ne, ne.Message, com.CommandText);
+            //        }
+            //        catch (Exception e)
+            //        {
+            //            this._logger.Fatal($"General Exception: {e.Message}");
+            //        }
+            //        finally
+            //        {
+            //            pushedProperty?.Dispose();
 
-            return trends;
+            //            con.Close();
+            //        }
+            //    }
+            //}
+
+            //return trends;
+            #endregion
         }
 
         public async Task<IEnumerable<Stats2m>> Get2MinutesTrendAsync(CancellationToken cancellationToken = default)
         {
-            var trends = new List<Stats2m>();
-            IDisposable pushedProperty = null;
+            return await Task.FromResult(this.Set<Stats2m>().FromSqlRaw("SELECT * FROM stats_2m();").AsNoTracking().AsEnumerable());
 
-            using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
-            {
-                using (var com = new NpgsqlCommand("stats_2m", con))
-                {
-                    try
-                    {
-                        this._logger.Verbose($"Executing {com.CommandText}");
+            #region old
+            //var trends = new List<Stats2m>();
+            //IDisposable pushedProperty = null;
 
-                        com.CommandType = CommandType.StoredProcedure;
+            //using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
+            //{
+            //    using (var com = new NpgsqlCommand("stats_2m", con))
+            //    {
+            //        try
+            //        {
+            //            this._logger.Verbose($"Executing {com.CommandText}");
 
-                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+            //            com.CommandType = CommandType.StoredProcedure;
 
-                        using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
-                        {
-                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                            {
-                                // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
-                                    )
-                                {
-                                    continue;
-                                }
+            //            await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-                                pushedProperty = LogContext.PushProperty("reader", reader);
+            //            using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
+            //            {
+            //                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            //                {
+            //                    // Skip if values are NULL
+            //                    if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
+            //                        )
+            //                    {
+            //                        continue;
+            //                    }
 
-                                trends.Add(new Stats2m(
-                                    reader.GetString(0),
-                                    reader.GetInt32(1),
-                                    reader.GetDecimal(2),
-                                    reader.GetDecimal(3),
-                                    reader.GetDecimal(4),
-                                    reader.GetDecimal(5),
-                                    reader.GetDecimal(6),
-                                    reader.GetDecimal(7),
-                                    reader.GetDecimal(8),
-                                    reader.GetDecimal(9)));
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // nothing
-                    }
-                    catch (PostgresException px)
-                    {
-                        if (px.MessageText != "canceling statement due to user request")
-                        {
-                            this._logger.Fatal(px, px.Message, com.CommandText);
-                        }
-                    }
-                    catch (NpgsqlException ne)
-                    {
-                        this._logger.Fatal(ne, ne.Message, com.CommandText);
-                    }
-                    catch (Exception e)
-                    {
-                        this._logger.Fatal($"General Exception: {e.Message}");
-                    }
-                    finally
-                    {
-                        pushedProperty?.Dispose();
+            //                    pushedProperty = LogContext.PushProperty("reader", reader);
 
-                        con.Close();
-                    }
-                }
-            }
+            //                    trends.Add(new Stats2m(
+            //                        reader.GetString(0),
+            //                        reader.GetInt32(1),
+            //                        reader.GetDecimal(2),
+            //                        reader.GetDecimal(3),
+            //                        reader.GetDecimal(4),
+            //                        reader.GetDecimal(5),
+            //                        reader.GetDecimal(6),
+            //                        reader.GetDecimal(7),
+            //                        reader.GetDecimal(8),
+            //                        reader.GetDecimal(9)));
+            //                }
+            //            }
+            //        }
+            //        catch (OperationCanceledException)
+            //        {
+            //            // nothing
+            //        }
+            //        catch (PostgresException px)
+            //        {
+            //            if (px.MessageText != "canceling statement due to user request")
+            //            {
+            //                this._logger.Fatal(px, px.Message, com.CommandText);
+            //            }
+            //        }
+            //        catch (NpgsqlException ne)
+            //        {
+            //            this._logger.Fatal(ne, ne.Message, com.CommandText);
+            //        }
+            //        catch (Exception e)
+            //        {
+            //            this._logger.Fatal($"General Exception: {e.Message}");
+            //        }
+            //        finally
+            //        {
+            //            pushedProperty?.Dispose();
 
-            return trends;
+            //            con.Close();
+            //        }
+            //    }
+            //}
+
+            //return trends;
+            #endregion
         }
 
         public async Task<IEnumerable<Stats10m>> Get10MinutesTrendAsync(CancellationToken cancellationToken = default)
         {
-            var trends = new List<Stats10m>();
-            IDisposable pushedProperty = null;
+            return await Task.FromResult(this.Set<Stats10m>().FromSqlRaw("SELECT * FROM stats_10m();").AsNoTracking().AsEnumerable());
 
-            using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
-            {
-                using (var com = new NpgsqlCommand("stats_10m", con))
-                {
-                    try
-                    {
-                        this._logger.Verbose($"Executing {com.CommandText}");
+            #region old
+            //var trends = new List<Stats10m>();
+            //IDisposable pushedProperty = null;
 
-                        com.CommandType = CommandType.StoredProcedure;
+            //using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
+            //{
+            //    using (var com = new NpgsqlCommand("stats_10m", con))
+            //    {
+            //        try
+            //        {
+            //            this._logger.Verbose($"Executing {com.CommandText}");
 
-                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+            //            com.CommandType = CommandType.StoredProcedure;
 
-                        using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
-                        {
-                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                            {
-                                // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
-                                    )
-                                {
-                                    continue;
-                                }
+            //            await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-                                pushedProperty = LogContext.PushProperty("reader", reader);
+            //            using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
+            //            {
+            //                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            //                {
+            //                    // Skip if values are NULL
+            //                    if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
+            //                        )
+            //                    {
+            //                        continue;
+            //                    }
 
-                                trends.Add(new Stats10m(
-                                    reader.GetString(0),
-                                    reader.GetInt32(1),
-                                    reader.GetDecimal(2),
-                                    reader.GetDecimal(3),
-                                    reader.GetDecimal(4),
-                                    reader.GetDecimal(5),
-                                    reader.GetDecimal(6),
-                                    reader.GetDecimal(7),
-                                    reader.GetDecimal(8),
-                                    reader.GetDecimal(9)));
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // nothing
-                    }
-                    catch (PostgresException px)
-                    {
-                        if (px.MessageText != "canceling statement due to user request")
-                        {
-                            this._logger.Fatal(px, px.Message, com.CommandText);
-                        }
-                    }
-                    catch (NpgsqlException ne)
-                    {
-                        this._logger.Fatal(ne, ne.Message, com.CommandText);
-                    }
-                    catch (Exception e)
-                    {
-                        this._logger.Fatal($"General Exception: {e.Message}");
-                    }
-                    finally
-                    {
-                        pushedProperty?.Dispose();
+            //                    pushedProperty = LogContext.PushProperty("reader", reader);
 
-                        con.Close();
-                    }
-                }
-            }
+            //                    trends.Add(new Stats10m(
+            //                        reader.GetString(0),
+            //                        reader.GetInt32(1),
+            //                        reader.GetDecimal(2),
+            //                        reader.GetDecimal(3),
+            //                        reader.GetDecimal(4),
+            //                        reader.GetDecimal(5),
+            //                        reader.GetDecimal(6),
+            //                        reader.GetDecimal(7),
+            //                        reader.GetDecimal(8),
+            //                        reader.GetDecimal(9)));
+            //                }
+            //            }
+            //        }
+            //        catch (OperationCanceledException)
+            //        {
+            //            // nothing
+            //        }
+            //        catch (PostgresException px)
+            //        {
+            //            if (px.MessageText != "canceling statement due to user request")
+            //            {
+            //                this._logger.Fatal(px, px.Message, com.CommandText);
+            //            }
+            //        }
+            //        catch (NpgsqlException ne)
+            //        {
+            //            this._logger.Fatal(ne, ne.Message, com.CommandText);
+            //        }
+            //        catch (Exception e)
+            //        {
+            //            this._logger.Fatal($"General Exception: {e.Message}");
+            //        }
+            //        finally
+            //        {
+            //            pushedProperty?.Dispose();
 
-            return trends;
+            //            con.Close();
+            //        }
+            //    }
+            //}
+
+            //return trends;
+            #endregion
         }
 
         public async Task<IEnumerable<Stats2h>> Get2HoursTrendAsync(CancellationToken cancellationToken = default)
         {
-            var trends = new List<Stats2h>();
-            IDisposable pushedProperty = null;
+            return await Task.FromResult(this.Set<Stats2h>().FromSqlRaw("SELECT * FROM stats_2h();").AsNoTracking().AsEnumerable());
 
-            using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
-            {
-                using (var com = new NpgsqlCommand("stats_2h", con))
-                {
-                    try
-                    {
-                        this._logger.Verbose($"Executing {com.CommandText}");
+            #region old
+            //var trends = new List<Stats2h>();
+            //IDisposable pushedProperty = null;
 
-                        com.CommandType = CommandType.StoredProcedure;
+            //using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
+            //{
+            //    using (var com = new NpgsqlCommand("stats_2h", con))
+            //    {
+            //        try
+            //        {
+            //            this._logger.Verbose($"Executing {com.CommandText}");
 
-                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+            //            com.CommandType = CommandType.StoredProcedure;
 
-                        using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
-                        {
-                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                            {
-                                // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
-                                    )
-                                {
-                                    continue;
-                                }
+            //            await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-                                pushedProperty = LogContext.PushProperty("reader", reader);
+            //            using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
+            //            {
+            //                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            //                {
+            //                    // Skip if values are NULL
+            //                    if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(4, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(5, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(6, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(7, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(8, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(9, cancellationToken).ConfigureAwait(false)
+            //                        )
+            //                    {
+            //                        continue;
+            //                    }
 
-                                trends.Add(new Stats2h(
-                                    reader.GetString(0),
-                                    reader.GetInt32(1),
-                                    reader.GetDecimal(2),
-                                    reader.GetDecimal(3),
-                                    reader.GetDecimal(4),
-                                    reader.GetDecimal(5),
-                                    reader.GetDecimal(6),
-                                    reader.GetDecimal(7),
-                                    reader.GetDecimal(8),
-                                    reader.GetDecimal(9)));
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // nothing
-                    }
-                    catch (PostgresException px)
-                    {
-                        if (px.MessageText != "canceling statement due to user request")
-                        {
-                            this._logger.Fatal(px, px.Message, com.CommandText);
-                        }
-                    }
-                    catch (NpgsqlException ne)
-                    {
-                        this._logger.Fatal(ne, ne.Message, com.CommandText);
-                    }
-                    catch (Exception e)
-                    {
-                        this._logger.Fatal($"General Exception: {e.Message}");
-                    }
-                    finally
-                    {
-                        pushedProperty?.Dispose();
+            //                    pushedProperty = LogContext.PushProperty("reader", reader);
 
-                        con.Close();
-                    }
-                }
-            }
+            //                    trends.Add(new Stats2h(
+            //                        reader.GetString(0),
+            //                        reader.GetInt32(1),
+            //                        reader.GetDecimal(2),
+            //                        reader.GetDecimal(3),
+            //                        reader.GetDecimal(4),
+            //                        reader.GetDecimal(5),
+            //                        reader.GetDecimal(6),
+            //                        reader.GetDecimal(7),
+            //                        reader.GetDecimal(8),
+            //                        reader.GetDecimal(9)));
+            //                }
+            //            }
+            //        }
+            //        catch (OperationCanceledException)
+            //        {
+            //            // nothing
+            //        }
+            //        catch (PostgresException px)
+            //        {
+            //            if (px.MessageText != "canceling statement due to user request")
+            //            {
+            //                this._logger.Fatal(px, px.Message, com.CommandText);
+            //            }
+            //        }
+            //        catch (NpgsqlException ne)
+            //        {
+            //            this._logger.Fatal(ne, ne.Message, com.CommandText);
+            //        }
+            //        catch (Exception e)
+            //        {
+            //            this._logger.Fatal($"General Exception: {e.Message}");
+            //        }
+            //        finally
+            //        {
+            //            pushedProperty?.Dispose();
 
-            return trends;
-        }
+            //            con.Close();
+            //        }
+            //    }
+            //}
 
-        public async Task<decimal> GetCurrentPriceAsync(string symbol, CancellationToken cancellationToken = default)
-        {
-            var price = default(decimal);
-            IDisposable pushedProperty = null;
-
-            using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
-            {
-                using (var com = new NpgsqlCommand("current_price", con))
-                {
-                    try
-                    {
-                        this._logger.Verbose($"Executing {com.CommandText}");
-
-                        com.CommandType = CommandType.StoredProcedure;
-
-                        com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = symbol;
-
-                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
-
-                        var obj = await com.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
-
-                        pushedProperty = LogContext.PushProperty("obj", obj);
-
-                        price = (decimal)obj;
-                    }
-                    catch (InvalidCastException)
-                    {
-                        this._logger.Error("Value is not decimal");
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // nothing
-                    }
-                    catch (PostgresException px)
-                    {
-                        if (px.MessageText != "canceling statement due to user request")
-                        {
-                            this._logger.Fatal(px, px.Message, com.CommandText);
-                        }
-                    }
-                    catch (NpgsqlException ne)
-                    {
-                        this._logger.Fatal(ne, ne.Message, com.CommandText);
-                    }
-                    catch (Exception e)
-                    {
-                        this._logger.Fatal($"General Exception: {e.Message}");
-                    }
-                    finally
-                    {
-                        pushedProperty?.Dispose();
-
-                        con.Close();
-                    }
-                }
-            }
-
-            return price;
+            //return trends;
+            #endregion
         }
 
         public async Task<IEnumerable<LatestMA10mAndMA30mCrossing>> GetLatestMA10mAndMA30mCrossing(CancellationToken cancellationToken = default)
         {
-            var latestCrossings = new List<LatestMA10mAndMA30mCrossing>();
-            IDisposable pushedProperty = null;
+            return await Task.FromResult(this.Set<LatestMA10mAndMA30mCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma10m_ma30m_crossing();").AsNoTracking().AsEnumerable());
 
-            using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
-            {
-                using (var com = new NpgsqlCommand("get_latest_ma10m_ma30m_crossing", con))
-                {
-                    try
-                    {
-                        this._logger.Verbose($"Executing {com.CommandText}");
+            #region old
 
-                        com.CommandType = CommandType.StoredProcedure;
+            //var latestCrossings = new List<LatestMA10mAndMA30mCrossing>();
+            //IDisposable pushedProperty = null;
 
-                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+            //using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
+            //{
+            //    using (var com = new NpgsqlCommand("get_latest_ma10m_ma30m_crossing", con))
+            //    {
+            //        try
+            //        {
+            //            this._logger.Verbose($"Executing {com.CommandText}");
 
-                        using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
-                        {
-                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                            {
-                                pushedProperty = LogContext.PushProperty("reader", reader);
+            //            com.CommandType = CommandType.StoredProcedure;
 
-                                // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
-                                    )
-                                {
-                                    continue;
-                                }
+            //            await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-                                latestCrossings.Add(new LatestMA10mAndMA30mCrossing(
-                                    reader.GetString(0),
-                                    reader.GetDateTime(1),
-                                    reader.GetDecimal(2),
-                                    reader.GetDecimal(3)));
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // nothing
-                    }
-                    catch (PostgresException px)
-                    {
-                        if (px.MessageText != "canceling statement due to user request")
-                        {
-                            this._logger.Fatal(px, px.Message, com.CommandText);
-                        }
-                    }
-                    catch (NpgsqlException ne)
-                    {
-                        this._logger.Fatal(ne, ne.Message, com.CommandText);
-                    }
-                    catch (Exception e)
-                    {
-                        this._logger.Fatal($"General Exception: {e.Message}");
-                    }
-                    finally
-                    {
-                        pushedProperty?.Dispose();
+            //            using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
+            //            {
+            //                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            //                {
+            //                    pushedProperty = LogContext.PushProperty("reader", reader);
 
-                        con.Close();
-                    }
-                }
-            }
+            //                    // Skip if values are NULL
+            //                    if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false))
+            //                    {
+            //                        continue;
+            //                    }
 
-            return latestCrossings;
+            //                    latestCrossings.Add(new LatestMA10mAndMA30mCrossing(
+            //                        reader.GetString(0),
+            //                        reader.GetDateTime(1),
+            //                        reader.GetDecimal(2),
+            //                        reader.GetDecimal(3)));
+            //                }
+            //            }
+            //        }
+            //        catch (OperationCanceledException)
+            //        {
+            //            // nothing
+            //        }
+            //        catch (PostgresException px)
+            //        {
+            //            if (px.MessageText != "canceling statement due to user request")
+            //            {
+            //                this._logger.Fatal(px, px.Message, com.CommandText);
+            //            }
+            //        }
+            //        catch (NpgsqlException ne)
+            //        {
+            //            this._logger.Fatal(ne, ne.Message, com.CommandText);
+            //        }
+            //        catch (Exception e)
+            //        {
+            //            this._logger.Fatal($"General Exception: {e.Message}");
+            //        }
+            //        finally
+            //        {
+            //            pushedProperty?.Dispose();
+
+            //            con.Close();
+            //        }
+            //    }
+            //}
+
+            //return latestCrossings;
+            #endregion
         }
 
         public async Task<IEnumerable<LatestMA30mAndMA1hCrossing>> GetLatestMA30mAndMA1hCrossing(CancellationToken cancellationToken = default)
         {
-            var latestCrossings = new List<LatestMA30mAndMA1hCrossing>();
-            IDisposable pushedProperty = null;
+            return await Task.FromResult(this.Set<LatestMA30mAndMA1hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma30m_ma1h_crossing();").AsNoTracking().AsEnumerable());
 
-            using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
-            {
-                using (var com = new NpgsqlCommand("get_latest_ma30m_ma1h_crossing", con))
-                {
-                    try
-                    {
-                        this._logger.Verbose($"Executing {com.CommandText}");
+            #region old
+            //var latestCrossings = new List<LatestMA30mAndMA1hCrossing>();
+            //IDisposable pushedProperty = null;
 
-                        com.CommandType = CommandType.StoredProcedure;
+            //using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
+            //{
+            //    using (var com = new NpgsqlCommand("get_latest_ma30m_ma1h_crossing", con))
+            //    {
+            //        try
+            //        {
+            //            this._logger.Verbose($"Executing {com.CommandText}");
 
-                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+            //            com.CommandType = CommandType.StoredProcedure;
 
-                        using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
-                        {
-                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                            {
-                                pushedProperty = LogContext.PushProperty("reader", reader);
+            //            await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-                                // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
-                                    )
-                                {
-                                    continue;
-                                }
+            //            using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
+            //            {
+            //                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            //                {
+            //                    pushedProperty = LogContext.PushProperty("reader", reader);
 
-                                latestCrossings.Add(new LatestMA30mAndMA1hCrossing(
-                                    reader.GetString(0),
-                                    reader.GetDateTime(1),
-                                    reader.GetDecimal(2),
-                                    reader.GetDecimal(3)));
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // nothing
-                    }
-                    catch (PostgresException px)
-                    {
-                        if (px.MessageText != "canceling statement due to user request")
-                        {
-                            this._logger.Fatal(px, px.Message, com.CommandText);
-                        }
-                    }
-                    catch (NpgsqlException ne)
-                    {
-                        this._logger.Fatal(ne, ne.Message, com.CommandText);
-                    }
-                    catch (Exception e)
-                    {
-                        this._logger.Fatal($"General Exception: {e.Message}");
-                    }
-                    finally
-                    {
-                        pushedProperty?.Dispose();
+            //                    // Skip if values are NULL
+            //                    if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+            //                        )
+            //                    {
+            //                        continue;
+            //                    }
 
-                        con.Close();
-                    }
-                }
-            }
+            //                    latestCrossings.Add(new LatestMA30mAndMA1hCrossing(
+            //                        reader.GetString(0),
+            //                        reader.GetDateTime(1),
+            //                        reader.GetDecimal(2),
+            //                        reader.GetDecimal(3)));
+            //                }
+            //            }
+            //        }
+            //        catch (OperationCanceledException)
+            //        {
+            //            // nothing
+            //        }
+            //        catch (PostgresException px)
+            //        {
+            //            if (px.MessageText != "canceling statement due to user request")
+            //            {
+            //                this._logger.Fatal(px, px.Message, com.CommandText);
+            //            }
+            //        }
+            //        catch (NpgsqlException ne)
+            //        {
+            //            this._logger.Fatal(ne, ne.Message, com.CommandText);
+            //        }
+            //        catch (Exception e)
+            //        {
+            //            this._logger.Fatal($"General Exception: {e.Message}");
+            //        }
+            //        finally
+            //        {
+            //            pushedProperty?.Dispose();
 
-            return latestCrossings;
+            //            con.Close();
+            //        }
+            //    }
+            //}
+
+            //return latestCrossings;
+            #endregion
         }
 
         public async Task<IEnumerable<LatestMA1hAndMA3hCrossing>> GetLatestMA1hAndMA3hCrossing(CancellationToken cancellationToken = default)
         {
-            var latestCrossings = new List<LatestMA1hAndMA3hCrossing>();
-            IDisposable pushedProperty = null;
+            return await Task.FromResult(this.Set<LatestMA1hAndMA3hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma1h_ma3h_crossing();").AsNoTracking().AsEnumerable());
 
-            using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
-            {
-                using (var com = new NpgsqlCommand("get_latest_ma1h_ma3h_crossing", con))
-                {
-                    try
-                    {
-                        this._logger.Verbose($"Executing {com.CommandText}");
+            #region old
+            //var latestCrossings = new List<LatestMA1hAndMA3hCrossing>();
+            //IDisposable pushedProperty = null;
 
-                        com.CommandType = CommandType.StoredProcedure;
+            //using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
+            //{
+            //    using (var com = new NpgsqlCommand("get_latest_ma1h_ma3h_crossing", con))
+            //    {
+            //        try
+            //        {
+            //            this._logger.Verbose($"Executing {com.CommandText}");
 
-                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+            //            com.CommandType = CommandType.StoredProcedure;
 
-                        using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
-                        {
-                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                            {
-                                pushedProperty = LogContext.PushProperty("reader", reader);
+            //            await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-                                // Skip if values are NULL
-                                if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
-                                    || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
-                                    )
-                                {
-                                    continue;
-                                }
+            //            using (var reader = await com.ExecuteReaderAsync(CommandBehavior.SingleResult, cancellationToken).ConfigureAwait(false))
+            //            {
+            //                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            //                {
+            //                    pushedProperty = LogContext.PushProperty("reader", reader);
 
-                                latestCrossings.Add(new LatestMA1hAndMA3hCrossing(
-                                    reader.GetString(0),
-                                    reader.GetDateTime(1),
-                                    reader.GetDecimal(2),
-                                    reader.GetDecimal(3)));
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // nothing
-                    }
-                    catch (PostgresException px)
-                    {
-                        if (px.MessageText != "canceling statement due to user request")
-                        {
-                            this._logger.Fatal(px, px.Message, com.CommandText);
-                        }
-                    }
-                    catch (NpgsqlException ne)
-                    {
-                        this._logger.Fatal(ne, ne.Message, com.CommandText);
-                    }
-                    catch (Exception e)
-                    {
-                        this._logger.Fatal($"General Exception: {e.Message}");
-                    }
-                    finally
-                    {
-                        pushedProperty?.Dispose();
+            //                    // Skip if values are NULL
+            //                    if (await reader.IsDBNullAsync(0, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(1, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(2, cancellationToken).ConfigureAwait(false)
+            //                        || await reader.IsDBNullAsync(3, cancellationToken).ConfigureAwait(false)
+            //                        )
+            //                    {
+            //                        continue;
+            //                    }
 
-                        con.Close();
-                    }
-                }
-            }
+            //                    latestCrossings.Add(new LatestMA1hAndMA3hCrossing(
+            //                        reader.GetString(0),
+            //                        reader.GetDateTime(1),
+            //                        reader.GetDecimal(2),
+            //                        reader.GetDecimal(3)));
+            //                }
+            //            }
+            //        }
+            //        catch (OperationCanceledException)
+            //        {
+            //            // nothing
+            //        }
+            //        catch (PostgresException px)
+            //        {
+            //            if (px.MessageText != "canceling statement due to user request")
+            //            {
+            //                this._logger.Fatal(px, px.Message, com.CommandText);
+            //            }
+            //        }
+            //        catch (NpgsqlException ne)
+            //        {
+            //            this._logger.Fatal(ne, ne.Message, com.CommandText);
+            //        }
+            //        catch (Exception e)
+            //        {
+            //            this._logger.Fatal($"General Exception: {e.Message}");
+            //        }
+            //        finally
+            //        {
+            //            pushedProperty?.Dispose();
 
-            return latestCrossings;
+            //            con.Close();
+            //        }
+            //    }
+            //}
+
+            //return latestCrossings;
+            #endregion
         }
 
 
@@ -1034,6 +1037,5 @@ namespace trape.datalayer
 
             return price;
         }
-
     }
 }

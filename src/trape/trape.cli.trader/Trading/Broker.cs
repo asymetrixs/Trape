@@ -446,19 +446,16 @@ namespace trape.cli.trader.Trading
                 // Normal - Do not sell below buying price
                 // - Where buying price * 1.002 (0.2%) is smaller than bidding price
                 // Select quantities
-
-                var buyFills = database.PlacedOrders
+                var buyTrades = database.PlacedOrders
                                     .Where(p => p.Side == datalayer.Enums.OrderSide.Buy
                                         && p.Symbol == this.Symbol)
                                     .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity));
 
-                var availableAssetQuantity = buyFills
+                var availableAssetQuantity = buyTrades
                                                 .Where(f =>
                                                     /* Bid price is 0.2% higher */
                                                     f.Price * 1.002M < bestBidPrice)
                                             .Sum(f => (f.Quantity - f.ConsumedQuantity));
-
-
 
                 if (profitAction == datalayer.Enums.Action.TakeProfitsSell)
                 {
@@ -475,7 +472,7 @@ namespace trape.cli.trader.Trading
                         && stat15s.Slope3m < -0.05M
                         && stat15s.MovingAverage1m < 0)
                     {
-                        availableAssetQuantity = buyFills
+                        availableAssetQuantity = buyTrades
                                                 .Where(f => /* Bid price is 0.6% higher */
                                                         f.Price * 1.006M < bestBidPrice)
                                                 .Sum(l => (l.Quantity - l.ConsumedQuantity));
@@ -492,7 +489,7 @@ namespace trape.cli.trader.Trading
                 // - Where buying-price was 0.5% higher than current price
                 // And where assets are available and side is buy
                 // Select quantities
-                var stopLossQuantity = buyFills
+                var stopLossQuantity = buyTrades
                                         .Where(l =>  /* Stop-Loss: 1.0% lower */
                                                     l.Price * 0.99M > bestBidPrice
                                                         && recommendation.Action == datalayer.Enums.Action.StrongSell

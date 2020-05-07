@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace trape.datalayer.Models
 {
@@ -12,41 +13,26 @@ namespace trape.datalayer.Models
         /// <summary>
         /// Symbol
         /// </summary>
+        [Column("symbol")]
         public string Symbol { get; }
 
         /// <summary>
         /// Time of crossing
         /// </summary>
+        [Column("event_time")]
         public DateTime EventTime { get; }
 
         /// <summary>
         /// Slope 10m
         /// </summary>
+        [Column("slope30m")]
         public decimal Slope30m { get; }
 
         /// <summary>
         /// Slope 30m
         /// </summary>
+        [Column("slope1h")]
         public decimal Slope1h { get; }
-
-        #endregion
-
-        #region Constructor
-
-        /// <summary>
-        /// Initializes a new instance of the <c>LatestMA10mAndMA30mCrossing</c> class.
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <param name="eventTime">Event time</param>
-        /// <param name="slope30m">Slope 10m</param>
-        /// <param name="slope1h">Slope 30m</param>
-        public LatestMA30mAndMA1hCrossing(string symbol, DateTime eventTime, decimal slope30m, decimal slope1h)
-        {
-            this.Symbol = symbol;
-            this.EventTime = eventTime;
-            this.Slope30m = slope30m;
-            this.Slope1h = slope1h;
-        }
 
         #endregion
     }

@@ -12,7 +12,7 @@ namespace trape.cli.collector
         /// <summary>
         /// Holds Database objects
         /// </summary>
-        public static ObjectPool<TrapeContext> DatabasePool { get; private set; }
+        //public static ObjectPool<TrapeContext> DatabasePool { get; private set; }
 
         #endregion
 
@@ -23,10 +23,10 @@ namespace trape.cli.collector
         /// </summary>
         public static void Initialize()
         {
-            DatabasePool = new ObjectPool<TrapeContext>(() => Program.Services.GetService(typeof(TrapeContext)) as TrapeContext);
+            //DatabasePool = new ObjectPool<TrapeContext>(() => Program.Services.GetService(typeof(TrapeContext)) as TrapeContext);
 
             // Warmup
-            DatabasePool.Warmup(32);
+            //DatabasePool.Warmup(32);
         }
 
         #endregion

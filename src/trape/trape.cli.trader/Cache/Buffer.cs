@@ -1,6 +1,5 @@
 ﻿using Binance.Net.Interfaces;
 using Binance.Net.Objects;
-using Microsoft.EntityFrameworkCore.Internal;
 using Serilog;
 using System;
 using System.Collections.Concurrent;
@@ -586,12 +585,25 @@ namespace trape.cli.trader.Cache
             this._stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
             this._latestMA10mAnd30mCrossing = await database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
+            var availableSymbols = new List<string>();
+
+            while (!availableSymbols.Any())
+            {
+                availableSymbols = database.Symbols.Where(s => s.IsTradingActive).Select(s => s.Name).ToList();
+
+                if (!availableSymbols.Any())
+                {
+                    this._logger.Information("No active symbols. Sleeping...");
+                    await Task.Delay(5000).ConfigureAwait(true);
+                }
+            }
             Pool.DatabasePool.Put(database);
+
             database = null;
 
             this._logger.Debug("Buffer preloaded");
 
-            this._logger.Information($"Symbols to subscribe to are {String.Join(',', this._stats2h.Select(s => s.Symbol))}, starting the subscription process");
+            this._logger.Information($"Symbols to subscribe to are {String.Join(',', availableSymbols)}, starting the subscription process");
 
             // Tries 30 times to subscribe to the ticker
             var countTillHardExit = 30;
@@ -600,7 +612,7 @@ namespace trape.cli.trader.Cache
                 try
                 {
                     // Subscribe to all symbols
-                    await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(this._stats2h.Select(s => s.Symbol), async (BinanceBookTick bbt) =>
+                    await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(availableSymbols, async (BinanceBookTick bbt) =>
                     {
                         var askPriceAdded = false;
                         var bidPriceAdded = false;

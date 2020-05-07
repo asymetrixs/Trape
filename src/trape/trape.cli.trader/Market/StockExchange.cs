@@ -7,6 +7,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache;
+using trape.cli.trader.Cache.Models;
 using trape.datalayer;
 using trape.datalayer.Models;
 using trape.mapper;
@@ -82,11 +83,11 @@ namespace trape.cli.trader.Market
 
             try
             {
-                // Place the order
+                // Place the order with binance tools
                 var binanceSide = (OrderSide)(int)order.Side;
                 var binanceType = (OrderType)(int)order.Type;
 
-                var placedOrder = await this._binanceClient.PlaceOrderAsync(order.Symbol, binanceSide, binanceType,
+                var placedOrder = await this._binanceClient.PlaceTestOrderAsync(order.Symbol, binanceSide, binanceType,
                     quoteOrderQuantity: order.QuoteOrderQuantity, newClientOrderId: order.Id, orderResponseType: OrderResponseType.Full,
                     ct: cancellationToken).ConfigureAwait(true);
 
@@ -156,7 +157,7 @@ namespace trape.cli.trader.Market
                 else
                 {
                     await database.PlacedOrders.AddAsync(Translator.Translate(placedOrder.Data)).ConfigureAwait(true);
-                    this._buffer.AddOpenOrder(new Cache.Models.OpenOrder(placedOrder.Data.ClientOrderId, placedOrder.Data.Symbol, placedOrder.Data.OriginalQuoteOrderQuantity));
+                    this._buffer.AddOpenOrder(new OpenOrder(placedOrder.Data.ClientOrderId, placedOrder.Data.Symbol, placedOrder.Data.OriginalQuoteOrderQuantity));
                 }
             }
         }
