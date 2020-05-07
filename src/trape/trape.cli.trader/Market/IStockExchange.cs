@@ -1,6 +1,6 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
-using trape.cli.trader.DataLayer.Models;
+using trape.datalayer.Models;
 
 namespace trape.cli.trader.Market
 {
@@ -9,6 +9,6 @@ namespace trape.cli.trader.Market
     /// </summary>
     public interface IStockExchange
     {
-        Task PlaceOrder(Order order, CancellationToken cancellationToken = default);
+        Task PlaceOrder(ClientOrder order, CancellationToken cancellationToken = default);
     }
 }

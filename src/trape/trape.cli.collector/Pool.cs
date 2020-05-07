@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json.Serialization;
-using Serilog;
-using trape.cli.collector.DataLayer;
+﻿using trape.datalayer;
 
 namespace trape.cli.collector
 {
@@ -14,7 +12,7 @@ namespace trape.cli.collector
         /// <summary>
         /// Holds Database objects
         /// </summary>
-        public static ObjectPool<ITrapeContext> DatabasePool { get; private set; }
+        public static ObjectPool<TrapeContext> DatabasePool { get; private set; }
 
         #endregion
 
@@ -25,7 +23,10 @@ namespace trape.cli.collector
         /// </summary>
         public static void Initialize()
         {
-            DatabasePool = new ObjectPool<ITrapeContext>(() => Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext);
+            DatabasePool = new ObjectPool<TrapeContext>(() => Program.Services.GetService(typeof(TrapeContext)) as TrapeContext);
+
+            // Warmup
+            DatabasePool.Warmup(32);
         }
 
         #endregion

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Cache.Models;
+using trape.datalayer.Models;
 using trape.jobs;
 
 namespace trape.cli.trader.Analyze
@@ -62,7 +63,7 @@ namespace trape.cli.trader.Analyze
         /// <summary>
         /// Saves state of last strategy
         /// </summary>
-        private Dictionary<string, Action> _lastStrategy;
+        private Dictionary<string, datalayer.Enums.Action> _lastStrategy;
 
         /// <summary>
         /// Used to limit trend logging
@@ -97,7 +98,7 @@ namespace trape.cli.trader.Analyze
             this._lastRecommendation = new Dictionary<string, Recommendation>();
             this._disposed = false;
             this._recommendationSynchronizer = new SemaphoreSlim(1, 1);
-            this._lastStrategy = new Dictionary<string, Action>();
+            this._lastStrategy = new Dictionary<string, datalayer.Enums.Action>();
             this._logTrendLimiter = 61;
 
             // Set up timer that makes decisions, every second
@@ -159,7 +160,7 @@ namespace trape.cli.trader.Analyze
             // Placeholder for strategy
             if (!this._lastStrategy.ContainsKey(symbol))
             {
-                this._lastStrategy.Add(symbol, Action.Hold);
+                this._lastStrategy.Add(symbol, datalayer.Enums.Action.Hold);
             }
 
             var database = Pool.DatabasePool.Get();
@@ -199,7 +200,7 @@ namespace trape.cli.trader.Analyze
             const decimal strongThreshold = 0.004M;
 
             // Make the decision
-            var action = Action.Hold;
+            var action = datalayer.Enums.Action.Hold;
 
             var lastFallingPrice = this._buffer.GetLastFallingPrice(symbol);
 
@@ -229,7 +230,7 @@ namespace trape.cli.trader.Analyze
                 )
             {
                 // Panic sell
-                action = Action.PanicSell;
+                action = datalayer.Enums.Action.PanicSell;
                 this._logger.Warning("Panic Mode");
             }
             else if (stat10m.Slope30m > strongThreshold || distanceOkAndTrendPositive)
@@ -259,7 +260,7 @@ namespace trape.cli.trader.Analyze
                 // Check market movement, if a huge sell is detected advice to take profits
                 if (stat3s.MovingAverage15s < -2)
                 {
-                    action = Action.TakeProfitsSell;
+                    action = datalayer.Enums.Action.TakeProfitsSell;
                 }
             }
 
@@ -282,7 +283,47 @@ namespace trape.cli.trader.Analyze
                 Action = action,
                 Price = currentPrice,
                 Symbol = symbol,
-                EventTime = DateTime.UtcNow
+                CreatedOn = DateTime.UtcNow,
+                Slope5s = stat3s.Slope5s,
+                Slope10s = stat3s.Slope10s,
+                Slope15s = stat3s.Slope15s,
+                Slope30s = stat3s.Slope30s,
+                Slope45s = stat15s.Slope45s,
+                Slope1m = stat15s.Slope1m,
+                Slope2m = stat15s.Slope2m,
+                Slope3m = stat15s.Slope3m,
+                Slope5m = stat2m.Slope5m,
+                Slope7m = stat2m.Slope7m,
+                Slope10m = stat2m.Slope10m,
+                Slope15m = stat2m.Slope15m,
+                Slope30m = stat10m.Slope30m,
+                Slope1h = stat10m.Slope1h,
+                Slope2h = stat10m.Slope2h,
+                Slope3h = stat10m.Slope3h,
+                Slope6h = stat2h.Slope6h,
+                Slope12h = stat2h.Slope12h,
+                Slope18h = stat2h.Slope18h,
+                Slope1d = stat2h.Slope1d,
+                MovingAverage5s = stat3s.MovingAverage5s,
+                MovingAverage10s = stat3s.MovingAverage10s,
+                MovingAverage15s = stat3s.MovingAverage15s,
+                MovingAverage30s = stat3s.MovingAverage30s,
+                MovingAverage45s = stat15s.MovingAverage45s,
+                MovingAverage1m = stat15s.MovingAverage1m,
+                MovingAverage2m = stat15s.MovingAverage2m,
+                MovingAverage3m = stat15s.MovingAverage3m,
+                MovingAverage5m = stat2m.MovingAverage5m,
+                MovingAverage7m = stat2m.MovingAverage7m,
+                MovingAverage10m = stat2m.MovingAverage10m,
+                MovingAverage15m = stat2m.MovingAverage15m,
+                MovingAverage30m = stat10m.MovingAverage30m,
+                MovingAverage1h = stat10m.MovingAverage1h,
+                MovingAverage2h = stat10m.MovingAverage2h,
+                MovingAverage3h = stat10m.MovingAverage3h,
+                MovingAverage6h = stat2h.MovingAverage6h,
+                MovingAverage12h = stat2h.MovingAverage12h,
+                MovingAverage18h = stat2h.MovingAverage18h,
+                MovingAverage1d = stat2h.MovingAverage1d
             };
 
             this._logger.Verbose($"{symbol}: Recommending: {action}");
@@ -300,12 +341,21 @@ namespace trape.cli.trader.Analyze
             }
 
             // Store recommendation in database
-            await database.InsertAsync(newRecommendation, stat3s, stat15s, stat2m, stat10m, stat2h, this._cancellationTokenSource.Token).ConfigureAwait(false);
+            try
+            {
+                database.Recommendations.Add(newRecommendation);
+                await database.SaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+                this._logger.Error(e.Message, e);
+            }
+            finally
+            {
+                Pool.DatabasePool.Put(database);
+            }
 
             _logTrend(newRecommendation, stat10m, stat2h);
-
-            // Return database
-            Pool.DatabasePool.Put(database);
         }
 
         #region Strategies
@@ -321,19 +371,19 @@ namespace trape.cli.trader.Analyze
         /// <param name="lowerLimitMA1h">Lower limit of moving average for 10 mintues</param>
         /// <param name="upperLimitMA1h">Upper limit of moving average for 10 minutes</param>
         /// <returns></returns>
-        public Action NormalSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
+        public datalayer.Enums.Action NormalSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
         {
             #region Argument checks
 
             if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
             {
                 this._logger.Warning("Stats are NULL");
-                return Action.Hold;
+                return datalayer.Enums.Action.Hold;
             }
 
             #endregion
 
-            var action = Action.Hold;
+            var action = datalayer.Enums.Action.Hold;
 
             var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
 
@@ -343,14 +393,14 @@ namespace trape.cli.trader.Analyze
                 || (lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6)))
             {
                 // Strong sell
-                action = Action.Sell;
+                action = datalayer.Enums.Action.Sell;
             }
 
             // Check tendency
             if (stat2m.Slope10m > 0.002M
                 && stat10m.Slope30m > 0.001M)
             {
-                action = Action.Hold;
+                action = datalayer.Enums.Action.Hold;
             }
 
             return action;
@@ -368,19 +418,19 @@ namespace trape.cli.trader.Analyze
         /// <param name="upperLimitMA1h">Upper limit of moving average of 1 hour</param>
         /// <param name="distanceOkAndTrendPositive">Distance is OK and trend is positive</param>
         /// <returns></returns>
-        public Action NormalBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h, bool distanceOkAndTrendPositive)
+        public datalayer.Enums.Action NormalBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h, bool distanceOkAndTrendPositive)
         {
             #region Argument checks
 
             if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
             {
                 this._logger.Warning("Stats are NULL");
-                return Action.Hold;
+                return datalayer.Enums.Action.Hold;
             }
 
             #endregion
 
-            var action = Action.Hold;
+            var action = datalayer.Enums.Action.Hold;
 
             var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
 
@@ -391,14 +441,14 @@ namespace trape.cli.trader.Analyze
                 || distanceOkAndTrendPositive)
             {
                 // Strong sell
-                action = Action.Buy;
+                action = datalayer.Enums.Action.Buy;
             }
 
             // Check tendency
             if (stat2m.Slope10m < -0.002M
                 && stat10m.Slope30m < -0.001M)
             {
-                action = Action.Hold;
+                action = datalayer.Enums.Action.Hold;
             }
 
             return action;
@@ -415,19 +465,19 @@ namespace trape.cli.trader.Analyze
         /// <param name="lowerLimitMA1h">Lower limit of moving average for 10 mintues</param>
         /// <param name="upperLimitMA1h">Upper limit of moving average for 10 minutes</param>
         /// <returns></returns>
-        public Action StrongSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
+        public datalayer.Enums.Action StrongSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
         {
             #region Argument checks
 
             if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
             {
                 this._logger.Warning("Stats are NULL");
-                return Action.Hold;
+                return datalayer.Enums.Action.Hold;
             }
 
             #endregion
 
-            return Action.StrongSell;
+            return datalayer.Enums.Action.StrongSell;
         }
 
         /// <summary>
@@ -442,20 +492,20 @@ namespace trape.cli.trader.Analyze
         /// <param name="upperLimitMA1h">Upper limit of moving average of 1 hour</param>
         /// <param name="distanceOkAndTrendPositive">Distance is OK and trend is positive</param>
         /// <returns></returns>
-        public Action StrongBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h, bool distanceOkAndTrendPositive)
+        public datalayer.Enums.Action StrongBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h, bool distanceOkAndTrendPositive)
         {
             #region Argument checks
 
             if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
             {
                 this._logger.Warning("Stats are NULL");
-                return Action.Hold;
+                return datalayer.Enums.Action.Hold;
             }
 
             #endregion
 
             // Advise to sell
-            var action = Action.Hold;
+            var action = datalayer.Enums.Action.Hold;
 
             var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
 
@@ -477,7 +527,7 @@ namespace trape.cli.trader.Analyze
                 || distanceOkAndTrendPositive
                 || (fundsAvailable && stat2m.Slope15m > 0.015M && stat10m.Slope30m > 0.005M && stat10m.Slope1h > 0.0035M))
             {
-                action = Action.StrongBuy;
+                action = datalayer.Enums.Action.StrongBuy;
             }
 
             return action;
@@ -499,7 +549,7 @@ namespace trape.cli.trader.Analyze
             {
                 this._logTrendLimiter = DateTime.UtcNow.Second;
 
-                var reco = recommendation.Action == Action.Buy ? "Buy :" : recommendation.Action.ToString();
+                var reco = recommendation.Action == datalayer.Enums.Action.Buy ? "Buy :" : recommendation.Action.ToString();
 
                 this._logger.Verbose($"{recommendation.Symbol}: {reco} | S1h: {stat10m.Slope1h:0.0000} | S2h: {stat10m.Slope2h:0.0000} | MA1h: {stat10m.MovingAverage1h:0.0000} | MA2h: {stat10m.MovingAverage2h:0.0000} | MA6h: {stat2Hours.MovingAverage6h:0.0000}");
             }
@@ -514,7 +564,7 @@ namespace trape.cli.trader.Analyze
         {
             // Decision must be present and not older than 5 seconds
             if (this._lastRecommendation.TryGetValue(symbol, out Recommendation decision)
-                && decision.EventTime > DateTime.UtcNow.AddSeconds(-5))
+                && decision.CreatedOn > DateTime.UtcNow.AddSeconds(-5))
             {
                 return decision;
             }

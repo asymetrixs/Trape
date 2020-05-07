@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache.Models;
+using trape.datalayer.Models;
 
 namespace trape.cli.trader.Cache
 {

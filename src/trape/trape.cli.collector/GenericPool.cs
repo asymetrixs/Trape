@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 
 namespace trape.cli.collector
 {
@@ -44,6 +45,18 @@ namespace trape.cli.collector
         #endregion Constructor
 
         #region Methods
+
+        /// <summary>
+        /// Warmup, precreates <paramref name="numberOfInstances"/> instances.
+        /// </summary>
+        /// <param name="numberOfInstances"></param>
+        public void Warmup(int numberOfInstances)
+        {
+            Parallel.For(0, numberOfInstances, (int i) =>
+            {
+                this.objects.Add(this.ctor());
+            });
+        }
 
         /// <summary>
         /// Removes all objects of this pool

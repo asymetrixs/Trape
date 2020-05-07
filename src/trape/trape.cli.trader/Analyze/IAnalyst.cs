@@ -1,4 +1,5 @@
 ﻿using System;
+using trape.datalayer.Models;
 
 namespace trape.cli.trader.Analyze
 {

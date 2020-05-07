@@ -10,10 +10,10 @@ using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
-using trape.cli.trader.DataLayer;
-using trape.cli.trader.DataLayer.Models;
 using trape.cli.trader.Market;
 using trape.cli.trader.WatchDog;
+using trape.datalayer;
+using trape.datalayer.Models;
 using trape.jobs;
 
 namespace trape.cli.trader.Trading
@@ -83,7 +83,7 @@ namespace trape.cli.trader.Trading
         /// <summary>
         /// Records last strongs to not execute a strong <c>Recommendation</c> one after the other without a break inbetween
         /// </summary>
-        private readonly Dictionary<Analyze.Action, DateTime> _lastRecommendation;
+        private readonly Dictionary<datalayer.Enums.Action, DateTime> _lastRecommendation;
 
         /// <summary>
         /// Semaphore synchronizes access in case a task takes longer to return and the timer would elapse again
@@ -128,7 +128,7 @@ namespace trape.cli.trader.Trading
             this._buffer = buffer;
             this._binanceClient = binanceClient;
             this._cancellationTokenSource = new CancellationTokenSource();
-            this._lastRecommendation = new Dictionary<Analyze.Action, DateTime>();
+            this._lastRecommendation = new Dictionary<datalayer.Enums.Action, DateTime>();
             this.Symbol = null;
             this._canTrade = new SemaphoreSlim(1, 1);
 
@@ -165,7 +165,7 @@ namespace trape.cli.trader.Trading
                 this._logger.Verbose($"{this.Symbol}: No recommendation available.");
                 return;
             }
-            else if (recommendation.Action == Analyze.Action.Hold)
+            else if (recommendation.Action == datalayer.Enums.Action.Hold)
             {
                 this._logger.Verbose($"{this.Symbol}: Recommendation is hold.");
                 return;
@@ -200,8 +200,9 @@ namespace trape.cli.trader.Trading
 
 
                 // Get last orders
-                var lastOrders = await database.GetLastOrdersAsync(this.Symbol, this._cancellationTokenSource.Token).ConfigureAwait(false);
-                var lastOrder = lastOrders.OrderByDescending(l => l.TransactionTime).FirstOrDefault();
+                var lastOrder = database.PlacedOrders
+                                    .Where(p => p.Symbol == this.Symbol)
+                                    .OrderByDescending(p => p.TransactionTime).FirstOrDefault();
 
                 /*
                  * Rules
@@ -216,22 +217,22 @@ namespace trape.cli.trader.Trading
                 */
 
                 // Buy
-                if (recommendation.Action == Analyze.Action.Buy
-                    || recommendation.Action == Analyze.Action.StrongBuy)
+                if (recommendation.Action == datalayer.Enums.Action.Buy
+                    || recommendation.Action == datalayer.Enums.Action.StrongBuy)
                 {
                     // Buy
                     await this.Buy(recommendation, symbolInfo, database, lastOrder).ConfigureAwait(true);
 
                     // But check if profit sells can be made
-                    await this.Sell(recommendation, lastOrders, symbolInfo, database, Analyze.Action.TakeProfitsSell).ConfigureAwait(true);
+                    await this.Sell(recommendation, symbolInfo, database, datalayer.Enums.Action.TakeProfitsSell).ConfigureAwait(true);
                 }
                 // Sell
-                else if (recommendation.Action == Analyze.Action.Sell
-                    || recommendation.Action == Analyze.Action.StrongSell
-                    || recommendation.Action == Analyze.Action.PanicSell
-                    || recommendation.Action == Analyze.Action.TakeProfitsSell)
+                else if (recommendation.Action == datalayer.Enums.Action.Sell
+                    || recommendation.Action == datalayer.Enums.Action.StrongSell
+                    || recommendation.Action == datalayer.Enums.Action.PanicSell
+                    || recommendation.Action == datalayer.Enums.Action.TakeProfitsSell)
                 {
-                    await this.Sell(recommendation, lastOrders, symbolInfo, database, Analyze.Action.None, lastOrder).ConfigureAwait(true);
+                    await this.Sell(recommendation, symbolInfo, database, datalayer.Enums.Action.None, lastOrder).ConfigureAwait(true);
                 }
 
                 // Log recommended action, use for strong recommendations
@@ -272,8 +273,8 @@ namespace trape.cli.trader.Trading
         /// <param name="lastOrder">Last order, if any</param>
         /// 
         /// <returns>Placed order or null if none placed</returns>
-        public async Task Buy(Recommendation recommendation, BinanceSymbol symbolInfo, ITrapeContext database,
-            LastOrder lastOrder = null)
+        public async Task Buy(Recommendation recommendation, BinanceSymbol symbolInfo, TrapeContext database,
+            PlacedOrder lastOrder = null)
         {
             #region Argument checks
 
@@ -299,7 +300,7 @@ namespace trape.cli.trader.Trading
             // Only take half of what is available to buy assets
             var availableUSDT = usdt?.Free * 0.6M;
             // In case of strong buy increase budget
-            if (recommendation.Action == Analyze.Action.StrongBuy)
+            if (recommendation.Action == datalayer.Enums.Action.StrongBuy)
             {
                 availableUSDT = usdt?.Free * 0.8M;
             }
@@ -335,13 +336,13 @@ namespace trape.cli.trader.Trading
 
                 // For increased readability
                 var isLastOrderNull = lastOrder == null;
-                var isLastOrderSell = !isLastOrderNull && lastOrder.Side == OrderSide.Sell;
-                var isLastOrderBuyAndPriceDecreased = !isLastOrderNull && lastOrder.Side == OrderSide.Buy
+                var isLastOrderSell = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Sell;
+                var isLastOrderBuyAndPriceDecreased = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Buy
                                                         && lastOrder.Price * requiredPriceDropforRebuy > bestAskPrice
                                                         && lastOrder.TransactionTime.AddMinutes(5) < DateTime.UtcNow;
                 var shallFollowStrongBuy = (!this._lastRecommendation.ContainsKey(recommendation.Action)
                                                             || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow)
-                                                        && recommendation.Action == Analyze.Action.StrongBuy;
+                                                        && recommendation.Action == datalayer.Enums.Action.StrongBuy;
 
                 var isLogicValid = availableUSDT.HasValue
                                     && availableUSDT.Value >= symbolInfo.MinNotionalFilter.MinNotional
@@ -381,11 +382,11 @@ namespace trape.cli.trader.Trading
 
                     // Get stock exchange and place order
                     var stockExchange = Program.Services.GetService(typeof(IStockExchange)) as IStockExchange;
-                    await stockExchange.PlaceOrder(new Order()
+                    await stockExchange.PlaceOrder(new ClientOrder()
                     {
                         Symbol = this.Symbol,
-                        Side = OrderSide.Buy,
-                        Type = OrderType.Market,
+                        Side = datalayer.Enums.OrderSide.Buy,
+                        Type = datalayer.Enums.OrderType.Market,
                         QuoteOrderQuantity = availableUSDT.Value,
                         Price = bestAskPrice
                     }, this._cancellationTokenSource.Token).ConfigureAwait(true);
@@ -409,14 +410,12 @@ namespace trape.cli.trader.Trading
         /// <param name="newClientOrderId">Generated new client order id</param>
         /// <param name="lastOrder">Last order, if any</param>
         /// <returns>Placed order or null if none placed</returns>
-        public async Task<WebCallResult<BinancePlacedOrder>> Sell(Recommendation recommendation, IEnumerable<LastOrder> lastOrders,
-            BinanceSymbol symbolInfo, ITrapeContext database, Analyze.Action profitAction, LastOrder lastOrder = null)
+        public async Task<WebCallResult<BinancePlacedOrder>> Sell(Recommendation recommendation,
+            BinanceSymbol symbolInfo, TrapeContext database, datalayer.Enums.Action profitAction, PlacedOrder lastOrder = null)
         {
             #region Argument checks
 
             _ = recommendation ?? throw new ArgumentNullException(paramName: nameof(recommendation));
-
-            _ = lastOrders ?? throw new ArgumentNullException(paramName: nameof(lastOrders));
 
             _ = symbolInfo ?? throw new ArgumentNullException(paramName: nameof(symbolInfo));
 
@@ -434,7 +433,7 @@ namespace trape.cli.trader.Trading
             {
                 this._logger.Debug($"{this.Symbol} nothing free");
 
-                if (recommendation.Action == Analyze.Action.PanicSell)
+                if (recommendation.Action == datalayer.Enums.Action.PanicSell)
                 {
                     this._logger.Warning($"{this.Symbol}: PANICKING - but no asset free to sell");
                 }
@@ -447,14 +446,21 @@ namespace trape.cli.trader.Trading
                 // Normal - Do not sell below buying price
                 // - Where buying price * 1.002 (0.2%) is smaller than bidding price
                 // Select quantities
-                var availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy
-                                                            && /* Bid price is 0.2% higher */
-                                                                l.Price * 1.002M < bestBidPrice
-                                                            && l.Quantity > l.Consumed)
-                                                        .Sum(l => (l.Quantity - l.Consumed));
+
+                var buyFills = database.PlacedOrders
+                                    .Where(p => p.Side == datalayer.Enums.OrderSide.Buy
+                                        && p.Symbol == this.Symbol)
+                                    .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity));
+
+                var availableAssetQuantity = buyFills
+                                                .Where(f =>
+                                                    /* Bid price is 0.2% higher */
+                                                    f.Price * 1.002M < bestBidPrice)
+                                            .Sum(f => (f.Quantity - f.ConsumedQuantity));
 
 
-                if (profitAction == Analyze.Action.TakeProfitsSell)
+
+                if (profitAction == datalayer.Enums.Action.TakeProfitsSell)
                 {
                     this._logger.Verbose($"{this.Symbol}: Checking Buy-TakerProfitsSell");
 
@@ -469,11 +475,11 @@ namespace trape.cli.trader.Trading
                         && stat15s.Slope3m < -0.05M
                         && stat15s.MovingAverage1m < 0)
                     {
-                        availableAssetQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy
-                                                                && /* Bid price is 0.6% higher */
-                                                                    l.Price * 1.006M < bestBidPrice
-                                                                && l.Quantity > l.Consumed)
-                                                            .Sum(l => (l.Quantity - l.Consumed));
+                        availableAssetQuantity = buyFills
+                                                .Where(f => /* Bid price is 0.6% higher */
+                                                        f.Price * 1.006M < bestBidPrice)
+                                                .Sum(l => (l.Quantity - l.ConsumedQuantity));
+
                         this._logger.Information($"{this.Symbol}: Buy-TakerProfitsSell for {availableAssetQuantity:0.00}");
                     }
                     else
@@ -486,14 +492,13 @@ namespace trape.cli.trader.Trading
                 // - Where buying-price was 0.5% higher than current price
                 // And where assets are available and side is buy
                 // Select quantities
-                var stopLossQuantity = lastOrders.Where(l => l.Side == OrderSide.Buy
-                                                            && /* Stop-Loss: 1.0% lower */
-                                                                l.Price * 0.99M > bestBidPrice
-                                                                    && recommendation.Action == Analyze.Action.StrongSell
-                                                            && l.Quantity > l.Consumed
-                                                            // Only if not in upwards trend
-                                                            && profitAction != Analyze.Action.TakeProfitsSell)
-                                                        .Sum(l => (l.Quantity - l.Consumed));
+                var stopLossQuantity = buyFills
+                                        .Where(l =>  /* Stop-Loss: 1.0% lower */
+                                                    l.Price * 0.99M > bestBidPrice
+                                                        && recommendation.Action == datalayer.Enums.Action.StrongSell
+                                                    // Only if not in upwards trend
+                                                    && profitAction != datalayer.Enums.Action.TakeProfitsSell)
+                                                    .Sum(l => (l.Quantity - l.ConsumedQuantity));
 
                 // Reduce by 1% due to possible differences between database and Binance
                 var sellAssetQuantity = (stopLossQuantity + availableAssetQuantity) * 0.99M;
@@ -505,7 +510,7 @@ namespace trape.cli.trader.Trading
                 assetBalanceToSell = Math.Min(assetBalanceToSell.GetValueOrDefault(), sellAssetQuantity);
 
                 // Panic Mode, sell everything
-                if (recommendation.Action == Analyze.Action.PanicSell)
+                if (recommendation.Action == datalayer.Enums.Action.PanicSell)
                 {
                     // Take everything
                     assetBalanceToSell = assetBalance?.Free;
@@ -513,7 +518,7 @@ namespace trape.cli.trader.Trading
                     // Sell 0.25% under value
                     bestBidPrice = bestBidPrice * 0.9975M;
                 }
-                else if (recommendation.Action == Analyze.Action.StrongSell)
+                else if (recommendation.Action == datalayer.Enums.Action.StrongSell)
                 {
                     // TODO: Sell everything on break-even
                     // Sell everything with profit or at least 75% of what is in stock
@@ -553,14 +558,14 @@ namespace trape.cli.trader.Trading
                 // TODO: if-direct checks
                 // For increased readability
                 var isLastOrderNull = lastOrder == null;
-                var isLastOrderBuy = !isLastOrderNull && lastOrder?.Side == OrderSide.Buy;
-                var isPanicking = recommendation.Action == Analyze.Action.PanicSell;
-                var isLastOrderSellAndPriceIncreased = !isLastOrderNull && lastOrder.Side == OrderSide.Sell
+                var isLastOrderBuy = !isLastOrderNull && lastOrder?.Side == datalayer.Enums.OrderSide.Buy;
+                var isPanicking = recommendation.Action == datalayer.Enums.Action.PanicSell;
+                var isLastOrderSellAndPriceIncreased = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Sell
                                                             && lastOrder.Price * requiredPriceGainForResell < bestBidPrice
                                                             && lastOrder.TransactionTime.AddMinutes(5) < DateTime.UtcNow;
                 var shallFollowStrongSell = (!this._lastRecommendation.ContainsKey(recommendation.Action)
                                                             || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow)
-                                                        && recommendation.Action == Analyze.Action.StrongSell;
+                                                        && recommendation.Action == datalayer.Enums.Action.StrongSell;
 
                 var isLogicValid = aimToGetUSDT.HasValue
                                     && aimToGetUSDT.Value >= symbolInfo.MinNotionalFilter.MinNotional
@@ -618,11 +623,11 @@ namespace trape.cli.trader.Trading
 
                     // Get stock exchange and place order
                     var stockExchange = Program.Services.GetService(typeof(IStockExchange)) as IStockExchange;
-                    await stockExchange.PlaceOrder(new Order()
+                    await stockExchange.PlaceOrder(new ClientOrder()
                     {
                         Symbol = this.Symbol,
-                        Side = OrderSide.Sell,
-                        Type = OrderType.Market,
+                        Side = datalayer.Enums.OrderSide.Sell,
+                        Type = datalayer.Enums.OrderType.Market,
                         QuoteOrderQuantity = aimToGetUSDT.Value,
                         Price = bestBidPrice
                     }, this._cancellationTokenSource.Token).ConfigureAwait(true);

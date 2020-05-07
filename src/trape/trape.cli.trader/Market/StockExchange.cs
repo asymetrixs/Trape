@@ -7,8 +7,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache;
-using trape.cli.trader.DataLayer;
-using trape.cli.trader.DataLayer.Models;
+using trape.datalayer;
+using trape.datalayer.Models;
+using trape.mapper;
 
 namespace trape.cli.trader.Market
 {
@@ -69,7 +70,7 @@ namespace trape.cli.trader.Market
         /// <param name="Order">Order</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        public async Task PlaceOrder(Order order, CancellationToken cancellationToken = default)
+        public async Task PlaceOrder(ClientOrder order, CancellationToken cancellationToken = default)
         {
             #region Argument checks
 
@@ -82,14 +83,19 @@ namespace trape.cli.trader.Market
             try
             {
                 // Place the order
-                var placedOrder = await this._binanceClient.PlaceOrderAsync(order.Symbol, order.Side, order.Type,
-                    quoteOrderQuantity: order.QuoteOrderQuantity, newClientOrderId: order.NewClientOrderId, orderResponseType: OrderResponseType.Full,
+                var binanceSide = (OrderSide)(int)order.Side;
+                var binanceType = (OrderType)(int)order.Type;
+
+                var placedOrder = await this._binanceClient.PlaceOrderAsync(order.Symbol, binanceSide, binanceType,
+                    quoteOrderQuantity: order.QuoteOrderQuantity, newClientOrderId: order.Id, orderResponseType: OrderResponseType.Full,
                     ct: cancellationToken).ConfigureAwait(true);
 
                 // Log order in custom format
-                await database.InsertAsync(order, cancellationToken).ConfigureAwait(true);
+                database.ClientOrder.Add(order);
 
-                await LogOrder(database, order.NewClientOrderId, placedOrder, cancellationToken).ConfigureAwait(true);
+                await LogOrder(database, order.Id, placedOrder, cancellationToken).ConfigureAwait(true);
+
+                await database.SaveChangesAsync(cancellationToken);
             }
             catch (Exception e)
             {
@@ -109,7 +115,7 @@ namespace trape.cli.trader.Market
         /// <param name="placedOrder">Placed order or null if none</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        private async Task LogOrder(ITrapeContext database, string newClientOrderId, WebCallResult<BinancePlacedOrder> placedOrder, CancellationToken cancellationToken = default)
+        private async Task LogOrder(TrapeContext database, string newClientOrderId, WebCallResult<BinancePlacedOrder> placedOrder, CancellationToken cancellationToken = default)
         {
             #region Argument checks
 
@@ -149,7 +155,7 @@ namespace trape.cli.trader.Market
                 }
                 else
                 {
-                    await database.InsertAsync(placedOrder.Data, cancellationToken).ConfigureAwait(true);
+                    await database.PlacedOrders.AddAsync(Translator.Translate(placedOrder.Data)).ConfigureAwait(true);
                     this._buffer.AddOpenOrder(new Cache.Models.OpenOrder(placedOrder.Data.ClientOrderId, placedOrder.Data.Symbol, placedOrder.Data.OriginalQuoteOrderQuantity));
                 }
             }

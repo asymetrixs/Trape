@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache.Models;
+using trape.datalayer.Models;
 using trape.jobs;
 
 namespace trape.cli.trader.Cache

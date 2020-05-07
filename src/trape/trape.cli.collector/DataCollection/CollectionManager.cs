@@ -11,8 +11,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using trape.cli.collector.DataLayer;
 using trape.jobs;
+using trape.mapper;
 
 namespace trape.cli.collector.DataCollection
 {
@@ -64,6 +64,11 @@ namespace trape.cli.collector.DataCollection
         private readonly SemaphoreSlim _startStop;
 
         /// <summary>
+        /// Synchronizer for collectors
+        /// </summary>
+        private readonly SemaphoreSlim _managing;
+
+        /// <summary>
         /// Shutdown indicator
         /// </summary>
         private bool _shutdown;
@@ -102,6 +107,7 @@ namespace trape.cli.collector.DataCollection
             this._disposed = false;
             this._cancellationTokenSource = new CancellationTokenSource();
             this._startStop = new SemaphoreSlim(1, 1);
+            this._managing = new SemaphoreSlim(1, 1);
             this._shutdown = false;
             this._activeSubscriptions = new Dictionary<string, List<UpdateSubscription>>();
 
@@ -166,16 +172,33 @@ namespace trape.cli.collector.DataCollection
             this._logger.Verbose("Checking subscriptions");
 
             // Get symbols from database
+            string[] requiredSymbols = default;
+
             var database = Pool.DatabasePool.Get();
-            var requiredSymbols = database.Symbols.Where(s => s.IsCollectionActive).Select(s => s.Name).ToArray();
-            Pool.DatabasePool.Put(database);
+            try
+            {
+                requiredSymbols = database.Symbols.Where(s => s.IsCollectionActive).Select(s => s.Name).ToArray();
+                await database.SaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+                var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
+                logger.ForContext(typeof(CollectionManager));
+                logger.Error(e.Message, e);
+            }
+            finally
+            {
+                Pool.DatabasePool.Put(database);
+            }
 
 
             // Stop timer, because it may take a while
-            if (this._timerSubscriptionManager.Enabled)
+            if (this._managing.CurrentCount == 0)
             {
-                this._timerSubscriptionManager.Stop();
+                return;
             }
+
+            this._managing.Wait();
 
             try
             {
@@ -208,7 +231,7 @@ namespace trape.cli.collector.DataCollection
             finally
             {
                 // Start timer again when done
-                this._timerSubscriptionManager.Start();
+                this._managing.Release();
             }
 
             this._logger.Verbose("Subscriptions checked");
@@ -227,8 +250,21 @@ namespace trape.cli.collector.DataCollection
         public static async Task Save(BinanceStreamTick bst, CancellationToken cancellationToken = default)
         {
             var database = Pool.DatabasePool.Get();
-            await database.Insert(bst, cancellationToken).ConfigureAwait(false);
-            Pool.DatabasePool.Put(database);
+            try
+            {
+                database.Ticks.Add(Translator.Translate(bst));
+                await database.SaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+                var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
+                logger.ForContext(typeof(CollectionManager));
+                logger.Error(e.Message, e);
+            }
+            finally
+            {
+                Pool.DatabasePool.Put(database);
+            }
         }
 
         /// <summary>
@@ -240,8 +276,21 @@ namespace trape.cli.collector.DataCollection
         public static async Task Save(BinanceStreamKlineData bskd, CancellationToken cancellationToken = default)
         {
             var database = Pool.DatabasePool.Get();
-            await database.Insert(bskd, cancellationToken).ConfigureAwait(false);
-            Pool.DatabasePool.Put(database);
+            try
+            {
+                database.Klines.Add(Translator.Translate(bskd));
+                await database.SaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+                var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
+                logger.ForContext(typeof(CollectionManager));
+                logger.Error(e.Message, e);
+            }
+            finally
+            {
+                Pool.DatabasePool.Put(database);
+            }
         }
 
         /// <summary>
@@ -253,8 +302,21 @@ namespace trape.cli.collector.DataCollection
         public static async Task Save(BinanceBookTick bbt, CancellationToken cancellationToken = default)
         {
             var database = Pool.DatabasePool.Get();
-            await database.Insert(bbt, cancellationToken).ConfigureAwait(false);
-            Pool.DatabasePool.Put(database);
+            try
+            {
+                database.BookTicks.Add(Translator.Translate(bbt));
+                await database.SaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+                var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
+                logger.ForContext(typeof(CollectionManager));
+                logger.Error(e.Message, e);
+            }
+            finally
+            {
+                Pool.DatabasePool.Put(database);
+            }
         }
 
         #endregion

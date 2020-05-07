@@ -2,6 +2,7 @@
 using Binance.Net.Interfaces;
 using Binance.Net.Objects;
 using CryptoExchange.Net.Authentication;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -11,11 +12,11 @@ using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
-using trape.cli.trader.DataLayer;
 using trape.cli.trader.Fees;
 using trape.cli.trader.Market;
 using trape.cli.trader.Trading;
 using trape.cli.trader.WatchDog;
+using trape.datalayer;
 using Trape.BinanceNet.Logger;
 
 namespace trape.cli.trader
@@ -100,13 +101,20 @@ namespace trape.cli.trader
                 )
                 .CreateLogger();
 
+            var dbContextOptionsBuilder = new DbContextOptionsBuilder<TrapeContext>();
+            dbContextOptionsBuilder.UseNpgsql(Config.GetConnectionString("trape-db"));
+            dbContextOptionsBuilder.EnableDetailedErrors(false);
+            dbContextOptionsBuilder.EnableSensitiveDataLogging(false);
 
             return Host.CreateDefaultBuilder()
-                .ConfigureLogging(configure => configure.AddSerilog())
+                .ConfigureLogging(configure => configure.AddSerilog(Log.Logger))
                 .UseSystemd()
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services.AddTransient<ITrapeContext, TrapeContext>();
+                    services.AddTransient<ITrapeContextCreator, TrapeContextDiCreator>();
+                    services.AddSingleton(dbContextOptionsBuilder.Options);
+                    services.AddDbContext<TrapeContext>();
+
                     services.AddSingleton(Log.Logger);
                     services.AddSingleton<IBuffer, Cache.Buffer>();
                     services.AddSingleton<IAnalyst, Analyst>();

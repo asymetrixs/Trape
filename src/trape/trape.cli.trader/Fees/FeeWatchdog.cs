@@ -4,8 +4,8 @@ using System;
 using System.Threading;
 using trape.cli.trader.Account;
 using trape.cli.trader.Cache;
-using trape.cli.trader.DataLayer.Models;
 using trape.cli.trader.Market;
+using trape.datalayer.Models;
 using trape.jobs;
 
 namespace trape.cli.trader.Fees
@@ -121,11 +121,11 @@ namespace trape.cli.trader.Fees
 
                 // Get merchant and place order
                 var merchant = Program.Services.GetService(typeof(IStockExchange)) as IStockExchange;
-                await merchant.PlaceOrder(new Order()
+                await merchant.PlaceOrder(new ClientOrder()
                 {
                     Symbol = this._feeSymbol,
-                    Side = OrderSide.Buy,
-                    Type = OrderType.Market,
+                    Side = datalayer.Enums.OrderSide.Buy,
+                    Type = datalayer.Enums.OrderType.Market,
                     QuoteOrderQuantity = buyFor,
                     Price = currentPrice
                 }, this._cancellationTokenSource.Token).ConfigureAwait(true);

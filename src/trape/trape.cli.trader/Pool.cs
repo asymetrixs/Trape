@@ -1,5 +1,4 @@
-﻿using Serilog;
-using trape.cli.trader.DataLayer;
+﻿using trape.datalayer;
 
 namespace trape.cli.trader
 {
@@ -13,7 +12,7 @@ namespace trape.cli.trader
         /// <summary>
         /// Holds instances of TrapeContext
         /// </summary>
-        public static ObjectPool<ITrapeContext> DatabasePool { get; private set; }
+        public static ObjectPool<TrapeContext> DatabasePool { get; private set; }
 
         #endregion
 
@@ -24,7 +23,7 @@ namespace trape.cli.trader
         /// </summary>
         public static void Initialize()
         {
-            DatabasePool = new ObjectPool<ITrapeContext>(() => Program.Services.GetService(typeof(ITrapeContext)) as ITrapeContext);
+            DatabasePool = new ObjectPool<TrapeContext>(() => Program.Services.GetService(typeof(TrapeContext)) as TrapeContext);
 
             // Warmup
             DatabasePool.Warmup(10);
