@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Microsoft.EntityFrameworkCore;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,7 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Cache;
-using trape.cli.trader.Cache.Models;
+using Microsoft.Extensions.DependencyInjection;
+using trape.datalayer;
 using trape.datalayer.Models;
 using trape.jobs;
 
@@ -163,7 +165,7 @@ namespace trape.cli.trader.Analyze
                 this._lastStrategy.Add(symbol, datalayer.Enums.Action.Hold);
             }
 
-            var database = Pool.DatabasePool.Get();
+            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
 
             // Get stats
             var stat3s = this._buffer.Stats3sFor(symbol);
@@ -352,7 +354,7 @@ namespace trape.cli.trader.Analyze
             }
             finally
             {
-                Pool.DatabasePool.Put(database);
+                
             }
 
             _logTrend(newRecommendation, stat10m, stat2h);

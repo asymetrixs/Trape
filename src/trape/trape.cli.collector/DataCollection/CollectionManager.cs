@@ -173,7 +173,7 @@ namespace trape.cli.collector.DataCollection
                 logger.Error(e.Message, e);
             }
 
-            //var database = Pool.DatabasePool.Get();
+            //var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
             //try
             //{
 
@@ -187,7 +187,7 @@ namespace trape.cli.collector.DataCollection
             //}
             //finally
             //{
-            //    Pool.DatabasePool.Put(database);
+            //    
             //}
 
 

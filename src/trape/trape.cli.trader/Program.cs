@@ -116,12 +116,7 @@ namespace trape.cli.trader
                     services.BuildServiceProvider(new ServiceProviderOptions() { ValidateOnBuild = true, ValidateScopes = true });
                     services.AddTransient<ITrapeContextCreator, TrapeContextDiCreator>();
                     services.AddSingleton(dbContextOptionsBuilder.Options);
-                    services.AddDbContextPool<TrapeContext>(options =>
-                    {
-                        options.UseNpgsql(Config.GetConnectionString("trape-db"));
-                        options.EnableDetailedErrors(false);
-                        options.EnableSensitiveDataLogging(false);
-                    }, 128);
+                    services.AddDbContext<TrapeContext>();
 
                     services.AddSingleton(Log.Logger);
                     services.AddSingleton<IBuffer, Cache.Buffer>();

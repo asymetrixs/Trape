@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Account;
+using Microsoft.Extensions.DependencyInjection;
 using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Market;
@@ -15,6 +16,7 @@ using trape.cli.trader.WatchDog;
 using trape.datalayer;
 using trape.datalayer.Models;
 using trape.jobs;
+using Microsoft.EntityFrameworkCore;
 
 namespace trape.cli.trader.Trading
 {
@@ -178,7 +180,7 @@ namespace trape.cli.trader.Trading
             }
 
             // Get database
-            var database = Pool.DatabasePool.Get();
+            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
             try
             {
                 // Wait because context is available, otherwise would have exited before reaching this step
@@ -252,9 +254,6 @@ namespace trape.cli.trader.Trading
             }
             finally
             {
-                // Return database instance
-                Pool.DatabasePool.Put(database);
-
                 // Release lock
                 this._canTrade.Release();
             }

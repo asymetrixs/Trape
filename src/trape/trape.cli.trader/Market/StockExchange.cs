@@ -11,6 +11,8 @@ using trape.cli.trader.Cache.Models;
 using trape.datalayer;
 using trape.datalayer.Models;
 using trape.mapper;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 
 namespace trape.cli.trader.Market
 {
@@ -79,7 +81,7 @@ namespace trape.cli.trader.Market
 
             #endregion
             // https://nsubstitute.github.io/help/getting-started/
-            var database = Pool.DatabasePool.Get();
+            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
 
             try
             {
@@ -101,10 +103,6 @@ namespace trape.cli.trader.Market
             catch (Exception e)
             {
                 this._logger.Error(e.Message, e);
-            }
-            finally
-            {
-                Pool.DatabasePool.Put(database);
             }
         }
 

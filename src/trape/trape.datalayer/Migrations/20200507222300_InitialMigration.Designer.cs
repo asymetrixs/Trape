@@ -10,8 +10,8 @@ using trape.datalayer;
 namespace trape.datalayer.Migrations
 {
     [DbContext(typeof(TrapeContext))]
-    [Migration("20200507203943_ObjectsMigrated3")]
-    partial class ObjectsMigrated3
+    [Migration("20200507222300_InitialMigration")]
+    partial class InitialMigration
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -305,6 +305,21 @@ namespace trape.datalayer.Migrations
                     b.HasIndex("OpenTime", "Interval", "Symbol");
 
                     b.ToTable("klines");
+                });
+
+            modelBuilder.Entity("trape.datalayer.Models.LatestMA10mAndMA30mCrossing", b =>
+                {
+                    b.ToTable("latest_ma10m_and_ma30m_crossing");
+                });
+
+            modelBuilder.Entity("trape.datalayer.Models.LatestMA1hAndMA3hCrossing", b =>
+                {
+                    b.ToTable("latest_ma1h_and_ma3h_crossing");
+                });
+
+            modelBuilder.Entity("trape.datalayer.Models.LatestMA30mAndMA1hCrossing", b =>
+                {
+                    b.ToTable("latest_ma30m_and_ma1h_crossing");
                 });
 
             modelBuilder.Entity("trape.datalayer.Models.Order", b =>
@@ -858,12 +873,6 @@ namespace trape.datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Stats10m", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
-
                     b.Property<int>("DataBasis")
                         .HasColumnName("r_databasis")
                         .HasColumnType("integer");
@@ -904,21 +913,11 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("r_symbol")
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("Id");
-
                     b.ToTable("stats10m");
                 });
 
             modelBuilder.Entity("trape.datalayer.Models.Stats15s", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
-
                     b.Property<int>("DataBasis")
                         .HasColumnName("r_databasis")
                         .HasColumnType("integer");
@@ -959,21 +958,11 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("r_symbol")
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("Id");
-
                     b.ToTable("stats15s");
                 });
 
             modelBuilder.Entity("trape.datalayer.Models.Stats2h", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
-
                     b.Property<int>("DataBasis")
                         .HasColumnName("r_databasis")
                         .HasColumnType("integer");
@@ -987,7 +976,7 @@ namespace trape.datalayer.Migrations
                         .HasColumnType("numeric");
 
                     b.Property<decimal>("MovingAverage1d")
-                        .HasColumnName("r_movav_24h")
+                        .HasColumnName("r_movav_1d")
                         .HasColumnType("numeric");
 
                     b.Property<decimal>("MovingAverage6h")
@@ -1014,21 +1003,11 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("r_symbol")
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("Id");
-
                     b.ToTable("stats2h");
                 });
 
             modelBuilder.Entity("trape.datalayer.Models.Stats2m", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
-
                     b.Property<int>("DataBasis")
                         .HasColumnName("r_databasis")
                         .HasColumnType("integer");
@@ -1069,21 +1048,11 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("r_symbol")
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("Id");
-
                     b.ToTable("stats2m");
                 });
 
             modelBuilder.Entity("trape.datalayer.Models.Stats3s", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
-
                     b.Property<int>("DataBasis")
                         .HasColumnName("r_databasis")
                         .HasColumnType("integer");
@@ -1123,10 +1092,6 @@ namespace trape.datalayer.Migrations
                     b.Property<string>("Symbol")
                         .HasColumnName("r_symbol")
                         .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Id");
 
                     b.ToTable("stats3s");
                 });

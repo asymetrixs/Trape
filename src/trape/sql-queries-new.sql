@@ -249,3 +249,5 @@ END;
 $$
 LANGUAGE plpgsql STRICT STABLE;
 
+
+insert into symbols (name, is_collection_active, is_trading_active) values ('BTCUSDT', true,true)

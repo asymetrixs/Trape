@@ -1,6 +1,8 @@
 ﻿using Binance.Net.Interfaces;
 using Binance.Net.Objects;
 using Binance.Net.Objects.Sockets;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -8,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache;
+using trape.datalayer;
 using trape.jobs;
 using trape.mapper;
 
@@ -193,7 +196,7 @@ namespace trape.cli.trader.Account
         /// <param name="binanceStreamOrderUpdate"></param>
         private async void _saveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
         {
-            var database = Pool.DatabasePool.Get();
+            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
             try
             {
                 // Save Order Update
@@ -285,10 +288,6 @@ namespace trape.cli.trader.Account
                 logger.ForContext(typeof(Accountant));
                 logger.Error(e.Message, e);
             }
-            finally
-            {
-                Pool.DatabasePool.Put(database);
-            }
 
             // Clear blocked amount
             if (binanceStreamOrderUpdate.Status == OrderStatus.Filled
@@ -308,7 +307,7 @@ namespace trape.cli.trader.Account
         /// <param name="binanceStreamOrderList"></param>
         private async void _saveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)
         {
-            var database = Pool.DatabasePool.Get();
+            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
             try
             {
                 database.OrderLists.Add(Translator.Translate(binanceStreamOrderList));
@@ -320,10 +319,6 @@ namespace trape.cli.trader.Account
                 logger.ForContext(typeof(Accountant));
                 logger.Error(e.Message, e);
             }
-            finally
-            {
-                Pool.DatabasePool.Put(database);
-            }
 
             this._logger.Verbose("Received Binance Stream Order List");
         }
@@ -334,7 +329,7 @@ namespace trape.cli.trader.Account
         /// <param name="binanceStreamBalances"></param>
         private async void _saveBinanceStreamBalance(IEnumerable<BinanceStreamBalance> binanceStreamBalances)
         {
-            var database = Pool.DatabasePool.Get();
+            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
             try
             {
                 database.Balances.AddRange(Translator.Translate(binanceStreamBalances));
@@ -346,10 +341,6 @@ namespace trape.cli.trader.Account
                 logger.ForContext(typeof(Accountant));
                 logger.Error(e.Message, e);
             }
-            finally
-            {
-                Pool.DatabasePool.Put(database);
-            }
 
             this._logger.Verbose("Received Binance Stream Balances");
         }
@@ -360,7 +351,7 @@ namespace trape.cli.trader.Account
         /// <param name="binanceStreamBalanceUpdate"></param>
         private async void _saveBinanceStreamBalanceUpdate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
         {
-            var database = Pool.DatabasePool.Get();
+            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
             try
             {
                 database.BalanceUpdates.AddRange(Translator.Translate(binanceStreamBalanceUpdate));
@@ -371,10 +362,6 @@ namespace trape.cli.trader.Account
                 var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
                 logger.ForContext(typeof(Accountant));
                 logger.Error(e.Message, e);
-            }
-            finally
-            {
-                Pool.DatabasePool.Put(database);
             }
 
             this._logger.Verbose("Received Binance Stream Balance Update");
