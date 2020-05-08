@@ -1,11 +1,11 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using SimpleInjector.Lifestyles;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.jobs;
 using trape.datalayer;
-using Microsoft.EntityFrameworkCore;
+using trape.jobs;
 
 namespace trape.cli.collector
 {
@@ -19,16 +19,19 @@ namespace trape.cli.collector
         /// <returns></returns>
         public async Task Execute(CancellationToken cancellationToken = default)
         {
-            var logger = Program.Services.GetRequiredService<ILogger>().ForContext<CleanUp>();
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            try
+            var logger = Program.Container.GetRequiredService<ILogger>().ForContext<CleanUp>();
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                var deletedRows = await database.CleanUpBookTicks(cancellationToken).ConfigureAwait(false);
-                logger.Debug($"Deleted {deletedRows} rows");
-            }
-            catch (Exception e)
-            {
-                logger.Error(e.Message, e);
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    var deletedRows = await database.CleanUpBookTicks(cancellationToken).ConfigureAwait(false);
+                    logger.Debug($"Deleted {deletedRows} rows");
+                }
+                catch (Exception e)
+                {
+                    logger.Error(e.Message, e);
+                }
             }
         }
     }

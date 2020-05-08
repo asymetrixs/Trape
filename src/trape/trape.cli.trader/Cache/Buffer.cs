@@ -1,6 +1,9 @@
 ﻿using Binance.Net.Interfaces;
 using Binance.Net.Objects;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using SimpleInjector.Lifestyles;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -8,11 +11,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache.Models;
+using trape.datalayer;
 using trape.datalayer.Models;
 using trape.jobs;
-using Microsoft.Extensions.DependencyInjection;
-using trape.datalayer;
-using Microsoft.EntityFrameworkCore;
 
 namespace trape.cli.trader.Cache
 {
@@ -184,18 +185,27 @@ namespace trape.cli.trader.Cache
         {
             this._logger.Verbose("Updating Moving Average 10m and Moving Average 30m crossing");
 
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            var awaitLatestMA10mAndMA30mCrossing = database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token);
-            var awaitLatestMA30mAndMA1hCrossing = database.GetLatestMA30mAndMA1hCrossing(this._cancellationTokenSource.Token);
-            var awaitLatestMA1hAndMA3hCrossing = database.GetLatestMA1hAndMA3hCrossing(this._cancellationTokenSource.Token);
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
+            {
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    var awaitLatestMA10mAndMA30mCrossing = database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token);
+                    var awaitLatestMA30mAndMA1hCrossing = database.GetLatestMA30mAndMA1hCrossing(this._cancellationTokenSource.Token);
+                    var awaitLatestMA1hAndMA3hCrossing = database.GetLatestMA1hAndMA3hCrossing(this._cancellationTokenSource.Token);
 
-            // Execute in parallel
-            await Task.WhenAll(awaitLatestMA10mAndMA30mCrossing, awaitLatestMA1hAndMA3hCrossing).ConfigureAwait(false);
+                    // Execute in parallel
+                    await Task.WhenAll(awaitLatestMA10mAndMA30mCrossing, awaitLatestMA1hAndMA3hCrossing).ConfigureAwait(false);
 
-            this._latestMA10mAnd30mCrossing = awaitLatestMA10mAndMA30mCrossing.Result;
-            this._latestMA30mAnd1hCrossing = awaitLatestMA30mAndMA1hCrossing.Result;
-            this._latestMA1hAnd3hCrossing = awaitLatestMA1hAndMA3hCrossing.Result;
-            
+                    this._latestMA10mAnd30mCrossing = awaitLatestMA10mAndMA30mCrossing.Result;
+                    this._latestMA30mAnd1hCrossing = awaitLatestMA30mAndMA1hCrossing.Result;
+                    this._latestMA1hAnd3hCrossing = awaitLatestMA1hAndMA3hCrossing.Result;
+                }
+                catch (Exception e)
+                {
+                    this._logger.Error(e.Message, e);
+                }
+            }
 
             this._logger.Verbose("Updated Moving Average 10m and Moving Average 30m crossing");
         }
@@ -209,9 +219,18 @@ namespace trape.cli.trader.Cache
         {
             this._logger.Verbose("Updating 3 seconds trend");
 
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            this._stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
+            {
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    this._stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                }
+                catch (Exception e)
+                {
+                    this._logger.Error(e.Message, e);
+                }
+            }
 
             // Set falling prices
             foreach (var stat in this._stats3s)
@@ -255,9 +274,18 @@ namespace trape.cli.trader.Cache
         {
             this._logger.Verbose("Updating 15 seconds trend");
 
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            this._stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
+            {
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    this._stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                }
+                catch (Exception e)
+                {
+                    this._logger.Error(e.Message, e);
+                }
+            }
 
             this._logger.Verbose("Updated 15 seconds trend");
         }
@@ -271,9 +299,18 @@ namespace trape.cli.trader.Cache
         {
             this._logger.Verbose("Updating 2 minutes trend");
 
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            this._stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
+            {
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    this._stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                }
+                catch (Exception e)
+                {
+                    this._logger.Error(e.Message, e);
+                }
+            }
 
             this._logger.Verbose("Updated 2 minutes trend");
         }
@@ -287,9 +324,18 @@ namespace trape.cli.trader.Cache
         {
             this._logger.Verbose("Updating 10 minutes trend");
 
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            this._stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
+            {
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    this._stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                }
+                catch (Exception e)
+                {
+                    this._logger.Error(e.Message, e);
+                }
+            }
 
             this._logger.Verbose("Updated 10 minutes trend");
         }
@@ -303,9 +349,18 @@ namespace trape.cli.trader.Cache
         {
             this._logger.Verbose("Updating 2 hours trend");
 
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            this._stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
+            {
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    this._stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                }
+                catch (Exception e)
+                {
+                    this._logger.Error(e.Message, e);
+                }
+            }
 
             this._logger.Verbose("Updated 2 hours trend");
         }
@@ -580,29 +635,36 @@ namespace trape.cli.trader.Cache
 
             // Initial loading
             this._logger.Debug("Preloading buffer");
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            this._stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this._stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this._stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this._stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this._stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-            this._latestMA10mAnd30mCrossing = await database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token).ConfigureAwait(true);
 
             var availableSymbols = new List<string>();
-
-            while (!availableSymbols.Any())
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                availableSymbols = database.Symbols.Where(s => s.IsTradingActive).Select(s => s.Name).ToList();
-
-                if (!availableSymbols.Any())
+                var database = Program.Container.GetService<TrapeContext>();
+                try
                 {
-                    this._logger.Information("No active symbols. Sleeping...");
-                    await Task.Delay(5000).ConfigureAwait(true);
+                    this._stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    this._stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    this._stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    this._stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    this._stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    this._latestMA10mAnd30mCrossing = await database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token).ConfigureAwait(true);
+
+                    while (!availableSymbols.Any())
+                    {
+                        availableSymbols = database.Symbols.Where(s => s.IsTradingActive).Select(s => s.Name).AsNoTracking().ToList();
+
+                        if (!availableSymbols.Any())
+                        {
+                            this._logger.Information("No active symbols. Sleeping...");
+                            await Task.Delay(5000).ConfigureAwait(true);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    this._logger.Error(e.Message, e);
                 }
             }
-            
-
-            database = null;
 
             this._logger.Debug("Buffer preloaded");
 

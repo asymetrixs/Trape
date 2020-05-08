@@ -2,9 +2,11 @@
 using Binance.Net.Objects;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.Sockets;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using SimpleInjector.Lifestyles;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,7 +16,6 @@ using System.Threading.Tasks.Dataflow;
 using trape.datalayer;
 using trape.jobs;
 using trape.mapper;
-using Microsoft.EntityFrameworkCore;
 
 namespace trape.cli.collector.DataCollection
 {
@@ -161,16 +162,19 @@ namespace trape.cli.collector.DataCollection
             // Get symbols from database
             string[] requiredSymbols = default;
 
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            try
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                requiredSymbols = database.Symbols.Where(s => s.IsCollectionActive).Select(s => s.Name).ToArray();
-            }
-            catch (Exception e)
-            {
-                var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
-                logger.ForContext(typeof(CollectionManager));
-                logger.Error(e.Message, e);
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    requiredSymbols = database.Symbols.Where(s => s.IsCollectionActive).Select(s => s.Name).ToArray();
+                }
+                catch (Exception e)
+                {
+                    var logger = Program.Container.GetService<ILogger>();
+                    logger.ForContext(typeof(CollectionManager));
+                    logger.Error(e.Message, e);
+                }
             }
 
             //var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
@@ -248,17 +252,20 @@ namespace trape.cli.collector.DataCollection
         /// <returns></returns>
         public static async Task Save(BinanceStreamTick bst, CancellationToken cancellationToken = default)
         {
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            try
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                database.Ticks.Add(Translator.Translate(bst));
-                database.SaveChanges();
-            }
-            catch (Exception e)
-            {
-                var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
-                logger.ForContext(typeof(CollectionManager));
-                logger.Error(e.Message, e);
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    database.Ticks.Add(Translator.Translate(bst));
+                    database.SaveChanges();
+                }
+                catch (Exception e)
+                {
+                    var logger = Program.Container.GetService<ILogger>();
+                    logger.ForContext(typeof(CollectionManager));
+                    logger.Error(e.Message, e);
+                }
             }
 
             await Task.CompletedTask.ConfigureAwait(true);
@@ -272,17 +279,20 @@ namespace trape.cli.collector.DataCollection
         /// <returns></returns>
         public static async Task Save(BinanceStreamKlineData bskd, CancellationToken cancellationToken = default)
         {
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            try
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                database.Klines.Add(Translator.Translate(bskd));
-                database.SaveChanges();
-            }
-            catch (Exception e)
-            {
-                var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
-                logger.ForContext(typeof(CollectionManager));
-                logger.Error(e.Message, e);
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    database.Klines.Add(Translator.Translate(bskd));
+                    database.SaveChanges();
+                }
+                catch (Exception e)
+                {
+                    var logger = Program.Container.GetService<ILogger>();
+                    logger.ForContext(typeof(CollectionManager));
+                    logger.Error(e.Message, e);
+                }
             }
 
             await Task.CompletedTask.ConfigureAwait(true);
@@ -296,17 +306,20 @@ namespace trape.cli.collector.DataCollection
         /// <returns></returns>
         public static async Task Save(BinanceBookTick bbt, CancellationToken cancellationToken = default)
         {
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            try
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                database.BookTicks.Add(Translator.Translate(bbt));
-                await database.SaveChangesAsync(cancellationToken).ConfigureAwait(true);
-            }
-            catch (Exception e)
-            {
-                var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
-                logger.ForContext(typeof(CollectionManager));
-                logger.Error(e.Message, e);
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    database.BookTicks.Add(Translator.Translate(bbt));
+                    await database.SaveChangesAsync(cancellationToken).ConfigureAwait(true);
+                }
+                catch (Exception e)
+                {
+                    var logger = Program.Container.GetService<ILogger>();
+                    logger.ForContext(typeof(CollectionManager));
+                    logger.Error(e.Message, e);
+                }
             }
 
             await Task.CompletedTask.ConfigureAwait(true);
@@ -333,7 +346,7 @@ namespace trape.cli.collector.DataCollection
                 await _manage().ConfigureAwait(true);
 
                 // Register cleanup job and start
-                Program.Services.GetService<IJobManager>().Start(new CleanUp());
+                Program.Container.GetService<IJobManager>().Start(new CleanUp());
 
                 this._logger.Information($"Collection Mangager is online");
             }
@@ -380,7 +393,7 @@ namespace trape.cli.collector.DataCollection
                 this._binanceBookTickBuffer.Complete();
 
                 // Terminate jobs managed by job manager
-                Program.Services.GetRequiredService<IJobManager>().TerminateAll();
+                Program.Container.GetInstance<IJobManager>().TerminateAll();
 
                 // Cancel all outstanding and running tasks
                 this._cancellationTokenSource.Cancel();

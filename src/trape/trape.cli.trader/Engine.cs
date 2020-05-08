@@ -52,7 +52,7 @@ namespace trape.cli.trader
         /// <summary>
         /// Checker
         /// </summary>
-        private IChecker _checker;
+        private IWarden _checker;
 
         /// <summary>
         /// Disposed
@@ -73,7 +73,7 @@ namespace trape.cli.trader
         /// <param name="accountant">Accountant</param>
         /// <param name="feeWatchdog">Fee Watchdog</param>
         /// <param name="checker">Checker</param>
-        public Engine(ILogger logger, IBuffer buffer, IAnalyst analyst, ITradingTeam tradingTeam, IAccountant accountant, IFeeWatchdog feeWatchdog, IChecker checker)
+        public Engine(ILogger logger, IBuffer buffer, IAnalyst analyst, ITradingTeam tradingTeam, IAccountant accountant, IFeeWatchdog feeWatchdog, IWarden checker)
         {
             #region Argument checks
 
@@ -125,7 +125,7 @@ namespace trape.cli.trader
 
             this._feeWatchdog.Start();
 
-            var checker = Program.Services.GetService(typeof(IChecker)) as IChecker;
+            var checker = Program.Container.GetInstance<IWarden>();
             checker.Start();
 
             this._logger.Information("Engine is started");
@@ -140,10 +140,10 @@ namespace trape.cli.trader
         {
             this._logger.Information("Engine is stopping");
 
-            var checker = Program.Services.GetService(typeof(IChecker)) as IChecker;
+            var checker = Program.Container.GetInstance<IWarden>();
             checker.Terminate();
 
-            this._feeWatchdog.Finish();
+            this._feeWatchdog.Terminate();
 
             await this._tradingTeam.Finish().ConfigureAwait(true);
 

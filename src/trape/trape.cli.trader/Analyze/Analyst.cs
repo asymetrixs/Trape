@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Serilog;
+using SimpleInjector.Lifestyles;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -159,13 +160,13 @@ namespace trape.cli.trader.Analyze
 
             #endregion
 
+            // TODO: Also check volumes of trades
+
             // Placeholder for strategy
             if (!this._lastStrategy.ContainsKey(symbol))
             {
                 this._lastStrategy.Add(symbol, datalayer.Enums.Action.Hold);
             }
-
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
 
             // Get stats
             var stat3s = this._buffer.Stats3sFor(symbol);
@@ -254,8 +255,20 @@ namespace trape.cli.trader.Analyze
 
             // Check if price has gained a lot over the last 15 minutes
             // Get Price from 15 minutes ago
-            var raceStartingPrice = await database.GetPriceOn(symbol, DateTime.UtcNow.AddMinutes(-15), this._cancellationTokenSource.Token).ConfigureAwait(false);
-
+            decimal raceStartingPrice = default;
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
+            {
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    raceStartingPrice = await database.GetPriceOn(symbol, DateTime.UtcNow.AddMinutes(-15), this._cancellationTokenSource.Token).ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    this._logger.ForContext(typeof(Accountant));
+                    this._logger.Error(e.Message, e);
+                }
+            }
             // Advise to sell on 200 USD gain
             if (raceStartingPrice != default && raceStartingPrice < currentPrice - 220)
             {
@@ -343,18 +356,19 @@ namespace trape.cli.trader.Analyze
             }
 
             // Store recommendation in database
-            try
+
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                database.Recommendations.Add(newRecommendation);
-                await database.SaveChangesAsync();
-            }
-            catch (Exception e)
-            {
-                this._logger.Error(e.Message, e);
-            }
-            finally
-            {
-                
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    database.Recommendations.Add(newRecommendation);
+                    await database.SaveChangesAsync();
+                }
+                catch (Exception e)
+                {
+                    this._logger.Error(e.Message, e);
+                }
             }
 
             _logTrend(newRecommendation, stat10m, stat2h);

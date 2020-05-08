@@ -7,9 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Exceptions;
+using SimpleInjector;
+using SimpleInjector.Lifestyles;
 using System;
-using System.Data.Common;
-using System.Net.Security;
 using System.Threading.Tasks;
 using trape.cli.trader.Account;
 using trape.cli.trader.Analyze;
@@ -28,9 +28,9 @@ namespace trape.cli.trader
         #region Properties
 
         /// <summary>
-        /// Services
+        /// DI/IoC Container
         /// </summary>
-        public static IServiceProvider Services { get; private set; }
+        public static Container Container { get; private set; }
 
         #endregion
 
@@ -47,13 +47,9 @@ namespace trape.cli.trader
             Config.SetUp();
 
             // Create IoC container
-            var app = CreateHostBuilder().Build();
-            Services = app.Services;
+            var app = CreateHost();
 
-            // Initialize pool
-            Pool.Initialize();
-
-            var logger = Services.GetRequiredService<ILogger>().ForContext<Program>();
+            var logger = Container.GetInstance<ILogger>().ForContext<Program>();
             logger.Information("Start up complete");
 
             try
@@ -83,7 +79,7 @@ namespace trape.cli.trader
         /// Creates the host builder
         /// </summary>
         /// <returns></returns>
-        public static IHostBuilder CreateHostBuilder()
+        public static IHost CreateHost()
         {
             // Configure Logger
             Log.Logger = new LoggerConfiguration()
@@ -108,49 +104,73 @@ namespace trape.cli.trader
             dbContextOptionsBuilder.EnableDetailedErrors(false);
             dbContextOptionsBuilder.EnableSensitiveDataLogging(false);
 
-            return Host.CreateDefaultBuilder()
+            // Setup container and register defauld scope as first thing
+            Container = new Container();
+            Container.Options.DefaultScopedLifestyle = new AsyncScopedLifestyle();
+
+            var host = Host.CreateDefaultBuilder()
                 .ConfigureLogging(configure => configure.AddSerilog(Log.Logger))
                 .UseSystemd()
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.BuildServiceProvider(new ServiceProviderOptions() { ValidateOnBuild = true, ValidateScopes = true });
-                    services.AddTransient<ITrapeContextCreator, TrapeContextDiCreator>();
-                    services.AddSingleton(dbContextOptionsBuilder.Options);
-                    services.AddDbContext<TrapeContext>();
+                    services.AddLogging();
 
-                    services.AddSingleton(Log.Logger);
-                    services.AddSingleton<IBuffer, Cache.Buffer>();
-                    services.AddSingleton<IAnalyst, Analyst>();
-                    services.AddTransient<IBroker, Broker>();
-                    services.AddSingleton<ITradingTeam, TradingTeam>();
-                    services.AddSingleton<IAccountant, Accountant>();
-                    services.AddTransient<IStockExchange, StockExchange>();
-                    services.AddTransient<IFeeWatchdog, FeeWatchdog>();
-                    services.AddSingleton<IChecker, Checker>();
-
-                    services.AddSingleton<IBinanceClient>(new BinanceClient(new BinanceClientOptions()
+                    services.AddSimpleInjector(Container, options =>
                     {
-                        ApiCredentials = new ApiCredentials(Config.GetValue("binance:apikey"),
-                                                        Config.GetValue("binance:secretkey")),
-                        LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Debug,
-                        LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) },
-                        AutoTimestamp = true,
-                        AutoTimestampRecalculationInterval = new TimeSpan(0, 5, 0),
-                        TradeRulesBehaviour = TradeRulesBehaviour.AutoComply,
-                        TradeRulesUpdateInterval = new TimeSpan(0, 5, 0)
-                    }));
+                        options.AddHostedService<Engine>();
+                        options.AddLogging();
+                    });
+                })
+                .UseConsoleLifetime()
+                .Build()
+                .UseSimpleInjector(Container);
 
-                    services.AddSingleton<IBinanceSocketClient>(new BinanceSocketClient(new BinanceSocketClientOptions()
-                    {
-                        ApiCredentials = new ApiCredentials(Config.GetValue("binance:apikey"),
-                                                        Config.GetValue("binance:secretkey")),
-                        AutoReconnect = true,
-                        LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
-                        LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) }
-                    }));
+            // Registration
 
-                    services.AddHostedService<Engine>();
-                });
+            Container.Register<IBroker, Broker>(Lifestyle.Scoped);
+            Container.Register<TrapeContext, TrapeContext>(Lifestyle.Scoped);
+
+            Container.Register<IStockExchange, StockExchange>(Lifestyle.Transient);
+
+            Container.Register<IWarden, Warden>(Lifestyle.Singleton);
+            Container.Register<IAnalyst, Analyst>(Lifestyle.Singleton);
+            Container.Register<IBuffer, Cache.Buffer>(Lifestyle.Singleton);
+            Container.Register<IAccountant, Accountant>(Lifestyle.Singleton);
+            Container.Register<IFeeWatchdog, FeeWatchdog>(Lifestyle.Singleton);
+            Container.Register<ITradingTeam, TradingTeam>(Lifestyle.Singleton);
+            Container.Register<ITrapeContextCreator, TrapeContextDiCreator>(Lifestyle.Singleton);
+
+
+            Container.RegisterInstance(Log.Logger);
+            Container.RegisterInstance(Config.Current);
+            Container.RegisterInstance(dbContextOptionsBuilder);
+            Container.RegisterInstance(dbContextOptionsBuilder.Options);
+
+            Container.RegisterInstance<IBinanceClient>(new BinanceClient(new BinanceClientOptions()
+            {
+                ApiCredentials = new ApiCredentials(Config.GetValue("binance:apikey"),
+                                                Config.GetValue("binance:secretkey")),
+                LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Debug,
+                LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) },
+                AutoTimestamp = true,
+                AutoTimestampRecalculationInterval = new TimeSpan(0, 5, 0),
+                TradeRulesBehaviour = TradeRulesBehaviour.AutoComply,
+                TradeRulesUpdateInterval = new TimeSpan(0, 5, 0)
+            }));
+
+            Container.RegisterInstance<IBinanceSocketClient>(new BinanceSocketClient(new BinanceSocketClientOptions()
+            {
+                ApiCredentials = new ApiCredentials(Config.GetValue("binance:apikey"),
+                                                Config.GetValue("binance:secretkey")),
+                AutoReconnect = true,
+                LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
+                LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) }
+            }));
+
+            Container.Verify();
+
+            return host;
         }
     }
 

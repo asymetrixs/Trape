@@ -15,72 +15,104 @@ using trape.datalayer.Models;
 
 namespace trape.datalayer
 {
+    /// <summary>
+    /// Trape database context
+    /// </summary>
     public class TrapeContext : DbContext
     {
-        #region Fields
-
-        /// <summary>
-        ///  Logger
-        /// </summary>
-        private ILogger _logger;
-
-        #endregion
-
         #region Constructor
-
-        public TrapeContext(DbContextOptions<TrapeContext> options)
-            : base(options)
-        {
-        }
 
         /// <summary>
         /// Initializes a new instance of the <c>TrapeContext</c> class.
         /// </summary>
         /// <param name="options"></param>
-        public TrapeContext(DbContextOptions<TrapeContext> options, ILogger logger)
-        : base(options)
+        public TrapeContext(DbContextOptions<TrapeContext> options)
+            : base(options)
         {
-            #region Argument checks
-
-            _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
-
-            #endregion
-
-            this._logger = logger.ForContext(typeof(TrapeContext));
         }
 
         #endregion
 
+        /// <summary>
+        /// Account information
+        /// </summary>
         public DbSet<AccountInfo> AccountInfos { get; set; }
 
+        /// <summary>
+        /// Balances
+        /// </summary>
         public DbSet<Balance> Balances { get; set; }
 
+        /// <summary>
+        /// Balance updates
+        /// </summary>
         public DbSet<BalanceUpdate> BalanceUpdates { get; set; }
 
+        /// <summary>
+        /// Book ticks
+        /// </summary>
         public DbSet<BookTick> BookTicks { get; set; }
 
+        /// <summary>
+        /// Orders
+        /// </summary>
         public DbSet<Order> Orders { get; set; }
 
+        /// <summary>
+        /// Order lists
+        /// </summary>
         public DbSet<OrderList> OrderLists { get; set; }
 
+        /// <summary>
+        /// Order updates
+        /// </summary>
         public DbSet<OrderUpdate> OrderUpdates { get; set; }
 
+        /// <summary>
+        /// Ticks
+        /// </summary>
         public DbSet<Tick> Ticks { get; set; }
 
+        /// <summary>
+        /// Kline charts
+        /// </summary>
         public DbSet<Kline> Klines { get; set; }
 
+        /// <summary>
+        /// Symbols
+        /// </summary>
         public DbSet<Symbol> Symbols { get; set; }
 
+        /// <summary>
+        /// Recommendations
+        /// </summary>
         public DbSet<Recommendation> Recommendations { get; set; }
 
+        /// <summary>
+        /// Custom order format
+        /// </summary>
         public DbSet<ClientOrder> ClientOrder { get; set; }
 
+        /// <summary>
+        /// Placed orders
+        /// </summary>
         public DbSet<PlacedOrder> PlacedOrders { get; set; }
 
+        /// <summary>
+        /// Trades per order
+        /// </summary>
         public DbSet<OrderTrade> OrderTrades { get; set; }
 
+        /// <summary>
+        /// Override of <see cref="OnConfiguring(DbContextOptionsBuilder)"/>
+        /// </summary>
+        /// <param name="optionsBuilder"></param>
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) => base.OnConfiguring(optionsBuilder);
 
+        /// <summary>
+        /// Override of <see cref="OnModelCreating(ModelBuilder)"/>
+        /// </summary>
+        /// <param name="optionsBuilder"></param>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             if (modelBuilder is null)
@@ -88,29 +120,28 @@ namespace trape.datalayer
                 return;
             }
 
+            #region Stats
+
             modelBuilder.Entity<Stats3s>()
                 .HasNoKey();
-
             modelBuilder.Entity<Stats15s>()
                 .HasNoKey();
-
             modelBuilder.Entity<Stats2m>()
                 .HasNoKey();
-
             modelBuilder.Entity<Stats10m>()
                 .HasNoKey();
-
             modelBuilder.Entity<Stats2h>()
                 .HasNoKey();
-
             modelBuilder.Entity<LatestMA10mAndMA30mCrossing>()
                 .HasNoKey();
-
             modelBuilder.Entity<LatestMA30mAndMA1hCrossing>()
                 .HasNoKey();
-
             modelBuilder.Entity<LatestMA1hAndMA3hCrossing>()
                 .HasNoKey();
+
+            #endregion
+
+            #region Models
 
             // AccountInfo
             modelBuilder.Entity<AccountInfo>()
@@ -255,6 +286,7 @@ namespace trape.datalayer
             modelBuilder.Entity<OrderTrade>()
                 .HasIndex(o => o.PlacedOrderId);
 
+            #endregion
 
             base.OnModelCreating(modelBuilder);
 
@@ -262,6 +294,10 @@ namespace trape.datalayer
             this.FixSnakeCaseNames(modelBuilder);
         }
 
+        /// <summary>
+        /// Fixes the naming to create proper snake case names
+        /// </summary>
+        /// <param name="modelBuilder"></param>
         private void FixSnakeCaseNames(ModelBuilder modelBuilder)
         {
             var mapper = new NpgsqlSnakeCaseNameTranslator();
@@ -285,27 +321,16 @@ namespace trape.datalayer
         /// <returns></returns>
         public async Task<int> CleanUpBookTicks(CancellationToken cancellationToken = default)
         {
-            var affectedRows = 0;
+            // Generate names so in case of refactor they are adjusted automatically
+            // And a dependency to to that elements is established
+            var mapper = new NpgsqlSnakeCaseNameTranslator();
+            var tableName = mapper.TranslateMemberName(nameof(this.BookTicks));
+            var columName = mapper.TranslateMemberName(nameof(Models.BookTick.CreatedOn));
 
-            try
-            {
-                // Generate names so in case of refactor they are adjusted automatically
-                // And a dependency to to that elements is established
-                var mapper = new NpgsqlSnakeCaseNameTranslator();
-                var tableName = mapper.TranslateMemberName(nameof(Models.BookTick));
-                var columName = mapper.TranslateMemberName(nameof(Models.BookTick.CreatedOn));
+            // Generate SQL statement
+            var sql = $"DELETE FROM {tableName} WHERE {columName} < NOW() - INTERVAL '24 hours'";
 
-                // Generate SQL statement
-                var sql = $"DELETE FROM {tableName} WHERE {columName} < NOW() - INTERVAL '24 hours'";
-
-                affectedRows = await this.Database.ExecuteSqlRawAsync(sql, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                this._logger.Error(e.Message, e);
-            }
-
-            return affectedRows;
+            return await this.Database.ExecuteSqlRawAsync(sql, cancellationToken).ConfigureAwait(false);
         }
 
 
@@ -902,7 +927,7 @@ namespace trape.datalayer
 
         public async Task<IEnumerable<LatestMA1hAndMA3hCrossing>> GetLatestMA1hAndMA3hCrossing(CancellationToken cancellationToken = default)
         {
-            return await Task.FromResult(this.Set<LatestMA1hAndMA3hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma1h_ma3h_crossing();").AsNoTracking().AsEnumerable());
+            return await Task.FromResult(this.Set<LatestMA1hAndMA3hCrossing>().FromSqlRaw ("SELECT * FROM get_latest_ma1h_ma3h_crossing();").AsNoTracking().AsEnumerable());
 
             #region old
             //var latestCrossings = new List<LatestMA1hAndMA3hCrossing>();
@@ -980,7 +1005,6 @@ namespace trape.datalayer
         public async Task<decimal> GetPriceOn(string symbol, DateTime dateTime, CancellationToken cancellationToken = default)
         {
             var price = default(decimal);
-            IDisposable pushedProperty = null;
 
             using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
             {
@@ -988,8 +1012,6 @@ namespace trape.datalayer
                 {
                     try
                     {
-                        this._logger.Verbose($"Executing {com.CommandText}");
-
                         com.CommandType = CommandType.StoredProcedure;
 
                         com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = symbol;
@@ -999,37 +1021,15 @@ namespace trape.datalayer
 
                         var obj = await com.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
 
-                        pushedProperty = LogContext.PushProperty("obj", obj);
-
                         price = (decimal)obj;
                     }
-                    catch (InvalidCastException)
+                    catch
                     {
-                        this._logger.Error("Value is not decimal");
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // nothing
-                    }
-                    catch (PostgresException px)
-                    {
-                        if (px.MessageText != "canceling statement due to user request")
-                        {
-                            this._logger.Fatal(px, px.Message, com.CommandText);
-                        }
-                    }
-                    catch (NpgsqlException ne)
-                    {
-                        this._logger.Fatal(ne, ne.Message, com.CommandText);
-                    }
-                    catch (Exception e)
-                    {
-                        this._logger.Fatal($"General Exception: {e.Message}");
+                        // rethrow
+                        throw;
                     }
                     finally
                     {
-                        pushedProperty?.Dispose();
-
                         con.Close();
                     }
                 }

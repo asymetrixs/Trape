@@ -1,9 +1,9 @@
 ﻿using Binance.Net.Interfaces;
 using Binance.Net.Objects;
 using Binance.Net.Objects.Sockets;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using SimpleInjector.Lifestyles;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -98,6 +98,8 @@ namespace trape.cli.trader.Account
             #region Argument checks
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
+
+            _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             _ = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
 
@@ -196,64 +198,29 @@ namespace trape.cli.trader.Account
         /// <param name="binanceStreamOrderUpdate"></param>
         private async void _saveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
         {
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            try
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                // Save Order Update
-                database.OrderUpdates.Add(Translator.Translate(binanceStreamOrderUpdate));
-
-                // If sell and filled, remove quantity from buy
-                if (binanceStreamOrderUpdate.Side == OrderSide.Sell && binanceStreamOrderUpdate.Status == OrderStatus.Filled)
+                var database = Program.Container.GetService<TrapeContext>();
+                try
                 {
-                    // Get trades where assets were bought
-                    var buyTrades = database.PlacedOrders
-                                    .Where(p => p.Side == datalayer.Enums.OrderSide.Buy
-                                        && p.Symbol == binanceStreamOrderUpdate.Symbol)
-                                    .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity
-                                                                && f.Price <= binanceStreamOrderUpdate.Price))
-                                    .OrderByDescending(t => t.Price);
+                    // Save Order Update
+                    database.OrderUpdates.Add(Translator.Translate(binanceStreamOrderUpdate));
 
-                    var soldQuantity = binanceStreamOrderUpdate.AccumulatedQuantityOfFilledTrades;
-
-                    // Fill trades with sold quantity
-                    foreach(var trade in buyTrades)
-                    {
-                        var freeQuantity = trade.Quantity - trade.ConsumedQuantity;
-
-                        // Free quantity is more than soldQuantity, substract all from one trade
-                        if(freeQuantity > soldQuantity)
-                        {
-                            trade.ConsumedQuantity -= soldQuantity;
-                            soldQuantity = 0;
-                            break;
-                        }
-                        else
-                        {
-                            // Substract what is available
-                            // Substract what can be used for the trade
-                            soldQuantity -= (trade.Quantity - trade.ConsumedQuantity);
-                            trade.ConsumedQuantity = trade.Quantity;                            
-                        }
-
-                        if(soldQuantity == 0)
-                        {
-                            break;
-                        }
-                    }
-
-                    // In case it was sold over price, remove from smallest over price first
-                    if(soldQuantity != 0)
+                    // If sell and filled, remove quantity from buy
+                    if (binanceStreamOrderUpdate.Side == OrderSide.Sell && binanceStreamOrderUpdate.Status == OrderStatus.Filled)
                     {
                         // Get trades where assets were bought
-                        var overPriceBuyTrades = database.PlacedOrders
+                        var buyTrades = database.PlacedOrders
                                         .Where(p => p.Side == datalayer.Enums.OrderSide.Buy
                                             && p.Symbol == binanceStreamOrderUpdate.Symbol)
                                         .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity
-                                                                    && f.Price > binanceStreamOrderUpdate.Price))
-                                        .OrderBy(t => t.Price);
-                        
+                                                                    && f.Price <= binanceStreamOrderUpdate.Price))
+                                        .OrderByDescending(t => t.Price);
+
+                        var soldQuantity = binanceStreamOrderUpdate.AccumulatedQuantityOfFilledTrades;
+
                         // Fill trades with sold quantity
-                        foreach (var trade in overPriceBuyTrades)
+                        foreach (var trade in buyTrades)
                         {
                             var freeQuantity = trade.Quantity - trade.ConsumedQuantity;
 
@@ -277,18 +244,54 @@ namespace trape.cli.trader.Account
                                 break;
                             }
                         }
+
+                        // In case it was sold over price, remove from smallest over price first
+                        if (soldQuantity != 0)
+                        {
+                            // Get trades where assets were bought
+                            var overPriceBuyTrades = database.PlacedOrders
+                                            .Where(p => p.Side == datalayer.Enums.OrderSide.Buy
+                                                && p.Symbol == binanceStreamOrderUpdate.Symbol)
+                                            .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity
+                                                                        && f.Price > binanceStreamOrderUpdate.Price))
+                                            .OrderBy(t => t.Price);
+
+                            // Fill trades with sold quantity
+                            foreach (var trade in overPriceBuyTrades)
+                            {
+                                var freeQuantity = trade.Quantity - trade.ConsumedQuantity;
+
+                                // Free quantity is more than soldQuantity, substract all from one trade
+                                if (freeQuantity > soldQuantity)
+                                {
+                                    trade.ConsumedQuantity -= soldQuantity;
+                                    soldQuantity = 0;
+                                    break;
+                                }
+                                else
+                                {
+                                    // Substract what is available
+                                    // Substract what can be used for the trade
+                                    soldQuantity -= (trade.Quantity - trade.ConsumedQuantity);
+                                    trade.ConsumedQuantity = trade.Quantity;
+                                }
+
+                                if (soldQuantity == 0)
+                                {
+                                    break;
+                                }
+                            }
+                        }
                     }
+
+                    await database.SaveChangesAsync();
                 }
-
-                await database.SaveChangesAsync();
+                catch (Exception e)
+                {
+                    this._logger.ForContext(typeof(Accountant));
+                    this._logger.Error(e.Message, e);
+                }
             }
-            catch (Exception e)
-            {
-                var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
-                logger.ForContext(typeof(Accountant));
-                logger.Error(e.Message, e);
-            }
-
             // Clear blocked amount
             if (binanceStreamOrderUpdate.Status == OrderStatus.Filled
                 || binanceStreamOrderUpdate.Status == OrderStatus.Rejected
@@ -307,17 +310,19 @@ namespace trape.cli.trader.Account
         /// <param name="binanceStreamOrderList"></param>
         private async void _saveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)
         {
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            try
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                database.OrderLists.Add(Translator.Translate(binanceStreamOrderList));
-                await database.SaveChangesAsync();
-            }
-            catch (Exception e)
-            {
-                var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
-                logger.ForContext(typeof(Accountant));
-                logger.Error(e.Message, e);
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    database.OrderLists.Add(Translator.Translate(binanceStreamOrderList));
+                    await database.SaveChangesAsync();
+                }
+                catch (Exception e)
+                {
+                    this._logger.ForContext(typeof(Accountant));
+                    this._logger.Error(e.Message, e);
+                }
             }
 
             this._logger.Verbose("Received Binance Stream Order List");
@@ -329,17 +334,19 @@ namespace trape.cli.trader.Account
         /// <param name="binanceStreamBalances"></param>
         private async void _saveBinanceStreamBalance(IEnumerable<BinanceStreamBalance> binanceStreamBalances)
         {
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            try
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                database.Balances.AddRange(Translator.Translate(binanceStreamBalances));
-                await database.SaveChangesAsync();
-            }
-            catch (Exception e)
-            {
-                var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
-                logger.ForContext(typeof(Accountant));
-                logger.Error(e.Message, e);
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    database.Balances.AddRange(Translator.Translate(binanceStreamBalances));
+                    await database.SaveChangesAsync();
+                }
+                catch (Exception e)
+                {
+                    this._logger.ForContext(typeof(Accountant));
+                    this._logger.Error(e.Message, e);
+                }
             }
 
             this._logger.Verbose("Received Binance Stream Balances");
@@ -351,17 +358,19 @@ namespace trape.cli.trader.Account
         /// <param name="binanceStreamBalanceUpdate"></param>
         private async void _saveBinanceStreamBalanceUpdate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
         {
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            try
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                database.BalanceUpdates.AddRange(Translator.Translate(binanceStreamBalanceUpdate));
-                await database.SaveChangesAsync();
-            }
-            catch (Exception e)
-            {
-                var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
-                logger.ForContext(typeof(Accountant));
-                logger.Error(e.Message, e);
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    database.BalanceUpdates.AddRange(Translator.Translate(binanceStreamBalanceUpdate));
+                    await database.SaveChangesAsync();
+                }
+                catch (Exception e)
+                {
+                    this._logger.ForContext(typeof(Accountant));
+                    this._logger.Error(e.Message, e);
+                }
             }
 
             this._logger.Verbose("Received Binance Stream Balance Update");

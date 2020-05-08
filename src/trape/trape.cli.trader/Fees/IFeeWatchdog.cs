@@ -11,6 +11,6 @@ namespace trape.cli.trader.Fees
     {
         void Start();
 
-        void Finish();
+        void Terminate();
     }
 }

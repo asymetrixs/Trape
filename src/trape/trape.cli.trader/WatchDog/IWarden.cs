@@ -1,9 +1,9 @@
 ﻿namespace trape.cli.trader.WatchDog
 {
     /// <summary>
-    /// Interface for <c>Checker</c>
+    /// Interface for <c>Warden</c>
     /// </summary>
-    public interface IChecker
+    public interface IWarden
     {
         void Add(IActive watchMe);
 

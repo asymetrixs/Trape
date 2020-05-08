@@ -120,7 +120,7 @@ namespace trape.cli.trader.Fees
                 //}
 
                 // Get merchant and place order
-                var merchant = Program.Services.GetService(typeof(IStockExchange)) as IStockExchange;
+                var merchant = Program.Container.GetInstance<IStockExchange>();
                 await merchant.PlaceOrder(new ClientOrder()
                 {
                     Symbol = this._feeSymbol,
@@ -143,6 +143,9 @@ namespace trape.cli.trader.Fees
 
         #region Start / Stop
 
+        /// <summary>
+        /// Start
+        /// </summary>
         public void Start()
         {
             this._logger.Information("Starting Fee Watchdog");
@@ -152,7 +155,10 @@ namespace trape.cli.trader.Fees
             this._logger.Information("Fee Watchdog started");
         }
 
-        public void Finish()
+        /// <summary>
+        /// Terminate
+        /// </summary>
+        public void Terminate()
         {
             this._logger.Information("Fee Watchdog stopping");
 

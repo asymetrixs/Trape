@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Serilog;
+using SimpleInjector.Lifestyles;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -100,13 +101,25 @@ namespace trape.cli.trader.Trading
             {
                 return;
             }
-            await this._brokerSynchronizer.WaitAsync();
+            await this._brokerSynchronizer.WaitAsync().ConfigureAwait(true);
 
             this._logger.Verbose("Checking trading team...");
             try
             {
-                var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-                var availableSymbols = database.Symbols.Where(s => s.IsTradingActive).Select(s => s.Name).ToList();
+                var availableSymbols = new List<string>();
+
+                using (AsyncScopedLifestyle.BeginScope(Program.Container))
+                {
+                    var database = Program.Container.GetService<TrapeContext>();
+                    try
+                    {
+                        availableSymbols = database.Symbols.Where(s => s.IsTradingActive).Select(s => s.Name).ToList();
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Error(e.Message, e);
+                    }
+                }
 
                 if (!availableSymbols.Any())
                 {
@@ -132,7 +145,7 @@ namespace trape.cli.trader.Trading
 
                     if (obsoleteBroker is Broker)
                     {
-                        var checker = Program.Services.GetService(typeof(IChecker)) as IChecker;
+                        var checker = Program.Container.GetInstance<IWarden>();
                         checker.Add(obsoleteBroker as Broker);
                     }
 
@@ -147,8 +160,8 @@ namespace trape.cli.trader.Trading
                 // Add new brokers
                 foreach (var missingSymbol in missingSymbols)
                 {
-                    var broker = Program.Services.GetService(typeof(IBroker)) as IBroker;
-                    var checker = Program.Services.GetService(typeof(IChecker)) as IChecker;
+                    var broker = Program.Container.GetInstance<IBroker>();
+                    var checker = Program.Container.GetInstance<IWarden>();
 
                     this._logger.Information($"{missingSymbol}: Adding Broker to the trading team.");
 
@@ -187,8 +200,8 @@ namespace trape.cli.trader.Trading
             // Start timer for regular checks
             this._jobBrokerCheck.Start();
 
-            var checker = Program.Services.GetService(typeof(IChecker)) as IChecker;
-            checker.Add(this);
+            var warden = Program.Container.GetInstance<IWarden>();
+            warden.Add(this);
 
             this._logger.Debug("Trading team started");
         }
@@ -201,8 +214,8 @@ namespace trape.cli.trader.Trading
         {
             this._logger.Debug("Stopping trading team");
 
-            var checker = Program.Services.GetService(typeof(IChecker)) as IChecker;
-            checker.Remove(this);
+            var warden = Program.Container.GetInstance<IWarden>();
+            warden.Remove(this);
 
             this._jobBrokerCheck.Terminate();
 

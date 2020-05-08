@@ -7,6 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Exceptions;
+using SimpleInjector;
+using SimpleInjector.Lifestyles;
 using System;
 using System.Threading.Tasks;
 using trape.cli.collector.DataCollection;
@@ -21,9 +23,9 @@ namespace trape.cli.collector
         #region Properties
 
         /// <summary>
-        /// Services
+        /// DI/IoC Container
         /// </summary>
-        public static IServiceProvider Services { get; private set; }
+        public static Container Container { get; private set; }
 
         #endregion
 
@@ -38,13 +40,9 @@ namespace trape.cli.collector
             Config.SetUp();
 
             // Setup IoC container
-            var app = CreateHostBuilder().Build();
-            Services = app.Services;
+            var app = CreateHost();
 
-            // Initialize pool
-            Pool.Initialize();
-
-            var logger = Services.GetRequiredService<ILogger>().ForContext<Program>();
+            var logger = Container.GetInstance<ILogger>().ForContext<Program>();
             logger.Information("Start up complete");
 
             try
@@ -60,18 +58,27 @@ namespace trape.cli.collector
             catch (Exception e)
             {
                 logger.Error(e, e.Message);
+
+                // Wait 2 seconds
+                await Task.Delay(2000).ConfigureAwait(true);
+
+                // Signal unclean exit and rely on service manager (e.g. systemd) to restart the service
+                logger.Warning("Check previous errors. Exiting with 254.");
+                Environment.Exit(254);
             }
 
-            //Pool.DatabasePool.ClearUnused();
 
             logger.Information("Shut down complete");
+
+            // Exit code will be 0, clean exit
+            Environment.ExitCode = 0;
         }
 
         /// <summary>
         /// Creates the IoC container
         /// </summary>
         /// <returns></returns>
-        public static IHostBuilder CreateHostBuilder()
+        public static IHost CreateHost()
         {
             // Configure Logger
             Log.Logger = new LoggerConfiguration()
@@ -96,32 +103,52 @@ namespace trape.cli.collector
             dbContextOptionsBuilder.EnableDetailedErrors(false);
             dbContextOptionsBuilder.EnableSensitiveDataLogging(false);
 
+            // Setup container and register defauld scope as first thing
+            Container = new Container();
+            Container.Options.DefaultScopedLifestyle = new AsyncScopedLifestyle();
+
             // Register classes/interfaces in IoC
-            return Host.CreateDefaultBuilder()
+            var host = Host.CreateDefaultBuilder()
                 .ConfigureLogging(configure => configure.AddSerilog(Log.Logger))
                 .UseSystemd()
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.BuildServiceProvider(new ServiceProviderOptions() { ValidateOnBuild = true, ValidateScopes = true });
-                    services.AddTransient<ITrapeContextCreator, TrapeContextDiCreator>();
-                    services.AddSingleton(dbContextOptionsBuilder.Options);
-                    services.AddDbContext<TrapeContext>();
+                    services.AddLogging();
 
-                    services.AddSingleton(Config.Current);
-                    //services.AddTransient<ITrapeContext, TrapeContext>();
-                    services.AddSingleton(Log.Logger);
-                    services.AddSingleton<IJobManager, JobManager>();
-                    services.AddHostedService<CollectionManager>();
-
-                    services.AddSingleton<IBinanceSocketClient>(new BinanceSocketClient(new BinanceSocketClientOptions()
+                    services.AddSimpleInjector(Container, options =>
                     {
-                        ApiCredentials = new ApiCredentials(Config.GetValue("binance:apikey"),
+                        options.AddHostedService<CollectionManager>();
+                        options.AddLogging();
+                    });
+                })
+                .UseConsoleLifetime()
+                .Build()
+                .UseSimpleInjector(Container);
+
+            // Registration
+            Container.Register<TrapeContext, TrapeContext>(Lifestyle.Scoped);
+
+            Container.Register<IJobManager, JobManager>(Lifestyle.Singleton);
+            Container.Register<ITrapeContextCreator, TrapeContextDiCreator>(Lifestyle.Singleton);
+
+            Container.RegisterInstance(Log.Logger);
+            Container.RegisterInstance(Config.Current);
+            Container.RegisterInstance(dbContextOptionsBuilder);
+            Container.RegisterInstance(dbContextOptionsBuilder.Options);
+
+            Container.RegisterInstance<IBinanceSocketClient>(new BinanceSocketClient(new BinanceSocketClientOptions()
+            {
+                ApiCredentials = new ApiCredentials(Config.GetValue("binance:apikey"),
                                                         Config.GetValue("binance:secretkey")),
-                        AutoReconnect = true,
-                        LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
-                        LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) }
-                    }));
-                });
+                AutoReconnect = true,
+                LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
+                LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) }
+            }));
+
+            Container.Verify();
+
+            return host;
         }
     }
 }

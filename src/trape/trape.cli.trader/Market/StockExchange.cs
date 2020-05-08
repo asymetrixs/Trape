@@ -1,8 +1,10 @@
 ﻿using Binance.Net.Interfaces;
 using Binance.Net.Objects;
 using CryptoExchange.Net.Objects;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Context;
+using SimpleInjector.Lifestyles;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,8 +13,6 @@ using trape.cli.trader.Cache.Models;
 using trape.datalayer;
 using trape.datalayer.Models;
 using trape.mapper;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
 
 namespace trape.cli.trader.Market
 {
@@ -81,28 +81,30 @@ namespace trape.cli.trader.Market
 
             #endregion
             // https://nsubstitute.github.io/help/getting-started/
-            var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-
-            try
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                // Place the order with binance tools
-                var binanceSide = (OrderSide)(int)order.Side;
-                var binanceType = (OrderType)(int)order.Type;
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    // Place the order with binance tools
+                    var binanceSide = (OrderSide)(int)order.Side;
+                    var binanceType = (OrderType)(int)order.Type;
 
-                var placedOrder = await this._binanceClient.PlaceTestOrderAsync(order.Symbol, binanceSide, binanceType,
-                    quoteOrderQuantity: order.QuoteOrderQuantity, newClientOrderId: order.Id, orderResponseType: OrderResponseType.Full,
-                    ct: cancellationToken).ConfigureAwait(true);
+                    var placedOrder = await this._binanceClient.PlaceTestOrderAsync(order.Symbol, binanceSide, binanceType,
+                        quoteOrderQuantity: order.QuoteOrderQuantity, newClientOrderId: order.Id, orderResponseType: OrderResponseType.Full,
+                        ct: cancellationToken).ConfigureAwait(true);
 
-                // Log order in custom format
-                database.ClientOrder.Add(order);
+                    // Log order in custom format
+                    database.ClientOrder.Add(order);
 
-                await LogOrder(database, order.Id, placedOrder, cancellationToken).ConfigureAwait(true);
+                    await LogOrder(database, order.Id, placedOrder, cancellationToken).ConfigureAwait(true);
 
-                await database.SaveChangesAsync(cancellationToken);
-            }
-            catch (Exception e)
-            {
-                this._logger.Error(e.Message, e);
+                    await database.SaveChangesAsync(cancellationToken).ConfigureAwait(true);
+                }
+                catch (Exception e)
+                {
+                    this._logger.Error(e.Message, e);
+                }
             }
         }
 

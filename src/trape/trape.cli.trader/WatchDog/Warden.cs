@@ -6,7 +6,7 @@ using trape.jobs;
 
 namespace trape.cli.trader.WatchDog
 {
-    public class Checker : IChecker, IActive
+    public class Warden : IWarden, IActive
     {
         #region Fields
 
@@ -35,9 +35,9 @@ namespace trape.cli.trader.WatchDog
         #region Constructor
 
         /// <summary>
-        /// Initializes a new instance of the <c>Checker</c> class.
+        /// Initializes a new instance of the <c>Warden</c> class.
         /// </summary>
-        public Checker(ILogger logger)
+        public Warden(ILogger logger)
         {
             #region Argument checks
 
@@ -45,7 +45,7 @@ namespace trape.cli.trader.WatchDog
 
             #endregion
 
-            this._logger = logger.ForContext(typeof(Checker));
+            this._logger = logger.ForContext(typeof(Warden));
             this._watching = new List<IActive>();
             this._jobChecker = new Job(new TimeSpan(0, 0, 5), _check);
         }
