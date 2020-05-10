@@ -96,28 +96,12 @@ namespace trape.cli.trader.Fees
             var currentPrice = this._buffer.GetAskPrice(this._feeSymbol);
 
             // Threshold for buy is 53
-            var buyFor = 0M;
             if (bnb.Free < 53)
             {
                 this._logger.Information($"Fees NOT OK at {bnb.Free} - issuing buy");
 
                 // Fixed for now, buy for 55 USDT
-                buyFor = 55;
-
-                //// Get symbol info and run some checks
-                //var symbolInfo = this._buffer.GetSymbolInfoFor("BNBUSDT");
-
-                //if(symbolInfo != null)
-                //{
-                //    // Min notional
-                //    buy = Math.Max(buy, symbolInfo.MinNotionalFilter.MinNotional);
-
-                //    // Min price
-                //    buy = Math.Max(buy, symbolInfo.PriceFilter.MinPrice);
-
-                //    // Max price
-                //    buy = Math.Min(buy, symbolInfo.PriceFilter.MaxPrice);
-                //}
+                var buy = 3;
 
                 // Get merchant and place order
                 var merchant = Program.Container.GetInstance<IStockExchange>();
@@ -125,12 +109,14 @@ namespace trape.cli.trader.Fees
                 {
                     Symbol = this._feeSymbol,
                     Side = datalayer.Enums.OrderSide.Buy,
-                    Type = datalayer.Enums.OrderType.Market,
-                    QuoteOrderQuantity = buyFor,
-                    Price = currentPrice
+                    Type = datalayer.Enums.OrderType.Limit,
+                    OrderResponseType = datalayer.Enums.OrderResponseType.Full,
+                    Quantity = buy,
+                    Price = currentPrice,
+                    TimeInForce = datalayer.Enums.TimeInForce.ImmediateOrCancel
                 }, this._cancellationTokenSource.Token).ConfigureAwait(true);
 
-                this._logger.Information($"Issued buy of {buyFor} USDT");
+                this._logger.Information($"Issued buy of {buy} for {currentPrice} USDT each");
             }
             else
             {

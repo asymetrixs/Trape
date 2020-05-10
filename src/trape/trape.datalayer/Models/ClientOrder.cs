@@ -45,7 +45,7 @@ namespace trape.datalayer.Models
         /// <summary>
         /// Quote order quantity
         /// </summary>
-        public decimal QuoteOrderQuantity { get; set; }
+        public decimal Quantity { get; set; }
 
         /// <summary>
         /// Price

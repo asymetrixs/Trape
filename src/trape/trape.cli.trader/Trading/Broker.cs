@@ -227,9 +227,6 @@ namespace trape.cli.trader.Trading
                     {
                         // Buy
                         await this.Buy(recommendation, symbolInfo, lastOrder).ConfigureAwait(true);
-
-                        // But check if profit sells can be made
-                        await this.Sell(recommendation, symbolInfo, datalayer.Enums.Action.TakeProfitsSell).ConfigureAwait(true);
                     }
                     // Sell
                     else if (recommendation.Action == datalayer.Enums.Action.Sell
@@ -237,7 +234,7 @@ namespace trape.cli.trader.Trading
                         || recommendation.Action == datalayer.Enums.Action.PanicSell
                         || recommendation.Action == datalayer.Enums.Action.TakeProfitsSell)
                     {
-                        await this.Sell(recommendation, symbolInfo, datalayer.Enums.Action.None, lastOrder).ConfigureAwait(true);
+                        await this.Sell(recommendation, symbolInfo, lastOrder).ConfigureAwait(true);
                     }
 
                     // Log recommended action, use for strong recommendations
@@ -298,105 +295,108 @@ namespace trape.cli.trader.Trading
             }
 
             // Only take half of what is available to buy assets
-            var availableUSDT = usdt?.Free * 0.6M;
+            var availableUSDT = usdt.Free * 0.6M;
             // In case of strong buy increase budget
             if (recommendation.Action == datalayer.Enums.Action.StrongBuy)
             {
-                availableUSDT = usdt?.Free * 0.8M;
+                availableUSDT = usdt.Free * 0.8M;
             }
 
             // Round to a valid value
             //  symbolInfo.BaseAssetPrecision, MidpointRounding.ToZero
-            availableUSDT = Math.Round(availableUSDT.Value, 2, MidpointRounding.ToZero);
+            availableUSDT = Math.Round(availableUSDT, 2, MidpointRounding.ToZero);
 
             if (availableUSDT == 0)
             {
-                this._logger.Debug($"{this.Symbol} nothing free");
+                this._logger.Debug($"{this.Symbol}: No funds available");
+                return;
+            }
+
+            // Get ask price
+            var bestBidPrice = this._buffer.GetBidPrice(this.Symbol);
+
+            var quantity = availableUSDT / bestBidPrice;
+
+            // Logging
+            this._logger.Debug($"{this.Symbol} Buy: {recommendation.Action} bestBidPrice:{bestBidPrice:0.00};quantity:{quantity}");
+            this._logger.Verbose($"{this.Symbol} Buy: Checking conditions");
+            this._logger.Verbose($"{this.Symbol} Buy: {null == lastOrder} lastOrder is null");
+            this._logger.Verbose($"{this.Symbol} Buy: {lastOrder?.Side.ToString()} lastOrder side");
+            this._logger.Verbose($"{this.Symbol} Buy: {lastOrder?.Price * requiredPriceDropforRebuy > bestBidPrice} lastOrder Price: {lastOrder?.Price} * {requiredPriceDropforRebuy} > {bestBidPrice}");
+            this._logger.Verbose($"{this.Symbol} Buy: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
+            this._logger.Verbose($"{this.Symbol} Buy: {quantity} quantity");
+            this._logger.Verbose($"{this.Symbol} Buy: {recommendation.Action} recommendation");
+            this._logger.Verbose($"{this.Symbol} Buy: {quantity * bestBidPrice >= symbolInfo.MinNotionalFilter.MinNotional} Value {quantity * bestBidPrice} > 0: {quantity * bestBidPrice > 0} and higher than minNotional {symbolInfo.MinNotionalFilter.MinNotional}");
+            this._logger.Verbose($"{this.Symbol} Buy: {symbolInfo.PriceFilter.MaxPrice >= bestBidPrice && bestBidPrice >= symbolInfo.PriceFilter.MinPrice} MaxPrice {symbolInfo.PriceFilter.MaxPrice} >= Amount {bestBidPrice} >= MinPrice {symbolInfo.PriceFilter.MinPrice}");
+            this._logger.Verbose($"{this.Symbol} Buy: {symbolInfo.LotSizeFilter.MaxQuantity >= quantity && quantity >= symbolInfo.LotSizeFilter.MinQuantity} MaxLOT {symbolInfo.LotSizeFilter.MaxQuantity} > Amount {quantity} > MinLOT {symbolInfo.LotSizeFilter.MinQuantity}");
+
+
+            // For increased readability
+            var isLastOrderNull = lastOrder == null;
+            
+            var isLastOrderSell = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Sell;
+            
+            var isLastOrderBuyAndPriceDecreased = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Buy
+                                                    && lastOrder.Price * requiredPriceDropforRebuy > bestBidPrice
+                                                    && lastOrder.TransactionTime.AddMinutes(5) < DateTime.UtcNow;
+            
+            var shallFollowStrongBuy = (!this._lastRecommendation.ContainsKey(recommendation.Action)
+                                                        || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow)
+                                                    && recommendation.Action == datalayer.Enums.Action.StrongBuy;
+
+            var isLogicValid = quantity * bestBidPrice >= symbolInfo.MinNotionalFilter.MinNotional
+                                && bestBidPrice > 0;
+
+            var isPriceRangeValid = bestBidPrice >= symbolInfo.PriceFilter.MinPrice
+                                        && bestBidPrice <= symbolInfo.PriceFilter.MaxPrice;
+
+            var isLOTSizeValid = quantity >= symbolInfo.LotSizeFilter.MinQuantity
+                                    && quantity <= symbolInfo.LotSizeFilter.MaxQuantity;
+
+            this._logger.Debug($"{this.Symbol} Buy: {isLastOrderNull} isLastOrderNull");
+            this._logger.Debug($"{this.Symbol} Buy: {isLastOrderSell} isLastOrderSell");
+            this._logger.Debug($"{this.Symbol} Buy: {isLastOrderBuyAndPriceDecreased} isLastOrderBuyAndPriceDecreased");
+            this._logger.Debug($"{this.Symbol} Buy: {shallFollowStrongBuy} shallFollowStrongBuy");
+            this._logger.Debug($"{this.Symbol} Buy: {isLogicValid} isLogicValid");
+            this._logger.Debug($"{this.Symbol} Buy: {isPriceRangeValid} isPriceRangeValid");
+            this._logger.Debug($"{this.Symbol} Buy: {isLOTSizeValid} isLOTSizeValid");
+
+            // Check conditions for buy
+            if (
+                    (
+                    isLastOrderNull
+                    || isLastOrderSell
+                    || isLastOrderBuyAndPriceDecreased
+                    || shallFollowStrongBuy
+                    )
+                    // Logic check
+                    && isLogicValid
+                    // Price range check
+                    && isPriceRangeValid
+                    // LOT size check
+                    && isLOTSizeValid
+                )
+            {
+                this._logger.Information($"{this.Symbol} @ {bestBidPrice:0.00}: {recommendation.Action} - Issuing buy for {quantity}");
+
+                // Get stock exchange and place order
+                var stockExchange = Program.Container.GetInstance<IStockExchange>();
+                await stockExchange.PlaceOrder(new ClientOrder()
+                {
+                    Symbol = this.Symbol,
+                    Side = datalayer.Enums.OrderSide.Buy,
+                    Type = datalayer.Enums.OrderType.Limit,
+                    OrderResponseType = datalayer.Enums.OrderResponseType.Full,
+                    Quantity = quantity,
+                    Price = bestBidPrice,
+                    TimeInForce = datalayer.Enums.TimeInForce.ImmediateOrCancel
+                }, this._cancellationTokenSource.Token).ConfigureAwait(true);
+
+                this._logger.Debug($"{this.Symbol}: Issued order to buy");
             }
             else
             {
-                // Get ask price
-                var bestAskPrice = this._buffer.GetAskPrice(this.Symbol);
-
-                // Logging
-                this._logger.Debug($"{this.Symbol} Buy: {recommendation.Action} bestAskPrice:{Math.Round(bestAskPrice, symbolInfo.BaseAssetPrecision)};availableAmount:{availableUSDT}");
-                this._logger.Verbose($"{this.Symbol} Buy: Checking conditions");
-                this._logger.Verbose($"{this.Symbol} Buy: {null == lastOrder} lastOrder is null");
-                this._logger.Verbose($"{this.Symbol} Buy: {lastOrder?.Side.ToString()} lastOrder side");
-                this._logger.Verbose($"{this.Symbol} Buy: {lastOrder?.Price * requiredPriceDropforRebuy > bestAskPrice} lastOrder Price: {lastOrder?.Price} * {requiredPriceDropforRebuy} > {bestAskPrice}");
-                this._logger.Verbose($"{this.Symbol} Buy: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
-                this._logger.Verbose($"{this.Symbol} Buy: {availableUSDT.HasValue} availableAmount has value: {availableUSDT.Value}");
-                this._logger.Verbose($"{this.Symbol} Buy: {recommendation.Action} recommendation");
-                if (availableUSDT.HasValue)
-                {
-                    this._logger.Verbose($"{this.Symbol} Buy: {availableUSDT.Value >= symbolInfo.MinNotionalFilter.MinNotional} Value {availableUSDT.Value} > 0: {availableUSDT.Value > 0} and higher than minNotional {symbolInfo.MinNotionalFilter.MinNotional}");
-                    this._logger.Verbose($"{this.Symbol} Buy: {symbolInfo.PriceFilter.MaxPrice >= availableUSDT.Value && availableUSDT.Value >= symbolInfo.PriceFilter.MinPrice} MaxPrice {symbolInfo.PriceFilter.MaxPrice} >= Amount {availableUSDT.Value} >= MinPrice {symbolInfo.PriceFilter.MinPrice}");
-                    this._logger.Verbose($"{this.Symbol} Buy: {symbolInfo.LotSizeFilter.MaxQuantity >= availableUSDT / bestAskPrice && availableUSDT / bestAskPrice >= symbolInfo.LotSizeFilter.MinQuantity} MaxLOT {symbolInfo.LotSizeFilter.MaxQuantity} > Amount {availableUSDT / bestAskPrice} > MinLOT {symbolInfo.LotSizeFilter.MinQuantity}");
-                }
-
-                // For increased readability
-                var isLastOrderNull = lastOrder == null;
-                var isLastOrderSell = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Sell;
-                var isLastOrderBuyAndPriceDecreased = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Buy
-                                                        && lastOrder.Price * requiredPriceDropforRebuy > bestAskPrice
-                                                        && lastOrder.TransactionTime.AddMinutes(5) < DateTime.UtcNow;
-                var shallFollowStrongBuy = (!this._lastRecommendation.ContainsKey(recommendation.Action)
-                                                            || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow)
-                                                        && recommendation.Action == datalayer.Enums.Action.StrongBuy;
-
-                var isLogicValid = availableUSDT.HasValue
-                                    && availableUSDT.Value >= symbolInfo.MinNotionalFilter.MinNotional
-                                    && bestAskPrice > 0;
-
-                var isPriceRangeValid = availableUSDT.Value >= symbolInfo.PriceFilter.MinPrice
-                                            && availableUSDT.Value <= symbolInfo.PriceFilter.MaxPrice;
-
-                var isLOTSizeValid = availableUSDT / bestAskPrice >= symbolInfo.LotSizeFilter.MinQuantity
-                                        && availableUSDT / bestAskPrice <= symbolInfo.LotSizeFilter.MaxQuantity;
-
-                this._logger.Debug($"{this.Symbol} Buy: {isLastOrderNull} isLastOrderNull");
-                this._logger.Debug($"{this.Symbol} Buy: {isLastOrderSell} isLastOrderSell");
-                this._logger.Debug($"{this.Symbol} Buy: {isLastOrderBuyAndPriceDecreased} isLastOrderBuyAndPriceDecreased");
-                this._logger.Debug($"{this.Symbol} Buy: {shallFollowStrongBuy} shallFollowStrongBuy");
-                this._logger.Debug($"{this.Symbol} Buy: {isLogicValid} isLogicValid");
-                this._logger.Debug($"{this.Symbol} Buy: {isPriceRangeValid} isPriceRangeValid");
-                this._logger.Debug($"{this.Symbol} Buy: {isLOTSizeValid} isLOTSizeValid");
-
-                // Check conditions for buy
-                if (
-                        (
-                        isLastOrderNull
-                        || isLastOrderSell
-                        || isLastOrderBuyAndPriceDecreased
-                        || shallFollowStrongBuy
-                        )
-                        // Logic check
-                        && isLogicValid
-                        // Price range check
-                        && isPriceRangeValid
-                        // LOT size check
-                        && isLOTSizeValid
-                    )
-                {
-                    this._logger.Information($"{this.Symbol} @ {bestAskPrice:0.00}: {recommendation.Action} - Issuing buy for {availableUSDT.Value}");
-
-                    // Get stock exchange and place order
-                    var stockExchange = Program.Container.GetInstance<IStockExchange>();
-                    await stockExchange.PlaceOrder(new ClientOrder()
-                    {
-                        Symbol = this.Symbol,
-                        Side = datalayer.Enums.OrderSide.Buy,
-                        Type = datalayer.Enums.OrderType.Market,
-                        QuoteOrderQuantity = availableUSDT.Value,
-                        Price = bestAskPrice
-                    }, this._cancellationTokenSource.Token).ConfigureAwait(true);
-
-                    this._logger.Debug($"{this.Symbol}: Issued order to buy");
-                }
-                else
-                {
-                    this._logger.Debug($"{this.Symbol}: Skipping, final conditions not met");
-                }
+                this._logger.Debug($"{this.Symbol}: Skipping, final conditions not met");
             }
         }
 
@@ -407,8 +407,7 @@ namespace trape.cli.trader.Trading
         /// <param name="symbolInfo">Symbol info</param>
         /// <param name="lastOrder">Last order, if any</param>
         /// <returns>Placed order or null if none placed</returns>
-        public async Task<WebCallResult<BinancePlacedOrder>> Sell(Recommendation recommendation,
-            BinanceSymbol symbolInfo, datalayer.Enums.Action profitAction, PlacedOrder lastOrder = null)
+        public async Task Sell(Recommendation recommendation, BinanceSymbol symbolInfo, PlacedOrder lastOrder = null)
         {
             #region Argument checks
 
@@ -417,8 +416,6 @@ namespace trape.cli.trader.Trading
             _ = symbolInfo ?? throw new ArgumentNullException(paramName: nameof(symbolInfo));
 
             #endregion
-
-            WebCallResult<BinancePlacedOrder> placedOrder = null;
 
             this._logger.Debug($"{this.Symbol}: Preparing to sell");
 
@@ -436,7 +433,7 @@ namespace trape.cli.trader.Trading
             else
             {
                 // Get best bid price
-                var bestBidPrice = this._buffer.GetBidPrice(this.Symbol);
+                var bestAskPrice = this._buffer.GetAskPrice(this.Symbol);
 
                 // Normal - Do not sell below buying price
                 // - Where buying price * 1.002 (0.2%) is smaller than bidding price
@@ -448,44 +445,18 @@ namespace trape.cli.trader.Trading
                     var database = Program.Container.GetService<TrapeContext>();
                     try
                     {
+                        // Base query
                         buyTrades = database.PlacedOrders
                                     .Where(p => p.Side == datalayer.Enums.OrderSide.Buy
                                         && p.Symbol == this.Symbol)
                                     .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity));
 
-                        var availableAssetQuantity = buyTrades
+                        // Normal quantity
+                        var normalQuantity = buyTrades
                                                         .Where(f =>
                                                             /* Bid price is 0.2% higher */
-                                                            f.Price * 1.002M < bestBidPrice)
+                                                            f.Price * 1.002M < bestAskPrice)
                                                     .Sum(f => (f.Quantity - f.ConsumedQuantity));
-
-                        if (profitAction == datalayer.Enums.Action.TakeProfitsSell)
-                        {
-                            this._logger.Verbose($"{this.Symbol}: Checking Buy-TakerProfitsSell");
-
-                            var stat3s = this._buffer.Stats3sFor(this.Symbol);
-                            var stat15s = this._buffer.Stats15sFor(this.Symbol);
-                            var stat2m = this._buffer.Stats2mFor(this.Symbol);
-                            var stat10m = this._buffer.Stats10mFor(this.Symbol);
-                            var stat2h = this._buffer.Stats2hFor(this.Symbol);
-
-                            // if recently falling
-                            if (stat2m.Slope10m < -0.015M
-                                && stat15s.Slope3m < -0.05M
-                                && stat15s.MovingAverage1m < 0)
-                            {
-                                availableAssetQuantity = buyTrades
-                                                        .Where(f => /* Bid price is 0.6% higher */
-                                                                f.Price * 1.006M < bestBidPrice)
-                                                        .Sum(l => (l.Quantity - l.ConsumedQuantity));
-
-                                this._logger.Information($"{this.Symbol}: Buy-TakerProfitsSell for {availableAssetQuantity:0.00}");
-                            }
-                            else
-                            {
-                                availableAssetQuantity = 0;
-                            }
-                        }
 
                         // Stop-Loss - Limit loss
                         // - Where buying-price was 0.5% higher than current price
@@ -493,93 +464,87 @@ namespace trape.cli.trader.Trading
                         // Select quantities
                         var stopLossQuantity = buyTrades
                                                 .Where(l =>  /* Stop-Loss: 1.0% lower */
-                                                            l.Price * 0.99M > bestBidPrice
-                                                                && recommendation.Action == datalayer.Enums.Action.StrongSell
-                                                            // Only if not in upwards trend
-                                                            && profitAction != datalayer.Enums.Action.TakeProfitsSell)
+                                                            l.Price > bestAskPrice * 1.01M && !(l.Price * 1.002M < bestAskPrice)
+                                                                && recommendation.Action == datalayer.Enums.Action.StrongSell)
                                                             .Sum(l => (l.Quantity - l.ConsumedQuantity));
 
                         // Reduce by 1% due to possible differences between database and Binance
-                        var sellAssetQuantity = (stopLossQuantity + availableAssetQuantity) * 0.99M;
+                        var sellAssetQuantity = (stopLossQuantity + normalQuantity) * 0.99M;
 
-                        // Sell 85% of the asset
-                        var assetBalanceToSell = assetBalance?.Free * 0.85M;
+                        // Sell 65% of the asset
+                        var quantity = assetBalance.Free * 0.65M;
 
                         // Sell what is maximal possible (from what was bought or (in case of discrepancy between recorded and actual value) what is possible
-                        assetBalanceToSell = Math.Min(assetBalanceToSell.GetValueOrDefault(), sellAssetQuantity);
+                        quantity = Math.Min(quantity, sellAssetQuantity);
 
                         // Panic Mode, sell everything
                         if (recommendation.Action == datalayer.Enums.Action.PanicSell)
                         {
-                            // Take everything
-                            assetBalanceToSell = assetBalance?.Free;
+                            // Take 80%
+                            quantity = assetBalance.Free * 0.8M;
 
                             // Sell 0.25% under value
-                            bestBidPrice = bestBidPrice * 0.9975M;
-                        }
-                        else if (recommendation.Action == datalayer.Enums.Action.StrongSell)
-                        {
-                            // TODO: Sell everything on break-even
-                            // Sell everything with profit or at least 75% of what is in stock
-                            assetBalanceToSell = assetBalance?.Free * 0.75M < assetBalanceToSell ? assetBalanceToSell : assetBalance?.Free * 0.75M;
+                            bestAskPrice = bestAskPrice * 0.9975M;
                         }
 
                         // Wait until previous trades were handled
                         var lockedOpenOrderAmount = this._buffer.GetOpenOrderValue(this.Symbol);
-                        assetBalanceToSell = lockedOpenOrderAmount == 0 ? assetBalanceToSell : 0;
+                        quantity = lockedOpenOrderAmount == 0 ? quantity : 0;
 
+                        if (quantity == 0)
+                        {
+                            this._logger.Debug($"{this.Symbol}: Quantity is 0");
+                            return;
+                        }
 
-                        // Sell as much required to get this total USDT price
-                        var aimToGetUSDT = assetBalanceToSell * bestBidPrice;
-                        // Round to a valid value
-                        aimToGetUSDT = Math.Round(aimToGetUSDT.Value, symbolInfo.BaseAssetPrecision, MidpointRounding.ToZero);
 
                         // Logging
-                        this._logger.Debug($"{this.Symbol} Sell: {recommendation.Action} bestBidPrice:{Math.Round(bestBidPrice, symbolInfo.BaseAssetPrecision)};assetBalance.Free:{assetBalance?.Free:0.00};sellQuoteOrderQuantity:{assetBalanceToSell:0.00};sellToGetUSDT:{aimToGetUSDT:0.00};lockedOpenOrderAmount:{lockedOpenOrderAmount:0.00}");
+                        this._logger.Debug($"{this.Symbol} Sell: {recommendation.Action} bestAskPrice:{Math.Round(bestAskPrice, symbolInfo.BaseAssetPrecision)};assetBalance.Free:{assetBalance?.Free:0.00};sellQuoteOrderQuantity:{quantity:0.00};quantity:{quantity:0.00};lockedOpenOrderAmount:{lockedOpenOrderAmount:0.00}");
                         this._logger.Verbose($"{this.Symbol} Sell: Checking conditions");
                         this._logger.Verbose($"{this.Symbol} Sell: {null == lastOrder} lastOrder is null");
                         this._logger.Verbose($"{this.Symbol} Sell: {lastOrder?.Side.ToString()} lastOrder side");
-                        this._logger.Verbose($"{this.Symbol} Sell: {lastOrder?.Price * requiredPriceGainForResell < bestBidPrice} lastOrder Price: {lastOrder?.Price} * {requiredPriceGainForResell} < {bestBidPrice}");
+                        this._logger.Verbose($"{this.Symbol} Sell: {lastOrder?.Price * requiredPriceGainForResell < bestAskPrice} lastOrder Price: {lastOrder?.Price} * {requiredPriceGainForResell} < {bestAskPrice}");
                         this._logger.Verbose($"{this.Symbol} Sell: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
-                        this._logger.Verbose($"{this.Symbol} Sell: {aimToGetUSDT.HasValue} aimToGetUSDT has value: {aimToGetUSDT.Value}");
+                        this._logger.Verbose($"{this.Symbol} Sell: {quantity} assetBalanceToSell");
                         this._logger.Verbose($"{this.Symbol} Sell: {recommendation.Action} recommendation");
                         this._logger.Verbose($"{this.Symbol} Sell: {stopLossQuantity:0.0000} Stop-Loss quantity");
-                        if (aimToGetUSDT.HasValue)
-                        {
-                            this._logger.Verbose($"{this.Symbol} Sell: {aimToGetUSDT >= symbolInfo.MinNotionalFilter.MinNotional} Value {aimToGetUSDT} > 0: {aimToGetUSDT > 0} and higher than {symbolInfo.MinNotionalFilter.MinNotional}");
-                            this._logger.Verbose($"{this.Symbol} Sell: {symbolInfo.PriceFilter.MaxPrice >= aimToGetUSDT.Value && aimToGetUSDT.Value >= symbolInfo.PriceFilter.MinPrice} MaxPrice { symbolInfo.PriceFilter.MaxPrice} > Amount {aimToGetUSDT.Value} > MinPrice {symbolInfo.PriceFilter.MinPrice}");
-                            this._logger.Verbose($"{this.Symbol} Sell: {symbolInfo.LotSizeFilter.MaxQuantity >= assetBalanceToSell && assetBalanceToSell >= symbolInfo.LotSizeFilter.MinQuantity} MaxLOT {symbolInfo.LotSizeFilter.MaxQuantity} > Amount {assetBalanceToSell} > MinLOT {symbolInfo.LotSizeFilter.MinQuantity}");
-                        }
+                        this._logger.Verbose($"{this.Symbol} Sell: {quantity * bestAskPrice >= symbolInfo.MinNotionalFilter.MinNotional} Value {quantity * bestAskPrice} > 0: {quantity * bestAskPrice > 0} and higher than {symbolInfo.MinNotionalFilter.MinNotional}");
+                        this._logger.Verbose($"{this.Symbol} Sell: {symbolInfo.PriceFilter.MaxPrice >= bestAskPrice && bestAskPrice >= symbolInfo.PriceFilter.MinPrice} MaxPrice { symbolInfo.PriceFilter.MaxPrice} > Amount {bestAskPrice} > MinPrice {symbolInfo.PriceFilter.MinPrice}");
+                        this._logger.Verbose($"{this.Symbol} Sell: {symbolInfo.LotSizeFilter.MaxQuantity >= quantity && quantity >= symbolInfo.LotSizeFilter.MinQuantity} MaxLOT {symbolInfo.LotSizeFilter.MaxQuantity} > Amount {quantity} > MinLOT {symbolInfo.LotSizeFilter.MinQuantity}");
 
-                        this._logger.Information($"{this.Symbol} @ {bestBidPrice:0.00}: {recommendation.Action} - preparing sell of {assetBalanceToSell} for {aimToGetUSDT.Value}");
+                        this._logger.Information($"{this.Symbol} @ {bestAskPrice:0.00}: {recommendation.Action} - preparing sell of {quantity} for {bestAskPrice}");
 
                         // TODO: adjust logging to log only failing step and returning
                         // TODO: if-direct checks
                         // For increased readability
                         var isLastOrderNull = lastOrder == null;
-                        var isLastOrderBuy = !isLastOrderNull && lastOrder?.Side == datalayer.Enums.OrderSide.Buy;
+                        
+                        var isLastOrderBuy = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Buy;
+                        
                         var isPanicking = recommendation.Action == datalayer.Enums.Action.PanicSell;
+                        
                         var isLastOrderSellAndPriceIncreased = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Sell
-                                                                    && lastOrder.Price * requiredPriceGainForResell < bestBidPrice
+                                                                    && lastOrder.Price * requiredPriceGainForResell < bestAskPrice
                                                                     && lastOrder.TransactionTime.AddMinutes(5) < DateTime.UtcNow;
+
                         var shallFollowStrongSell = (!this._lastRecommendation.ContainsKey(recommendation.Action)
                                                                     || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow)
                                                                 && recommendation.Action == datalayer.Enums.Action.StrongSell;
 
-                        var isLogicValid = aimToGetUSDT.HasValue
-                                            && aimToGetUSDT.Value >= symbolInfo.MinNotionalFilter.MinNotional
-                                            && bestBidPrice > 0;
+                        var isLogicValid = quantity * bestAskPrice >= symbolInfo.MinNotionalFilter.MinNotional
+                                            && bestAskPrice > 0;
 
-                        var isPriceRangeValid = aimToGetUSDT.Value >= symbolInfo.PriceFilter.MinPrice
-                                                && aimToGetUSDT.Value <= symbolInfo.PriceFilter.MaxPrice;
+                        var isPriceRangeValid = bestAskPrice >= symbolInfo.PriceFilter.MinPrice
+                                                && bestAskPrice <= symbolInfo.PriceFilter.MaxPrice;
 
-                        var isLOTSizeValid = assetBalanceToSell >= symbolInfo.LotSizeFilter.MinQuantity
-                                                && assetBalanceToSell <= symbolInfo.LotSizeFilter.MaxQuantity;
+                        var isLOTSizeValid = quantity >= symbolInfo.LotSizeFilter.MinQuantity
+                                                && quantity <= symbolInfo.LotSizeFilter.MaxQuantity;
 
                         var hasStopLossQuantity = stopLossQuantity > 0;
 
                         // Last check that amount is available
-                        var isAmountAvailable = assetBalance.Free * bestBidPrice > aimToGetUSDT.Value;
+                        var isAmountAvailable = assetBalance.Free > quantity;
+
 
                         this._logger.Debug($"{this.Symbol} Sell: {isLastOrderNull} isLastOrderNull");
                         this._logger.Debug($"{this.Symbol} Sell: {isLastOrderBuy} isLastOrderBuy");
@@ -613,11 +578,11 @@ namespace trape.cli.trader.Trading
                         {
                             this._logger.Debug($"{this.Symbol}: Issuing order to sell");
 
-                            this._logger.Information($"{this.Symbol} @ {bestBidPrice:0.00}: {recommendation.Action} - Issuing sell of {assetBalanceToSell} for {aimToGetUSDT.Value}");
+                            this._logger.Information($"{this.Symbol} @ {bestAskPrice:0.00}: {recommendation.Action} - Issuing sell of {quantity}");
 
                             if (hasStopLossQuantity)
                             {
-                                this._logger.Information($"{this.Symbol} @ {bestBidPrice:0.00}: StopLoss - Issuing sell of {assetBalanceToSell} for {aimToGetUSDT.Value}");
+                                this._logger.Information($"{this.Symbol} @ {bestAskPrice:0.00}: StopLoss - Issuing sell of {stopLossQuantity} / {quantity}");
                             }
 
                             // Get stock exchange and place order
@@ -626,9 +591,11 @@ namespace trape.cli.trader.Trading
                             {
                                 Symbol = this.Symbol,
                                 Side = datalayer.Enums.OrderSide.Sell,
-                                Type = datalayer.Enums.OrderType.Market,
-                                QuoteOrderQuantity = aimToGetUSDT.Value,
-                                Price = bestBidPrice
+                                Type = datalayer.Enums.OrderType.Limit,
+                                OrderResponseType = datalayer.Enums.OrderResponseType.Full,
+                                Quantity = quantity,
+                                Price = bestAskPrice,
+                                TimeInForce = datalayer.Enums.TimeInForce.ImmediateOrCancel
                             }, this._cancellationTokenSource.Token).ConfigureAwait(true);
 
                             this._logger.Debug($"{this.Symbol}: Issued order to sell");
@@ -644,8 +611,6 @@ namespace trape.cli.trader.Trading
                     }
                 }
             }
-
-            return placedOrder;
         }
 
         #endregion

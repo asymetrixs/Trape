@@ -89,13 +89,17 @@ namespace trape.cli.trader.Market
                     // Place the order with binance tools
                     var binanceSide = (OrderSide)(int)order.Side;
                     var binanceType = (OrderType)(int)order.Type;
+                    var binanceResponseType = (OrderResponseType)(int)order.OrderResponseType;
+                    var timeInForce = (TimeInForce)(int)order.TimeInForce;
 
-                    var placedOrder = await this._binanceClient.PlaceTestOrderAsync(order.Symbol, binanceSide, binanceType,
-                        quoteOrderQuantity: order.QuoteOrderQuantity, newClientOrderId: order.Id, orderResponseType: OrderResponseType.Full,
+                    var placedOrder = await this._binanceClient.PlaceTestOrderAsync(order.Symbol, binanceSide, binanceType, price: order.Price,
+                        quantity: order.Quantity, newClientOrderId: order.Id, orderResponseType: binanceResponseType, timeInForce: timeInForce,
                         ct: cancellationToken).ConfigureAwait(true);
 
                     // Log order in custom format
                     database.ClientOrder.Add(order);
+
+                    this._logger.Debug($"{order.Symbol}: {order.Side} {order.Quantity} {order.Price:0.00} {order.Id}");
 
                     await LogOrder(database, order.Id, placedOrder, cancellationToken).ConfigureAwait(true);
 
