@@ -86,6 +86,8 @@ namespace trape.cli.trader.Market
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
+                    this._logger.Information($"{order.Symbol} @ {order.Price:0.00}: Issuing sell of {order.Quantity}");
+
                     // Place the order with binance tools
                     var binanceSide = (OrderSide)(int)order.Side;
                     var binanceType = (OrderType)(int)order.Type;
@@ -161,6 +163,10 @@ namespace trape.cli.trader.Market
                 else
                 {
                     await database.PlacedOrders.AddAsync(Translator.Translate(placedOrder.Data)).ConfigureAwait(true);
+                    
+                    this._logger.Information($"{placedOrder.Data.Symbol} @ {placedOrder.Data.Price:0.00}: Issuing sell of {placedOrder.Data.ExecutedQuantity} / {placedOrder.Data.OriginalQuantity}");
+
+                    // Block quantity until order is processed
                     this._buffer.AddOpenOrder(new OpenOrder(placedOrder.Data.ClientOrderId, placedOrder.Data.Symbol, placedOrder.Data.OriginalQuoteOrderQuantity));
                 }
             }

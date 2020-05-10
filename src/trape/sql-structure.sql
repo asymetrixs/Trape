@@ -1392,11 +1392,20 @@ BEGIN
 END;
 $BODY$;
 
+-- FUNCTION: public.get_price_on(text, timestamp with time zone)
 
+-- DROP FUNCTION public.get_price_on(text, timestamp with time zone);
 
-CREATE OR REPLACE FUNCTION get_price_on(p_symbol TEXT, p_time TIMESTAMPTZ)
-RETURNS NUMERIC AS
-$$
+CREATE OR REPLACE FUNCTION public.get_price_on(
+	p_symbol text,
+	p_time timestamp with time zone)
+    RETURNS numeric
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    STABLE STRICT 
+    
+AS $BODY$
 	DECLARE i_avg_price NUMERIC;
 BEGIN
 	IF p_time > NOW() THEN
@@ -1407,24 +1416,25 @@ BEGIN
 	SELECT ROUND(AVG((best_ask_price + best_bid_price)/2), 8) INTO i_avg_price FROM (
 		SELECT best_ask_price, best_bid_price
 			FROM binance_book_tick 
-			WHERE event_time <= p_time AND symbol = p_symbol
+			WHERE event_time BETWEEN p_time - INTERVAL '15 seconds' AND p_time AND symbol = p_symbol
 			ORDER BY event_time DESC
-			LIMIT 20
 		) a;
 		
 	-- Get from historical data
 	IF i_avg_price IS NULL THEN
-		RAISE NOTICE 'Not Found';
 		SELECT ROUND(current_day_close_price, 8) INTO i_avg_price
 			FROM binance_stream_tick
-			WHERE event_time BETWEEN DATE_TRUNC('second', p_time) AND DATE_TRUNC('second', p_time + INTERVAL '1 second') - INTERVAL '1 microsecond'
+			WHERE event_time BETWEEN p_time - INTERVAL '10 seconds' AND p_time
 				AND symbol = p_symbol;
 	END IF;
 
 	RETURN i_avg_price;
 END;
-$$
-LANGUAGE plpgsql STRICT STABLE;
+$BODY$;
+
+ALTER FUNCTION public.get_price_on(text, timestamp with time zone)
+    OWNER TO trape;
+
 
 
 

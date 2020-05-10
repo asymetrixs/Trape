@@ -92,7 +92,7 @@ namespace trape.cli.trader.Analyze
 
             #endregion
 
-            this._logger = logger.ForContext<Analyst>();
+            this._logger = logger.ForContext<Analyst30m1h>();
             this._buffer = buffer;
             this._accountant = accountant;
             this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
@@ -365,6 +365,13 @@ namespace trape.cli.trader.Analyze
 
                         action = this.NormalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h, distanceOkAndTrendPositive);
                     }
+                    else if (stat3s.Slope15s > 3 && stat3s.Slope30s > 2 && stat15s.Slope45s > 1 && stat2m.Slope5m > 0 && stat2m.Slope10m > 0.4M
+                        && stat2m.Slope15m > 0.4M && stat10m.Slope30m > 0 && stat10m.Slope1h > -0.005M)
+                    {
+                        this._logger.Verbose("Slope3h > 0; MovingAverage1h >= MovingAverage3h; Slope15m > 0 && Slope30m > 0 && Slope1h > -0.005M - [jump]");
+
+                        action = this.StrongBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h, distanceOkAndTrendPositive);
+                    }
                     else
                     {
                         this._logger.Verbose("Slope3h > 0; MovingAverage1h >= MovingAverage3h; [else]");
@@ -393,7 +400,7 @@ namespace trape.cli.trader.Analyze
                 }
             }
             // Advise to sell on 200 USD gain
-            if (raceStartingPrice != default && raceStartingPrice < currentPrice - 220)
+            if (raceStartingPrice != default && raceStartingPrice < currentPrice - 180)
             {
                 // Check market movement, if a huge sell is detected advice to take profits
                 if (stat3s.MovingAverage15s < -2)

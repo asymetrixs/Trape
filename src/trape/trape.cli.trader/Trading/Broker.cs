@@ -339,7 +339,10 @@ namespace trape.cli.trader.Trading
             var isLastOrderBuyAndPriceDecreased = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Buy
                                                     && lastOrder.Price * requiredPriceDropforRebuy > bestBidPrice
                                                     && lastOrder.TransactionTime.AddMinutes(5) < DateTime.UtcNow;
-            
+
+            var isLongTimeNoRebuy = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Buy
+                                                    && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow;
+
             var shallFollowStrongBuy = (!this._lastRecommendation.ContainsKey(recommendation.Action)
                                                         || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow)
                                                     && recommendation.Action == datalayer.Enums.Action.StrongBuy;
@@ -356,6 +359,7 @@ namespace trape.cli.trader.Trading
             this._logger.Debug($"{this.Symbol} Buy: {isLastOrderNull} isLastOrderNull");
             this._logger.Debug($"{this.Symbol} Buy: {isLastOrderSell} isLastOrderSell");
             this._logger.Debug($"{this.Symbol} Buy: {isLastOrderBuyAndPriceDecreased} isLastOrderBuyAndPriceDecreased");
+            this._logger.Debug($"{this.Symbol} Buy: {isLongTimeNoRebuy} isLongTimeNoRebuy");
             this._logger.Debug($"{this.Symbol} Buy: {shallFollowStrongBuy} shallFollowStrongBuy");
             this._logger.Debug($"{this.Symbol} Buy: {isLogicValid} isLogicValid");
             this._logger.Debug($"{this.Symbol} Buy: {isPriceRangeValid} isPriceRangeValid");
@@ -367,6 +371,7 @@ namespace trape.cli.trader.Trading
                     isLastOrderNull
                     || isLastOrderSell
                     || isLastOrderBuyAndPriceDecreased
+                    || isLongTimeNoRebuy
                     || shallFollowStrongBuy
                     )
                     // Logic check
@@ -377,8 +382,6 @@ namespace trape.cli.trader.Trading
                     && isLOTSizeValid
                 )
             {
-                this._logger.Information($"{this.Symbol} @ {bestBidPrice:0.00}: {recommendation.Action} - Issuing buy for {quantity}");
-
                 // Get stock exchange and place order
                 var stockExchange = Program.Container.GetInstance<IStockExchange>();
                 await stockExchange.PlaceOrder(new ClientOrder()
@@ -391,8 +394,6 @@ namespace trape.cli.trader.Trading
                     Price = bestBidPrice,
                     TimeInForce = datalayer.Enums.TimeInForce.ImmediateOrCancel
                 }, this._cancellationTokenSource.Token).ConfigureAwait(true);
-
-                this._logger.Debug($"{this.Symbol}: Issued order to buy");
             }
             else
             {
@@ -512,8 +513,6 @@ namespace trape.cli.trader.Trading
                         this._logger.Verbose($"{this.Symbol} Sell: {symbolInfo.PriceFilter.MaxPrice >= bestAskPrice && bestAskPrice >= symbolInfo.PriceFilter.MinPrice} MaxPrice { symbolInfo.PriceFilter.MaxPrice} > Amount {bestAskPrice} > MinPrice {symbolInfo.PriceFilter.MinPrice}");
                         this._logger.Verbose($"{this.Symbol} Sell: {symbolInfo.LotSizeFilter.MaxQuantity >= quantity && quantity >= symbolInfo.LotSizeFilter.MinQuantity} MaxLOT {symbolInfo.LotSizeFilter.MaxQuantity} > Amount {quantity} > MinLOT {symbolInfo.LotSizeFilter.MinQuantity}");
 
-                        this._logger.Information($"{this.Symbol} @ {bestAskPrice:0.00}: {recommendation.Action} - preparing sell of {quantity} for {bestAskPrice}");
-
                         // TODO: adjust logging to log only failing step and returning
                         // TODO: if-direct checks
                         // For increased readability
@@ -576,10 +575,6 @@ namespace trape.cli.trader.Trading
                                 && isAmountAvailable
                             )
                         {
-                            this._logger.Debug($"{this.Symbol}: Issuing order to sell");
-
-                            this._logger.Information($"{this.Symbol} @ {bestAskPrice:0.00}: {recommendation.Action} - Issuing sell of {quantity}");
-
                             if (hasStopLossQuantity)
                             {
                                 this._logger.Information($"{this.Symbol} @ {bestAskPrice:0.00}: StopLoss - Issuing sell of {stopLossQuantity} / {quantity}");
@@ -597,8 +592,6 @@ namespace trape.cli.trader.Trading
                                 Price = bestAskPrice,
                                 TimeInForce = datalayer.Enums.TimeInForce.ImmediateOrCancel
                             }, this._cancellationTokenSource.Token).ConfigureAwait(true);
-
-                            this._logger.Debug($"{this.Symbol}: Issued order to sell");
                         }
                         else
                         {
