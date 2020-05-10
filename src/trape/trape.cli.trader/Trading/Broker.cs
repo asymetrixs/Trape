@@ -334,7 +334,8 @@ namespace trape.cli.trader.Trading
             // For increased readability
             var isLastOrderNull = lastOrder == null;
             
-            var isLastOrderSell = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Sell;
+            var isLastOrderSell = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Sell
+                                                    && lastOrder.TransactionTime.AddMinutes(10) < DateTime.UtcNow;
             
             var isLastOrderBuyAndPriceDecreased = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Buy
                                                     && lastOrder.Price * requiredPriceDropforRebuy > bestBidPrice
@@ -518,7 +519,8 @@ namespace trape.cli.trader.Trading
                         // For increased readability
                         var isLastOrderNull = lastOrder == null;
                         
-                        var isLastOrderBuy = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Buy;
+                        var isLastOrderBuy = !isLastOrderNull && lastOrder.Side == datalayer.Enums.OrderSide.Buy
+                                                                && lastOrder.TransactionTime.AddMinutes(10) < DateTime.UtcNow;
                         
                         var isPanicking = recommendation.Action == datalayer.Enums.Action.PanicSell;
                         
