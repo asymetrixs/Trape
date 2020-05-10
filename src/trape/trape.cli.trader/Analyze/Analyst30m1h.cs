@@ -264,9 +264,9 @@ namespace trape.cli.trader.Analyze
                     }
                     else if (stat10m.Slope1h > 0 && currentPrice > stat10m.MovingAverage3h)
                     {
-                        if (stat10m.Slope30m < 0)
+                        if (stat10m.Slope30m < -0.003M)
                         {
-                            this._logger.Verbose("Slope3h < 0; MovingAverage1h < MovingAverage3h; Slope1h > 0 && currentPrice > MovingAverage3h; Slope30m < 0");
+                            this._logger.Verbose("Slope3h < 0; MovingAverage1h < MovingAverage3h; Slope1h > 0 && currentPrice > MovingAverage3h; Slope30m < -0.003M");
 
                             action = this.NormalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
                         }
@@ -280,9 +280,9 @@ namespace trape.cli.trader.Analyze
                 }
                 else
                 {
-                    if (stat10m.Slope1h > 0 && stat10m.Slope30m < 0)
+                    if (stat10m.Slope1h > 0 && stat10m.Slope30m < -0.003M)
                     {
-                        this._logger.Verbose("Slope3h < 0; MovingAverage1h >= MovingAverage3h; Slope1h > 0 && Slope30m < 0");
+                        this._logger.Verbose("Slope3h < 0; MovingAverage1h >= MovingAverage3h; Slope1h > 0 && Slope30m < -0.003M");
 
                         action = this.NormalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
                     }
@@ -305,17 +305,17 @@ namespace trape.cli.trader.Analyze
 
                         action = this.StrongBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h, distanceOkAndTrendPositive);
                     }
-                    else if (stat10m.Slope1h > -0.002M && stat10m.Slope30m > 0)
+                    else if (stat10m.Slope1h > -0.002M && stat10m.Slope30m > 0.003M)
                     {
-                        this._logger.Verbose("Slope3h > 0; MovingAverage1h < MovingAverage3h; Slope1h > -0.002M && Slope30m > 0");
+                        this._logger.Verbose("Slope3h > 0; MovingAverage1h < MovingAverage3h; Slope1h > -0.002M && Slope30m > 0.003M");
 
                         action = this.NormalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h, distanceOkAndTrendPositive);
                     }
                     else if (stat10m.Slope1h > -0.008M && stat10m.Slope1h <= -0.002M)
                     {
-                        if (stat10m.Slope30m > 0)
+                        if (stat10m.Slope30m > 0.003M)
                         {
-                            this._logger.Verbose("Slope3h > 0; MovingAverage1h < MovingAverage3h; Slope1h > -0.008M && Slope1h <= -0.002M; Slope30m > 0");
+                            this._logger.Verbose("Slope3h > 0; MovingAverage1h < MovingAverage3h; Slope1h > -0.008M && Slope1h <= -0.002M; Slope30m > 0.003M");
 
                             action = datalayer.Enums.Action.Hold;
                         }
@@ -347,9 +347,9 @@ namespace trape.cli.trader.Analyze
                 }
                 else
                 {
-                    if (stat10m.Slope30m < 0 && stat10m.Slope1h < 0)
+                    if (stat10m.Slope30m < -0.003M && stat10m.Slope1h < 0)
                     {
-                        this._logger.Verbose("Slope3h > 0; MovingAverage1h >= MovingAverage3h; Slope30m < 0 && Slope1h < 0");
+                        this._logger.Verbose("Slope3h > 0; MovingAverage1h >= MovingAverage3h; Slope30m < -0.003M && Slope1h < 0");
 
                         action = this.NormalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
                     }
@@ -359,9 +359,9 @@ namespace trape.cli.trader.Analyze
 
                         action = this.StrongSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
                     }
-                    else if (stat2m.Slope15m > 0 && stat10m.Slope30m > 0 && stat10m.Slope1h > -0.005M)
+                    else if (stat2m.Slope15m > 0 && stat10m.Slope30m > 0.003M && stat10m.Slope1h > -0.005M)
                     {
-                        this._logger.Verbose("Slope3h > 0; MovingAverage1h >= MovingAverage3h; Slope15m > 0 && Slope30m > 0 && Slope1h > -0.005M");
+                        this._logger.Verbose("Slope3h > 0; MovingAverage1h >= MovingAverage3h; Slope15m > 0 && Slope30m > 0.003M && Slope1h > -0.005M");
 
                         action = this.NormalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h, distanceOkAndTrendPositive);
                     }
