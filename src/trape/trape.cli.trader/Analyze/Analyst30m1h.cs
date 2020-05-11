@@ -108,6 +108,15 @@ namespace trape.cli.trader.Analyze
 
         #endregion
 
+        #region Properties
+
+        /// <summary>
+        /// Take Profit threshold
+        /// </summary>
+        public const decimal TakeProfitLimit = 0.983M;
+
+        #endregion
+
         #region Methods
 
         /// <summary>
@@ -391,7 +400,7 @@ namespace trape.cli.trader.Analyze
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    raceStartingPrice = await database.GetPriceOn(symbol, DateTime.UtcNow.AddMinutes(-15), this._cancellationTokenSource.Token).ConfigureAwait(false);
+                    raceStartingPrice = await database.GetPriceOn(symbol, DateTime.UtcNow.AddMinutes(-30), this._cancellationTokenSource.Token).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -400,7 +409,7 @@ namespace trape.cli.trader.Analyze
                 }
             }
             // Advise to sell on 200 USD gain
-            if (raceStartingPrice != default && raceStartingPrice < currentPrice - 180)
+            if (raceStartingPrice != default && raceStartingPrice < (currentPrice * TakeProfitLimit))
             {
                 // Check market movement, if a huge sell is detected advice to take profits
                 if (stat3s.MovingAverage15s < -2)

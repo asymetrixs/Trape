@@ -488,6 +488,12 @@ namespace trape.cli.trader.Trading
                             // Sell 0.25% under value
                             bestAskPrice = bestAskPrice * 0.9975M;
                         }
+                        else if (recommendation.Action == datalayer.Enums.Action.TakeProfitsSell)
+                        {
+                            quantity = buyTrades
+                                                .Where(l => (l.Price / Analyst30m1h.TakeProfitLimit) < bestAskPrice
+                                                            .Sum(l => (l.Quantity - l.ConsumedQuantity));
+                        }
 
                         // Wait until previous trades were handled
                         var lockedOpenOrderAmount = this._buffer.GetOpenOrderValue(this.Symbol);
@@ -532,6 +538,8 @@ namespace trape.cli.trader.Trading
                                                                     || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow)
                                                                 && recommendation.Action == datalayer.Enums.Action.StrongSell;
 
+                        var isTakeProfitSell = recommendation.Action == datalayer.Enums.Action.TakeProfitsSell;
+
                         var isLogicValid = quantity * bestAskPrice >= symbolInfo.MinNotionalFilter.MinNotional
                                             && bestAskPrice > 0;
 
@@ -552,6 +560,7 @@ namespace trape.cli.trader.Trading
                         this._logger.Debug($"{this.Symbol} Sell: {isPanicking} isPanicking");
                         this._logger.Debug($"{this.Symbol} Sell: {isLastOrderSellAndPriceIncreased} isLastOrderSellAndPriceIncreased");
                         this._logger.Debug($"{this.Symbol} Sell: {shallFollowStrongSell} shallFollowStrongSell");
+                        this._logger.Debug($"{this.Symbol} Sell: {isTakeProfitSell} isTakeProfitSell");
                         this._logger.Debug($"{this.Symbol} Sell: {isLogicValid} isLogicValid");
                         this._logger.Debug($"{this.Symbol} Sell: {isPriceRangeValid} isPriceRangeValid");
                         this._logger.Debug($"{this.Symbol} Sell: {isLOTSizeValid} isLOTSizeValid");
@@ -567,6 +576,7 @@ namespace trape.cli.trader.Trading
                                     || isLastOrderSellAndPriceIncreased
                                     || shallFollowStrongSell
                                     || hasStopLossQuantity
+                                    || isTakeProfitSell
                                 )
                                 // Logic check
                                 && isLogicValid
