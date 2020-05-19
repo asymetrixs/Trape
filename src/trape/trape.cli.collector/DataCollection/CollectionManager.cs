@@ -157,6 +157,14 @@ namespace trape.cli.collector.DataCollection
         /// <returns></returns>
         private async Task _manage()
         {
+            // Stop timer, because it may take a while
+            if (this._managing.CurrentCount == 0)
+            {
+                return;
+            }
+
+            this._managing.Wait();
+
             this._logger.Verbose("Checking subscriptions");
 
             // Get symbols from database
@@ -177,36 +185,9 @@ namespace trape.cli.collector.DataCollection
                 }
             }
 
-            //var database = new TrapeContext(Program.Services.GetService<DbContextOptions<TrapeContext>>(), Program.Services.GetService<ILogger>());
-            //try
-            //{
-
-            //    await database.SaveChangesAsync();
-            //}
-            //catch (Exception e)
-            //{
-            //    var logger = Program.Services.GetService(typeof(ILogger)) as ILogger;
-            //    logger.ForContext(typeof(CollectionManager));
-            //    logger.Error(e.Message, e);
-            //}
-            //finally
-            //{
-            //    
-            //}
-
-
-            // Stop timer, because it may take a while
-            if (this._managing.CurrentCount == 0)
-            {
-                return;
-            }
-
-            this._managing.Wait();
-
             try
             {
                 // TODO: Sanity check if symbol exists on Binance
-
                 this._logger.Debug($"Holding {this._activeSubscriptions.Count()} symbols with a total of {this._activeSubscriptions.Sum(s => s.Value.Count)} subscriptions");
 
                 // Subscribe to missing symbols

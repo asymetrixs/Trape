@@ -1,16 +1,16 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using SimpleInjector.Lifestyles;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache;
-using Microsoft.Extensions.DependencyInjection;
 using trape.cli.trader.WatchDog;
 using trape.datalayer;
 using trape.jobs;
-using System.Threading;
 
 namespace trape.cli.trader.Trading
 {
@@ -141,7 +141,7 @@ namespace trape.cli.trader.Trading
                     this._logger.Information($"{obsoleteBroker.Symbol}: Removing Broker from the trading team");
 
                     this._team.Remove(obsoleteBroker);
-                    await obsoleteBroker.Finish().ConfigureAwait(true);
+                    await obsoleteBroker.Terminate().ConfigureAwait(true);
 
                     if (obsoleteBroker is Broker)
                     {
@@ -155,7 +155,7 @@ namespace trape.cli.trader.Trading
                 var tradedSymbols = this._team.Select(t => t.Symbol);
                 var missingSymbols = this._buffer.GetSymbols().Where(b => !tradedSymbols.Contains(b));
 
-                this._logger.Verbose($"Found {missingSymbols.Count()} missing brokers");
+                this._logger.Verbose($"Found missing/online/total {missingSymbols.Count()}/{tradedSymbols.Count()}/{availableSymbols.Count} brokers due to incomplete stats.");
 
                 // Add new brokers
                 foreach (var missingSymbol in missingSymbols)
@@ -207,10 +207,10 @@ namespace trape.cli.trader.Trading
         }
 
         /// <summary>
-        /// Finish
+        /// Terminate
         /// </summary>
         /// <returns></returns>
-        public async Task Finish()
+        public async Task Terminate()
         {
             this._logger.Debug("Stopping trading team");
 
@@ -221,7 +221,7 @@ namespace trape.cli.trader.Trading
 
             foreach (var trader in this._team)
             {
-                await trader.Finish().ConfigureAwait(true);
+                await trader.Terminate().ConfigureAwait(true);
             }
 
             this._logger.Debug("Trading team stopped");

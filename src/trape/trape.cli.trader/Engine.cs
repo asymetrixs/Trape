@@ -145,13 +145,13 @@ namespace trape.cli.trader
 
             this._feeWatchdog.Terminate();
 
-            await this._tradingTeam.Finish().ConfigureAwait(true);
+            await this._tradingTeam.Terminate().ConfigureAwait(true);
 
-            await this._accountant.Finish().ConfigureAwait(true);
+            await this._accountant.Terminate().ConfigureAwait(true);
 
-            this._analyst.Finish();
+            this._analyst.Terminate();
 
-            this._buffer.Finish();
+            this._buffer.Terminate();
 
             this._logger.Information("Engine is stopped");
         }

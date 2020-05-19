@@ -1,5 +1,4 @@
-﻿using Binance.Net.Objects;
-using Serilog;
+﻿using Serilog;
 using System;
 using System.Threading;
 using trape.cli.trader.Account;
@@ -7,15 +6,24 @@ using trape.cli.trader.Cache;
 using trape.cli.trader.Market;
 using trape.datalayer.Models;
 using trape.jobs;
+using OrderResponseType = trape.datalayer.Enums.OrderResponseType;
+using OrderSide = trape.datalayer.Enums.OrderSide;
+using OrderType = trape.datalayer.Enums.OrderType;
+using TimeInForce = trape.datalayer.Enums.TimeInForce;
 
 namespace trape.cli.trader.Fees
 {
     /// <summary>
     /// Watchdog to always have sufficient BNBs available to pay fees
     /// </summary>
-    public class FeeWatchdog : IFeeWatchdog
+    public class FeeWatchdog : IFeeWatchdog, IDisposable
     {
         #region Fields
+
+        /// <summary>
+        /// Disposed
+        /// </summary>
+        private bool _disposed;
 
         /// <summary>
         /// Logger
@@ -108,12 +116,12 @@ namespace trape.cli.trader.Fees
                 await merchant.PlaceOrder(new ClientOrder()
                 {
                     Symbol = this._feeSymbol,
-                    Side = datalayer.Enums.OrderSide.Buy,
-                    Type = datalayer.Enums.OrderType.Limit,
-                    OrderResponseType = datalayer.Enums.OrderResponseType.Full,
+                    Side = OrderSide.Buy,
+                    Type = OrderType.Limit,
+                    OrderResponseType = OrderResponseType.Full,
                     Quantity = buy,
                     Price = currentPrice,
-                    TimeInForce = datalayer.Enums.TimeInForce.ImmediateOrCancel
+                    TimeInForce = TimeInForce.ImmediateOrCancel
                 }, this._cancellationTokenSource.Token).ConfigureAwait(true);
 
                 this._logger.Information($"Issued buy of {buy} for {currentPrice} USDT each");
@@ -155,7 +163,39 @@ namespace trape.cli.trader.Fees
             this._logger.Information("Fee Watchdog stopped");
         }
 
-        // TODO: Consistency: Stop / Finish / Terminate
+        #endregion
+
+        #region Dispose
+
+        /// <summary>
+        /// Public implementation of Dispose pattern callable by consumers.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Protected implementation of Dispose pattern.
+        /// </summary>
+        /// <param name="disposing"></param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (this._disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                this._accountant = null;
+                this._buffer = null;
+                this._cancellationTokenSource.Dispose();
+            }
+
+            this._disposed = true;
+        }
 
         #endregion
     }

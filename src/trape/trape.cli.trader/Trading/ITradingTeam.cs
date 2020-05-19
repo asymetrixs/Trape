@@ -17,6 +17,6 @@ namespace trape.cli.trader.Trading
         /// Stops the <c>TradingTeam</c>
         /// </summary>
         /// <returns></returns>
-        Task Finish();
+        Task Terminate();
     }
 }

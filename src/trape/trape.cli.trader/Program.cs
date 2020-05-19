@@ -90,7 +90,7 @@ namespace trape.cli.trader
                 .Destructure.ToMaximumStringLength(100)
                 .Destructure.ToMaximumCollectionCount(10)
                 .WriteTo.Console(
-                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
+                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning,
                     outputTemplate: Config.GetValue("Serilog:OutputTemplateConsole")
                 )
                 .WriteTo.File(
@@ -134,7 +134,7 @@ namespace trape.cli.trader
             Container.Register<IStockExchange, StockExchange>(Lifestyle.Transient);
 
             Container.Register<IWarden, Warden>(Lifestyle.Singleton);
-            Container.Register<IAnalyst, Analyst30m1h>(Lifestyle.Singleton);
+            Container.Register<IAnalyst, Analyst>(Lifestyle.Singleton);
             Container.Register<IBuffer, Cache.Buffer>(Lifestyle.Singleton);
             Container.Register<IAccountant, Accountant>(Lifestyle.Singleton);
             Container.Register<IFeeWatchdog, FeeWatchdog>(Lifestyle.Singleton);

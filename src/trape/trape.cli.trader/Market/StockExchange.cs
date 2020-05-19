@@ -83,10 +83,14 @@ namespace trape.cli.trader.Market
             // https://nsubstitute.github.io/help/getting-started/
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
+                this._logger.Information($"{order.Symbol} @ {order.Price:0.00}: Issuing {order.Side.ToString().ToLower()} of {order.Quantity}");
+
                 var database = Program.Container.GetService<TrapeContext>();
+
                 try
                 {
-                    this._logger.Information($"{order.Symbol} @ {order.Price:0.00}: Issuing sell of {order.Quantity}");
+                    // Block quantity until order is processed
+                    this._buffer.AddOpenOrder(new OpenOrder(order.Id, order.Symbol, order.Quantity));
 
                     // Place the order with binance tools
                     var binanceSide = (OrderSide)(int)order.Side;
@@ -165,9 +169,6 @@ namespace trape.cli.trader.Market
                     await database.PlacedOrders.AddAsync(Translator.Translate(placedOrder.Data)).ConfigureAwait(true);
                     
                     this._logger.Information($"{placedOrder.Data.Symbol} @ {placedOrder.Data.Price:0.00}: Issuing sell of {placedOrder.Data.ExecutedQuantity} / {placedOrder.Data.OriginalQuantity}");
-
-                    // Block quantity until order is processed
-                    this._buffer.AddOpenOrder(new OpenOrder(placedOrder.Data.ClientOrderId, placedOrder.Data.Symbol, placedOrder.Data.OriginalQuoteOrderQuantity));
                 }
             }
         }

@@ -464,7 +464,7 @@ namespace trape.cli.trader.Account
         /// Stops the <c>Accountant</c>
         /// </summary>
         /// <returns></returns>
-        public async Task Finish()
+        public async Task Terminate()
         {
             this._logger.Verbose("Stopping accountant");
 

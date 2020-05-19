@@ -10,7 +10,7 @@ namespace trape.cli.trader.Account
 
         Task Start();
 
-        Task Finish();
+        Task Terminate();
 
         Task<BinanceBalance> GetBalance(string symbol);
 

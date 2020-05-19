@@ -1,17 +1,17 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using SimpleInjector.Lifestyles;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.cli.trader.Account;
+using trape.cli.trader.Analyze.Models;
 using trape.cli.trader.Cache;
-using Microsoft.Extensions.DependencyInjection;
 using trape.datalayer;
 using trape.datalayer.Models;
 using trape.jobs;
+using Action = trape.datalayer.Enums.Action;
 
 namespace trape.cli.trader.Analyze
 {
@@ -32,11 +32,6 @@ namespace trape.cli.trader.Analyze
         /// Buffer
         /// </summary>
         private readonly IBuffer _buffer;
-
-        /// <summary>
-        /// Accountant
-        /// </summary>
-        private readonly IAccountant _accountant;
 
         /// <summary>
         /// Cancellation Token
@@ -66,7 +61,7 @@ namespace trape.cli.trader.Analyze
         /// <summary>
         /// Saves state of last strategy
         /// </summary>
-        private Dictionary<string, datalayer.Enums.Action> _lastStrategy;
+        private Dictionary<string, Analysis> _lastAnalysis;
 
         /// <summary>
         /// Used to limit trend logging
@@ -82,7 +77,7 @@ namespace trape.cli.trader.Analyze
         /// </summary>
         /// <param name="logger">Logger</param>
         /// <param name="buffer">Buffer</param>
-        public Analyst(ILogger logger, IBuffer buffer, IAccountant accountant)
+        public Analyst(ILogger logger, IBuffer buffer)
         {
             #region Argument checks
 
@@ -90,23 +85,29 @@ namespace trape.cli.trader.Analyze
 
             _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
-            _ = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
-
             #endregion
 
             this._logger = logger.ForContext<Analyst>();
             this._buffer = buffer;
-            this._accountant = accountant;
             this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
             this._lastRecommendation = new Dictionary<string, Recommendation>();
             this._disposed = false;
             this._recommendationSynchronizer = new SemaphoreSlim(1, 1);
-            this._lastStrategy = new Dictionary<string, datalayer.Enums.Action>();
+            this._lastAnalysis = new Dictionary<string, Analysis>();
             this._logTrendLimiter = 61;
 
             // Set up timer that makes decisions, every second
-            this._jobRecommendationMaker = new Job(new TimeSpan(0, 0, 0, 0, 100), _makeRecommendation, this._cancellationTokenSource.Token);
+            this._jobRecommendationMaker = new Job(new TimeSpan(0, 0, 0, 0, 250), _makeRecommendation, this._cancellationTokenSource.Token);
         }
+
+        #endregion
+
+        #region Properties
+
+        /// <summary>
+        /// Take Profit threshold
+        /// </summary>
+        public const decimal TakeProfitLimit = 0.991M;
 
         #endregion
 
@@ -115,8 +116,6 @@ namespace trape.cli.trader.Analyze
         /// <summary>
         /// Create a new decision for every symbol
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private async void _makeRecommendation()
         {
             // Check if free to go
@@ -125,8 +124,6 @@ namespace trape.cli.trader.Analyze
                 return;
             }
 
-            this._logger.Verbose("Calculating recommendation");
-
             try
             {
                 // Get lock
@@ -134,8 +131,15 @@ namespace trape.cli.trader.Analyze
 
                 foreach (var symbol in this._buffer.GetSymbols())
                 {
+                    this._logger.Verbose($"{symbol}: Calculating recommendation");
+
                     await _recommend(symbol).ConfigureAwait(true);
                 }
+            }
+            catch (Exception ex)
+            {
+                this._logger.Error(ex.Message, ex);
+                this._logger.Error(ex.StackTrace);
             }
             finally
             {
@@ -155,18 +159,20 @@ namespace trape.cli.trader.Analyze
 
             if (string.IsNullOrEmpty(symbol))
             {
+                this._logger.Warning("Symbol is empty, cancelling.");
                 return;
             }
 
             #endregion
 
-            // TODO: Also check volumes of trades
-
             // Placeholder for strategy
-            if (!this._lastStrategy.ContainsKey(symbol))
+            if (!this._lastAnalysis.ContainsKey(symbol))
             {
-                this._lastStrategy.Add(symbol, datalayer.Enums.Action.Hold);
+                this._lastAnalysis.Add(symbol, new Analysis(symbol));
             }
+
+            var analysis = this._lastAnalysis[symbol];
+            analysis.PrepareForUpdate();
 
             // Get stats
             var stat3s = this._buffer.Stats3sFor(symbol);
@@ -179,124 +185,239 @@ namespace trape.cli.trader.Analyze
             if (stat3s == null || !stat3s.IsValid()
                 || stat15s == null || !stat15s.IsValid()
                 || stat2m == null || !stat2m.IsValid()
-                || stat10m == null || !stat10m.IsValid()
-                /*|| stat2h == null || !stat2h.IsValid()*/)
+                || stat10m == null || !stat10m.IsValid())
             {
-                this._logger.Warning($"Skipped {symbol} due to old or incomplete data: 3s:{stat3s?.IsValid()} 15s:{stat15s?.IsValid()} 2m:{stat2m?.IsValid()} 10m:{stat10m?.IsValid()} 2h:{stat2h?.IsValid()}");
+                this._logger.Warning($"Skipped {symbol} due to old or incomplete data: 3s:{(stat3s == null ? false : stat3s?.IsValid())} " +
+                    $"15s:{(stat15s == null ? false : stat15s?.IsValid())} " +
+                    $"2m:{(stat2m == null ? false : stat2m?.IsValid())} " +
+                    $"10m:{(stat10m == null ? false : stat10m?.IsValid())}");
                 this._lastRecommendation.Remove(symbol);
                 return;
             }
 
             // Use regular approach
             // Get current symbol price
-            var currentPrice = this._buffer.GetBidPrice(symbol);
+            var currentPrice = new Point(time: default, price: this._buffer.GetBidPrice(symbol), slope: 0);
+            var movingAverage1h = new Point(price: stat10m.MovingAverage1h, slope: stat10m.Slope1h, slopeBase: TimeSpan.FromHours(1));
+            var movingAverage3h = new Point(price: stat10m.MovingAverage3h, slope: stat10m.Slope3h, slopeBase: TimeSpan.FromHours(3));
+            var panicLimit = movingAverage3h * 0.9975M;
+            var movav1hInterceptingPrice = currentPrice.WillInterceptWith(movingAverage1h);
+            var priceInterceptingMovAv1h = movingAverage1h.WillInterceptWith(currentPrice.Price, slope: stat2m.Slope10m, slopeBase: 10 * 60);
 
-            // Corridor around Moving Average 10m
-            decimal upperLimitMA1h = stat10m.MovingAverage1h * 1.0002M;
-            decimal lowerLimitMA1h = stat10m.MovingAverage1h * 0.9998M;
-            decimal panicLimitMA1h = stat10m.MovingAverage1h * 0.9975M;
-
-            // MA3h * 1.008 (0.8%) is higher than MA1h AND Slope1h and Slope3h are positive
-            var distanceOkAndTrendPositive = (stat10m.MovingAverage3h * 1.008M) > stat10m.MovingAverage1h
-                                                && stat10m.Slope1h > -0.0065M && stat10m.Slope3h > 0.009M;
-
-            const decimal strongThreshold = 0.004M;
+            if (movav1hInterceptingPrice != null)
+            {
+                this._logger.Verbose($"movav1hInterceptingPrice: {movav1hInterceptingPrice.Price:0.00} {movav1hInterceptingPrice.Time.TotalMinutes:#0.00}m");
+            }
+            if (priceInterceptingMovAv1h != null)
+            {
+                this._logger.Verbose($"priceInterceptingMovAv1h: {priceInterceptingMovAv1h.Price:0.00} {priceInterceptingMovAv1h.Time.TotalMinutes:#0.00}m");
+            }
 
             // Make the decision
-            var action = datalayer.Enums.Action.Hold;
-
+            var action = Action.Hold;
             var lastFallingPrice = this._buffer.GetLastFallingPrice(symbol);
-
             if (lastFallingPrice != null)
             {
                 this._logger.Verbose($"{symbol}: Last Falling Price Original: {lastFallingPrice.OriginalPrice:0.00} | Since: {lastFallingPrice.Since.ToShortTimeString()}");
             }
-            this._logger.Verbose($"{symbol}: {currentPrice:0.00} - ulMA1h: {upperLimitMA1h:0.0000} | llMA1h: {lowerLimitMA1h:0.0000} | plMA1h: {panicLimitMA1h:0.0000} | distance&Trend: {distanceOkAndTrendPositive}");
+
+            var path = new StringBuilder();
 
             // Panic
-            if (stat3s.Slope5s < -2M
-                && stat3s.Slope10s < -1.1M
-                && stat3s.Slope15s < -0.5M
-                && stat3s.Slope30s < -0.32M
-                && stat15s.Slope45s < -0.11M
-                && stat15s.Slope1m < -0.09M
-                && stat15s.Slope2m < -0.05M
-                && stat15s.Slope3m < -0.008M
-                && stat2m.Slope5m < -0M
+            if (stat3s.Slope5s < -8
+                && stat3s.Slope10s < -5
+                && stat3s.Slope15s < -6
+                && stat3s.Slope30s < -15
+                && stat15s.Slope45s < -12
+                && stat15s.Slope1m < -10
+                && stat15s.Slope2m < -5
+                && stat15s.Slope3m < -1
                 // Define threshhold from when on panic mode is active
-                && panicLimitMA1h < stat10m.MovingAverage3h
-                // Price has to drop for more than 21 seconds
-                // and lose more than 0.55%
+                && panicLimit < movingAverage3h
+                // Price has to drop for more than 10 seconds
                 && lastFallingPrice != null
-                    && lastFallingPrice.Since < DateTime.UtcNow.AddSeconds(-21)
-                    && currentPrice < lastFallingPrice.OriginalPrice * 0.9955M
+                    && lastFallingPrice.Since < DateTime.UtcNow.AddSeconds(-10)
                 )
             {
                 // Panic sell
-                action = datalayer.Enums.Action.PanicSell;
-                this._logger.Warning("Panic Mode");
+                action = Action.PanicSell;
+
+                analysis.PanicDetected();
+
+                this._logger.Warning($"{symbol}: {currentPrice.Price:0.00} - Panic Mode");
+                path.Append("|panic");
             }
-            else if (stat10m.Slope30m > strongThreshold || distanceOkAndTrendPositive)
+            // Jump increase
+            else if (stat3s.Slope5s > 15
+                    && stat3s.Slope10s > 10
+                    && stat3s.Slope15s > 15
+                    && stat3s.Slope30s > 9
+                    && stat15s.Slope1m > 0)
             {
-                action = StrongBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h, distanceOkAndTrendPositive);
+                path.Append("jump");
+                // If Slope1h is negative, then only join the jumping trend if the current price
+                // is higher than the value of the Slope1h in 15 minutes
+                if (stat10m.Slope1h < -10)
+                {
+                    path.Append("a");
+                    // Only jump if price goes higher than intercept with Slope1h in 15 minutes
+                    var intercept15min = movingAverage1h.WillInterceptWith(currentPrice);
+                    // 15 minutes
+                    if (intercept15min?.Time < TimeSpan.FromMinutes(15))
+                    {
+                        this._logger.Verbose("[jump]");
+                        action = Action.JumpBuy;
+                        analysis.JumpDetected();
+                        path.Append("|b");
+                    }
+                }
+                // Slope1h is (almost) positive, always jump
+                else
+                {
+                    path.Append("|b");
+                    this._logger.Verbose("[jump]");
+                    action = Action.JumpBuy;
+                    analysis.JumpDetected();
+                }
             }
-            else if (stat10m.Slope30m > 0.0015M || distanceOkAndTrendPositive)
+            else if (stat2m.Slope10m < 0 && (currentPrice > movingAverage1h))
             {
-                action = NormalBuyStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h, distanceOkAndTrendPositive);
+                if (stat10m.Slope3h > 0)
+                {
+                    action = Action.Sell;
+                    path.Append("|sell");
+                }
+                else
+                {
+                    action = Action.StrongSell;
+                    path.Append("|strongsell");
+                }
             }
-            else if (stat10m.Slope30m < -strongThreshold && !distanceOkAndTrendPositive)
+            else if (stat2m.Slope7m > 0 && (currentPrice < movingAverage1h))
             {
-                action = StrongSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
-            }
-            else if (stat10m.Slope30m < -0.0015M && !distanceOkAndTrendPositive)
-            {
-                action = NormalSellStrategy(stat3s, stat15s, stat2m, stat10m, stat2h, lowerLimitMA1h, upperLimitMA1h);
+                if (stat10m.Slope3h > 0)
+                {
+                    action = Action.StrongBuy;
+                    path.Append("|strongbuy");
+                }
+                else
+                {
+                    action = Action.Buy;
+                    path.Append("|buy");
+                }
             }
 
-            // Check if price has gained a lot over the last 15 minutes
-            // Get Price from 15 minutes ago
-            decimal raceStartingPrice = default;
+            var calcAction = action;
+
+            // If a race is ongoing or after it has stopped wait for 9 minutes for market to cool down
+            // before another buy is made
+            if (analysis.LastRaceEnded.AddMinutes(9) > DateTime.UtcNow
+                && (action == Action.Buy || action == Action.JumpBuy || action == Action.StrongBuy))
+            {
+                this._logger.Verbose($"{symbol}: Race ended less than 9 minutes ago, don't buy.");
+                action = Action.Hold;
+                path.Append("_|race");
+            }
+
+
+            // If Panic mode ended, wait for 5 minutes before start buying again, except if jump
+            if (analysis.LastPanicModeEnded.AddMinutes(5) > DateTime.UtcNow)
+            {
+                path.Append("_panicend");
+                if (action == Action.Buy || action == Action.StrongBuy)
+                {
+                    this._logger.Verbose($"{symbol}: Panic mode ended less than 5 minutes ago, don't buy.");
+                    action = Action.Hold;
+                    path.Append("|a");
+                }
+            }
+            // If Panic mode ended and action is not buy but trend is strongly upwards
+            else if (analysis.LastPanicModeEnded.AddMinutes(7) > DateTime.UtcNow
+                && action != Action.Buy
+                && stat3s.Slope5s > 10 && stat3s.Slope10s > 10 && stat3s.Slope15s > 7.5M && stat3s.Slope30s > 0 && stat3s.Slope30s > 0 && stat10m.Slope3h > -64.8M
+                && currentPrice < movingAverage1h)
+            {
+                this._logger.Verbose($"{symbol}: Panic mode ended more than 7 minutes ago and trend is strongly upwards, buy.");
+                action = Action.Buy;
+                path.Append("_|panicend");
+            }
+
+
+            // If strong sell happened or slope is too negative, do not buy immediately
+            if ((analysis.GetLastDateOf(Action.StrongSell).AddMinutes(2) > DateTime.UtcNow || stat10m.Slope30m < -20M)
+                && (action == Action.Buy || action == Action.JumpBuy || action == Action.StrongBuy))
+            {
+                this._logger.Verbose($"{symbol}: Last strong sell was less than 1 minutes ago, don't buy.");
+                action = Action.Hold;
+                path.Append("_|wait");
+            }
+
+            Point raceStartingPrice;
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    raceStartingPrice = await database.GetPriceOn(symbol, DateTime.UtcNow.AddMinutes(-15), this._cancellationTokenSource.Token).ConfigureAwait(false);
+                    // Check if price has gained a lot over the last 30 minutes
+                    // Get Price from 30 minutes ago
+                    raceStartingPrice = new Point(time: TimeSpan.FromMinutes(-1),
+                                                    price: await database.GetLowestPrice(symbol, DateTime.UtcNow.AddMinutes(-30), this._cancellationTokenSource.Token).ConfigureAwait(false),
+                                                    slope: 0);
                 }
                 catch (Exception e)
                 {
-                    this._logger.ForContext(typeof(Accountant));
                     this._logger.Error(e.Message, e);
-                }
-            }
-            // Advise to sell on 200 USD gain
-            if (raceStartingPrice != default && raceStartingPrice < currentPrice - 220)
-            {
-                // Check market movement, if a huge sell is detected advice to take profits
-                if (stat3s.MovingAverage15s < -2)
-                {
-                    action = datalayer.Enums.Action.TakeProfitsSell;
+                    raceStartingPrice = new Point();
                 }
             }
 
-            var now = DateTime.UtcNow;
-            // Print strategy changes
-            if (this._lastStrategy[symbol] != action)
+            /// Advise to sell on <see cref="TakeProfitLimit"/> % gain
+            if (raceStartingPrice.Price != default && raceStartingPrice < (currentPrice * TakeProfitLimit))
             {
-                this._logger.Information($"{symbol}: {currentPrice:0.00} - Switching stategy: {this._lastStrategy[symbol]} -> {action}");
-                this._lastStrategy[symbol] = action;
+                this._logger.Verbose($"{symbol}: Race detected at {currentPrice.Price:0.00}.");
+                analysis.RaceDetected();
+                path.Append("_racestart");
+
+                // Check market movement, if a huge sell is detected advice to take profits
+                if (stat3s.Slope10s < -10)
+                {
+                    action = Action.TakeProfitsSell;
+                    this._logger.Verbose($"{symbol}: Race ended at {currentPrice.Price:0.00}.");
+                    path.Append("|raceend");
+                    analysis.RaceEnded();
+                }
+            }
+
+            // Buy after PanicSell
+            if (analysis.PanicSellHasEnded
+                && (action != Action.StrongSell && action != Action.PanicSell)
+                && currentPrice < movingAverage1h
+                && analysis.BuyAfterPanicSell())
+            {
+                action = Action.Buy;
+                path.Append("_|panicbuy");
+            }
+
+
+            // Print strategy changes
+            if (analysis.Action != action)
+            {
+                this._logger.Information($"{symbol}: {currentPrice.Price:0.00} - Switching stategy: {analysis.Action} -> {action}");
+                analysis.UpdateAction(action);
             }
             // Print strategy every hour in log
-            else if (now.Minute == 0 && now.Second == 0 && now.Millisecond < 100)
+            else if (analysis.Now.Minute == 0 && analysis.Now.Second == 0 && analysis.Now.Millisecond < 100)
             {
                 this._logger.Information($"{symbol}: Stategy: {action}");
             }
+
+            this._logger.Debug($"{symbol}: {currentPrice.Price:0.00} Decision - Calculated / Final: {calcAction} / {action} - {path}");
 
             // Instantiate new recommendation
             var newRecommendation = new Recommendation()
             {
                 Action = action,
-                Price = currentPrice,
+                Price = currentPrice.Price,
                 Symbol = symbol,
                 CreatedOn = DateTime.UtcNow,
                 Slope5s = stat3s.Slope5s,
@@ -341,8 +462,6 @@ namespace trape.cli.trader.Analyze
                 MovingAverage1d = stat2h.MovingAverage1d
             };
 
-            this._logger.Verbose($"{symbol}: Recommending: {action}");
-
             // Store recommendation temporarily for <c>Analyst</c>
             Recommendation lastRecommendation = null;
             if (this._lastRecommendation.ContainsKey(symbol))
@@ -355,15 +474,16 @@ namespace trape.cli.trader.Analyze
                 this._lastRecommendation.Add(symbol, newRecommendation);
             }
 
-            // Store recommendation in database
+            this._logger.Verbose($"{symbol}: Recommending: {action}");
 
+            // Store recommendation in database
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
                     database.Recommendations.Add(newRecommendation);
-                    await database.SaveChangesAsync();
+                    await database.SaveChangesAsync().ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -373,183 +493,6 @@ namespace trape.cli.trader.Analyze
 
             _logTrend(newRecommendation, stat10m, stat2h);
         }
-
-        #region Strategies
-
-        /// <summary>
-        /// Takes advantage of horizotal movements of the market
-        /// </summary>
-        /// <param name="stat3s">Stats 3 seconds</param>
-        /// <param name="stat15s">stats 15 seconds</param>
-        /// <param name="stat2m">Stats 2 minutes</param>
-        /// <param name="stat10m">Stats 10 minutes</param>
-        /// <param name="stat2h">Stats 2 hours</param>
-        /// <param name="lowerLimitMA1h">Lower limit of moving average for 10 mintues</param>
-        /// <param name="upperLimitMA1h">Upper limit of moving average for 10 minutes</param>
-        /// <returns></returns>
-        public datalayer.Enums.Action NormalSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
-        {
-            #region Argument checks
-
-            if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
-            {
-                this._logger.Warning("Stats are NULL");
-                return datalayer.Enums.Action.Hold;
-            }
-
-            #endregion
-
-            var action = datalayer.Enums.Action.Hold;
-
-            var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
-
-            // if moving average 1h is greater than moving average 3h
-            // or moving average 1h crossed moving average 3h within the last 6 minutes
-            if (stat10m.MovingAverage30m > stat10m.MovingAverage1h
-                || (lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6)))
-            {
-                // Strong sell
-                action = datalayer.Enums.Action.Sell;
-            }
-
-            // Check tendency
-            if (stat2m.Slope10m > 0.002M
-                && stat10m.Slope30m > 0.001M)
-            {
-                action = datalayer.Enums.Action.Hold;
-            }
-
-            return action;
-        }
-
-        /// <summary>
-        /// Takes advantage of horizontal movement of the market
-        /// </summary>
-        /// <param name="stat3s">Stats 3 seconds</param>
-        /// <param name="stat15s">stats 15 seconds</param>
-        /// <param name="stat2m">Stats 2 minutes</param>
-        /// <param name="stat10m">Stats 10 minutes</param>
-        /// <param name="stat2h">Stats 2 hours</param>
-        /// <param name="lowerLimitMA1h">Lower limit of moving average of 1 hour</param>
-        /// <param name="upperLimitMA1h">Upper limit of moving average of 1 hour</param>
-        /// <param name="distanceOkAndTrendPositive">Distance is OK and trend is positive</param>
-        /// <returns></returns>
-        public datalayer.Enums.Action NormalBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h, bool distanceOkAndTrendPositive)
-        {
-            #region Argument checks
-
-            if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
-            {
-                this._logger.Warning("Stats are NULL");
-                return datalayer.Enums.Action.Hold;
-            }
-
-            #endregion
-
-            var action = datalayer.Enums.Action.Hold;
-
-            var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
-
-            // if moving average 1h is smaller than moving average 3h
-            // or moving average 1h crossed moving average 3h within the last 6 minutes
-            if (stat10m.MovingAverage30m < stat10m.MovingAverage1h
-                || (lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6))
-                || distanceOkAndTrendPositive)
-            {
-                // Strong sell
-                action = datalayer.Enums.Action.Buy;
-            }
-
-            // Check tendency
-            if (stat2m.Slope10m < -0.002M
-                && stat10m.Slope30m < -0.001M)
-            {
-                action = datalayer.Enums.Action.Hold;
-            }
-
-            return action;
-        }
-
-        /// <summary>
-        /// Takes advantage of vertical movement of the market
-        /// </summary>
-        /// <param name="stat3s">Stats 3 seconds</param>
-        /// <param name="stat15s">stats 15 seconds</param>
-        /// <param name="stat2m">Stats 2 minutes</param>
-        /// <param name="stat10m">Stats 10 minutes</param>
-        /// <param name="stat2h">Stats 2 hours</param>
-        /// <param name="lowerLimitMA1h">Lower limit of moving average for 10 mintues</param>
-        /// <param name="upperLimitMA1h">Upper limit of moving average for 10 minutes</param>
-        /// <returns></returns>
-        public datalayer.Enums.Action StrongSellStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h)
-        {
-            #region Argument checks
-
-            if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
-            {
-                this._logger.Warning("Stats are NULL");
-                return datalayer.Enums.Action.Hold;
-            }
-
-            #endregion
-
-            return datalayer.Enums.Action.StrongSell;
-        }
-
-        /// <summary>
-        /// Takes advantage of vertical movement of the market
-        /// </summary>
-        /// <param name="stat3s">Stats 3 seconds</param>
-        /// <param name="stat15s">stats 15 seconds</param>
-        /// <param name="stat2m">Stats 2 minutes</param>
-        /// <param name="stat10m">Stats 10 minutes</param>
-        /// <param name="stat2h">Stats 2 hours</param>
-        /// <param name="lowerLimitMA1h">Lower limit of moving average of 1 hour</param>
-        /// <param name="upperLimitMA1h">Upper limit of moving average of 1 hour</param>
-        /// <param name="distanceOkAndTrendPositive">Distance is OK and trend is positive</param>
-        /// <returns></returns>
-        public datalayer.Enums.Action StrongBuyStrategy(Stats3s stat3s, Stats15s stat15s, Stats2m stat2m, Stats10m stat10m, Stats2h stat2h, decimal lowerLimitMA1h, decimal upperLimitMA1h, bool distanceOkAndTrendPositive)
-        {
-            #region Argument checks
-
-            if (stat3s == null || stat15s == null || stat2m == null || stat10m == null)
-            {
-                this._logger.Warning("Stats are NULL");
-                return datalayer.Enums.Action.Hold;
-            }
-
-            #endregion
-
-            // Advise to sell
-            var action = datalayer.Enums.Action.Hold;
-
-            var lastCrossing = this._buffer.GetLatest10mAnd30mCrossing(stat3s.Symbol);
-
-            // Check if funds are available
-            bool fundsAvailable = false;
-            var usdt = this._accountant.GetBalance("USDT").Result;
-            if (usdt != null)
-            {
-                if (usdt.Free > 200)
-                {
-                    fundsAvailable = true;
-                }
-            }
-
-            // Strong buy when crossing
-            if (stat10m.MovingAverage30m < stat10m.MovingAverage1h
-                || lowerLimitMA1h < stat10m.MovingAverage30m && stat10m.MovingAverage1h < upperLimitMA1h && stat2m.Slope5m > 0
-                || lastCrossing?.EventTime > DateTime.UtcNow.AddMinutes(-6) && stat2m.Slope5m > 0
-                || distanceOkAndTrendPositive
-                || (fundsAvailable && stat2m.Slope15m > 0.015M && stat10m.Slope30m > 0.005M && stat10m.Slope1h > 0.0035M))
-            {
-                action = datalayer.Enums.Action.StrongBuy;
-            }
-
-            return action;
-        }
-
-        #endregion
 
         /// <summary>
         /// Returns a string representing current trend data
@@ -606,7 +549,7 @@ namespace trape.cli.trader.Analyze
         /// <summary>
         /// Stops the <c>Analyst</c> instance
         /// </summary>
-        public void Finish()
+        public void Terminate()
         {
             // Stop recommendation maker
             this._jobRecommendationMaker.Terminate();
@@ -644,8 +587,6 @@ namespace trape.cli.trader.Analyze
             if (disposing)
             {
                 this._cancellationTokenSource.Dispose();
-
-                this._buffer.Dispose();
             }
 
             this._disposed = true;

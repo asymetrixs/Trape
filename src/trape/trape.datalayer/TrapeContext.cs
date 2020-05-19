@@ -325,7 +325,7 @@ namespace trape.datalayer
             // And a dependency to to that elements is established
             var mapper = new NpgsqlSnakeCaseNameTranslator();
             var tableName = mapper.TranslateMemberName(nameof(this.BookTicks));
-            var columName = mapper.TranslateMemberName(nameof(Models.BookTick.CreatedOn));
+            var columName = mapper.TranslateMemberName(nameof(BookTick.CreatedOn));
 
             // Generate SQL statement
             var sql = $"DELETE FROM {tableName} WHERE {columName} < NOW() - INTERVAL '24 hours'";
@@ -334,9 +334,9 @@ namespace trape.datalayer
         }
 
 
-        public async Task<IEnumerable<Stats3s>> Get3SecondsTrendAsync(CancellationToken cancellationToken = default)
+        public IEnumerable<Stats3s> Get3SecondsTrendAsync(CancellationToken cancellationToken = default)
         {
-            return await Task.FromResult(this.Set<Stats3s>().FromSqlRaw("SELECT * FROM stats_3s();").AsNoTracking().AsEnumerable());
+            return this.Set<Stats3s>().FromSqlRaw("SELECT * FROM stats_3s();").AsNoTracking().AsEnumerable();
 
             #region old
             //IDisposable pushedProperty = null;
@@ -421,9 +421,9 @@ namespace trape.datalayer
             #endregion
         }
 
-        public async Task<IEnumerable<Stats15s>> Get15SecondsTrendAsync(CancellationToken cancellationToken = default)
+        public IEnumerable<Stats15s> Get15SecondsTrendAsync(CancellationToken cancellationToken = default)
         {
-            return await Task.FromResult(this.Set<Stats15s>().FromSqlRaw("SELECT * FROM stats_15s();").AsNoTracking().AsEnumerable());
+            return this.Set<Stats15s>().FromSqlRaw("SELECT * FROM stats_15s();").AsNoTracking().AsEnumerable();
 
             #region old
             //var trends = new List<Stats15s>();
@@ -509,9 +509,9 @@ namespace trape.datalayer
             #endregion
         }
 
-        public async Task<IEnumerable<Stats2m>> Get2MinutesTrendAsync(CancellationToken cancellationToken = default)
+        public IEnumerable<Stats2m> Get2MinutesTrendAsync(CancellationToken cancellationToken = default)
         {
-            return await Task.FromResult(this.Set<Stats2m>().FromSqlRaw("SELECT * FROM stats_2m();").AsNoTracking().AsEnumerable());
+            return this.Set<Stats2m>().FromSqlRaw("SELECT * FROM stats_2m();").AsNoTracking().AsEnumerable();
 
             #region old
             //var trends = new List<Stats2m>();
@@ -597,9 +597,9 @@ namespace trape.datalayer
             #endregion
         }
 
-        public async Task<IEnumerable<Stats10m>> Get10MinutesTrendAsync(CancellationToken cancellationToken = default)
+        public IEnumerable<Stats10m> Get10MinutesTrendAsync(CancellationToken cancellationToken = default)
         {
-            return await Task.FromResult(this.Set<Stats10m>().FromSqlRaw("SELECT * FROM stats_10m();").AsNoTracking().AsEnumerable());
+            return this.Set<Stats10m>().FromSqlRaw("SELECT * FROM stats_10m();").AsNoTracking().AsEnumerable();
 
             #region old
             //var trends = new List<Stats10m>();
@@ -685,9 +685,9 @@ namespace trape.datalayer
             #endregion
         }
 
-        public async Task<IEnumerable<Stats2h>> Get2HoursTrendAsync(CancellationToken cancellationToken = default)
+        public IEnumerable<Stats2h> Get2HoursTrendAsync(CancellationToken cancellationToken = default)
         {
-            return await Task.FromResult(this.Set<Stats2h>().FromSqlRaw("SELECT * FROM stats_2h();").AsNoTracking().AsEnumerable());
+            return this.Set<Stats2h>().FromSqlRaw("SELECT * FROM stats_2h();").AsNoTracking().AsEnumerable();
 
             #region old
             //var trends = new List<Stats2h>();
@@ -773,9 +773,9 @@ namespace trape.datalayer
             #endregion
         }
 
-        public async Task<IEnumerable<LatestMA10mAndMA30mCrossing>> GetLatestMA10mAndMA30mCrossing(CancellationToken cancellationToken = default)
+        public IEnumerable<LatestMA10mAndMA30mCrossing> GetLatestMA10mAndMA30mCrossing(CancellationToken cancellationToken = default)
         {
-            return await Task.FromResult(this.Set<LatestMA10mAndMA30mCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma10m_ma30m_crossing();").AsNoTracking().AsEnumerable());
+            return this.Set<LatestMA10mAndMA30mCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma10m_ma30m_crossing();").AsNoTracking().AsEnumerable();
 
             #region old
 
@@ -849,9 +849,9 @@ namespace trape.datalayer
             #endregion
         }
 
-        public async Task<IEnumerable<LatestMA30mAndMA1hCrossing>> GetLatestMA30mAndMA1hCrossing(CancellationToken cancellationToken = default)
+        public IEnumerable<LatestMA30mAndMA1hCrossing> GetLatestMA30mAndMA1hCrossing(CancellationToken cancellationToken = default)
         {
-            return await Task.FromResult(this.Set<LatestMA30mAndMA1hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma30m_ma1h_crossing();").AsNoTracking().AsEnumerable());
+            return this.Set<LatestMA30mAndMA1hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma30m_ma1h_crossing();").AsNoTracking().AsEnumerable();
 
             #region old
             //var latestCrossings = new List<LatestMA30mAndMA1hCrossing>();
@@ -925,9 +925,9 @@ namespace trape.datalayer
             #endregion
         }
 
-        public async Task<IEnumerable<LatestMA1hAndMA3hCrossing>> GetLatestMA1hAndMA3hCrossing(CancellationToken cancellationToken = default)
+        public IEnumerable<LatestMA1hAndMA3hCrossing> GetLatestMA1hAndMA3hCrossing(CancellationToken cancellationToken = default)
         {
-            return await Task.FromResult(this.Set<LatestMA1hAndMA3hCrossing>().FromSqlRaw ("SELECT * FROM get_latest_ma1h_ma3h_crossing();").AsNoTracking().AsEnumerable());
+            return this.Set<LatestMA1hAndMA3hCrossing>().FromSqlRaw ("SELECT * FROM get_latest_ma1h_ma3h_crossing();").AsNoTracking().AsEnumerable();
 
             #region old
             //var latestCrossings = new List<LatestMA1hAndMA3hCrossing>();
@@ -1002,13 +1002,13 @@ namespace trape.datalayer
         }
 
 
-        public async Task<decimal> GetPriceOn(string symbol, DateTime dateTime, CancellationToken cancellationToken = default)
+        public async Task<decimal> GetLowestPrice(string symbol, DateTime dateTime, CancellationToken cancellationToken = default)
         {
             var price = default(decimal);
 
             using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
             {
-                using (var com = new NpgsqlCommand("get_price_on", con))
+                using (var com = new NpgsqlCommand("get_lowest_price", con))
                 {
                     try
                     {

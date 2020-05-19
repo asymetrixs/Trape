@@ -36,6 +36,10 @@
         /// <summary>
         /// Price gained a lot over the past hours
         /// </summary>
-        TakeProfitsSell
+        TakeProfitsSell,
+        /// <summary>
+        /// Price jumps upwards
+        /// </summary>
+        JumpBuy
     }
 }

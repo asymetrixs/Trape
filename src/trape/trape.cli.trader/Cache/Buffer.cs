@@ -181,7 +181,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _forCrossing()
+        private void _forCrossing()
         {
             this._logger.Verbose("Updating Moving Average 10m and Moving Average 30m crossing");
 
@@ -190,16 +190,9 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    var awaitLatestMA10mAndMA30mCrossing = database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token);
-                    var awaitLatestMA30mAndMA1hCrossing = database.GetLatestMA30mAndMA1hCrossing(this._cancellationTokenSource.Token);
-                    var awaitLatestMA1hAndMA3hCrossing = database.GetLatestMA1hAndMA3hCrossing(this._cancellationTokenSource.Token);
-
-                    // Execute in parallel
-                    await Task.WhenAll(awaitLatestMA10mAndMA30mCrossing, awaitLatestMA1hAndMA3hCrossing).ConfigureAwait(false);
-
-                    this._latestMA10mAnd30mCrossing = awaitLatestMA10mAndMA30mCrossing.Result;
-                    this._latestMA30mAnd1hCrossing = awaitLatestMA30mAndMA1hCrossing.Result;
-                    this._latestMA1hAnd3hCrossing = awaitLatestMA1hAndMA3hCrossing.Result;
+                    this._latestMA10mAnd30mCrossing = database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token);
+                    this._latestMA30mAnd1hCrossing = database.GetLatestMA30mAndMA1hCrossing(this._cancellationTokenSource.Token);
+                    this._latestMA1hAnd3hCrossing = database.GetLatestMA1hAndMA3hCrossing(this._cancellationTokenSource.Token);
                 }
                 catch (Exception e)
                 {
@@ -215,7 +208,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _trend3Seconds()
+        private void _trend3Seconds()
         {
             this._logger.Verbose("Updating 3 seconds trend");
 
@@ -224,7 +217,7 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    this._stats3s = database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token);
                 }
                 catch (Exception e)
                 {
@@ -246,7 +239,7 @@ namespace trape.cli.trader.Cache
                     {
                         if (currentPrice != -1)
                         {
-                            this._logger.Verbose($"{stat.Symbol}: Falling price added - {currentPrice.ToString("0.##")} at {DateTime.UtcNow.ToShortTimeString()}");
+                            this._logger.Verbose($"{stat.Symbol}: Falling price added - {currentPrice:0.##} at {DateTime.UtcNow.ToShortTimeString()}");
                             this._fallingPrices.Add(stat.Symbol, new FallingPrice(stat.Symbol, currentPrice, DateTime.UtcNow));
                         }
                     }
@@ -257,7 +250,7 @@ namespace trape.cli.trader.Cache
                     if (this._fallingPrices.ContainsKey(stat.Symbol))
                     {
                         this._fallingPrices.Remove(stat.Symbol, out var value);
-                        this._logger.Verbose($"{stat.Symbol}: Falling price removed - {value.OriginalPrice.ToString("0.##")} < {currentPrice.ToString("0.##")} at {DateTime.UtcNow.ToShortTimeString()}");
+                        this._logger.Verbose($"{stat.Symbol}: Falling price removed - {value.OriginalPrice:0.##} < {currentPrice:0.##} at {DateTime.UtcNow.ToShortTimeString()}");
                     }
                 }
             }
@@ -270,7 +263,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _trend15Seconds()
+        private void _trend15Seconds()
         {
             this._logger.Verbose("Updating 15 seconds trend");
 
@@ -279,7 +272,7 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    this._stats15s = database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token);
                 }
                 catch (Exception e)
                 {
@@ -295,7 +288,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _trend2Minutes()
+        private void _trend2Minutes()
         {
             this._logger.Verbose("Updating 2 minutes trend");
 
@@ -304,7 +297,7 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    this._stats2m = database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token);
                 }
                 catch (Exception e)
                 {
@@ -320,7 +313,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _trend10Minutes()
+        private void _trend10Minutes()
         {
             this._logger.Verbose("Updating 10 minutes trend");
 
@@ -329,7 +322,7 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    this._stats10m = database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token);
                 }
                 catch (Exception e)
                 {
@@ -345,7 +338,7 @@ namespace trape.cli.trader.Cache
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _trend2Hours()
+        private void _trend2Hours()
         {
             this._logger.Verbose("Updating 2 hours trend");
 
@@ -354,7 +347,7 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    this._stats2h = database.Get2HoursTrendAsync(this._cancellationTokenSource.Token);
                 }
                 catch (Exception e)
                 {
@@ -390,10 +383,21 @@ namespace trape.cli.trader.Cache
         /// <param name="openOrder">Open order</param>
         public void AddOpenOrder(OpenOrder openOrder)
         {
+            #region Argument checks
+
+            if (openOrder == null)
+            {
+                return;
+            }
+
+            #endregion
+
             if (this._openOrders.ContainsKey(openOrder.GUID))
             {
                 this._openOrders.Remove(openOrder.GUID);
             }
+
+            this._logger.Debug($"Order added {openOrder.GUID}");
 
             this._openOrders.Add(openOrder.GUID, openOrder);
         }
@@ -404,6 +408,8 @@ namespace trape.cli.trader.Cache
         /// <param name="clientOrderId">Id of open order</param>
         public void RemoveOpenOrder(string clientOrderId)
         {
+            this._logger.Debug($"Order removed {clientOrderId}");
+
             this._openOrders.Remove(clientOrderId);
         }
 
@@ -412,7 +418,14 @@ namespace trape.cli.trader.Cache
         /// </summary>
         public decimal GetOpenOrderValue(string symbol)
         {
-            return this._openOrders.Where(o => o.Value.Symbol == symbol).Sum(o => o.Value.EstimatedQuoteOrderQuantity);
+            // Remove old orders
+            foreach (var oo in this._openOrders.Where(o => o.Value.CreatedOn < DateTime.UtcNow.AddSeconds(-10)).Select(o => o.Key))
+            {
+                this._logger.Debug($"Order cleaned {oo}");
+                this._openOrders.Remove(oo);
+            }
+
+            return this._openOrders.Where(o => o.Value.Symbol == symbol).Sum(o => o.Value.Quantity);
         }
 
         /// <summary>
@@ -642,12 +655,12 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._stats3s = await database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-                    this._stats15s = await database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-                    this._stats2m = await database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-                    this._stats10m = await database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-                    this._stats2h = await database.Get2HoursTrendAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
-                    this._latestMA10mAnd30mCrossing = await database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token).ConfigureAwait(true);
+                    this._stats3s = database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token);
+                    this._stats15s = database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token);
+                    this._stats2m = database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token);
+                    this._stats10m = database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token);
+                    this._stats2h = database.Get2HoursTrendAsync(this._cancellationTokenSource.Token);
+                    this._latestMA10mAnd30mCrossing = database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token);
 
                     while (!availableSymbols.Any())
                     {
@@ -668,7 +681,7 @@ namespace trape.cli.trader.Cache
 
             this._logger.Debug("Buffer preloaded");
 
-            this._logger.Information($"Symbols to subscribe to are {String.Join(',', availableSymbols)}, starting the subscription process");
+            this._logger.Information($"Symbols to subscribe to are {string.Join(',', availableSymbols)}, starting the subscription process");
 
             // Tries 30 times to subscribe to the ticker
             var countTillHardExit = 30;
@@ -834,7 +847,7 @@ namespace trape.cli.trader.Cache
         /// <summary>
         /// Stops a buffer
         /// </summary>
-        public void Finish()
+        public void Terminate()
         {
             this._logger.Information("Stopping buffer");
 

@@ -1,4 +1,6 @@
-﻿namespace trape.cli.trader.Cache.Models
+﻿using System;
+
+namespace trape.cli.trader.Cache.Models
 {
     /// <summary>
     /// Class for caching of open orders
@@ -17,7 +19,8 @@
         {
             this.GUID = guid;
             this.Symbol = symbol;
-            this.EstimatedQuoteOrderQuantity = estimatedQuoteOrderQuantity;
+            this.Quantity = estimatedQuoteOrderQuantity;
+            this.CreatedOn = DateTime.UtcNow;
         }
 
         #endregion
@@ -37,7 +40,12 @@
         /// <summary>
         /// Estimated quote order quantity
         /// </summary>
-        public decimal EstimatedQuoteOrderQuantity { get; }
+        public decimal Quantity { get; }
+
+        /// <summary>
+        /// Created on
+        /// </summary>
+        public DateTime CreatedOn { get; }
 
         #endregion
     }

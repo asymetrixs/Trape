@@ -21,7 +21,7 @@ namespace trape.cli.trader.Cache
         /// <summary>
         /// Stops a buffer
         /// </summary>
-        void Finish();
+        void Terminate();
 
         /// <summary>
         /// Returns the available symbols the buffer has data for

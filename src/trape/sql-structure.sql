@@ -376,6 +376,7 @@ CREATE TABLE recommendation
 	movav18h NUMERIC NOT NULL,
 	slope1d NUMERIC NOT NULL,
 	movav1d NUMERIC NOT NULL,
+	path text NOT NULL,
 	PRIMARY KEY (id)
 );
 
@@ -426,7 +427,8 @@ CREATE OR REPLACE FUNCTION insert_recommendation
 	p_slope18h NUMERIC,
 	p_movav18h NUMERIC,
 	p_slope1d NUMERIC,
-	p_movav1d NUMERIC
+	p_movav1d NUMERIC,
+	p_path text
 )
 RETURNS void AS
 $$
@@ -436,11 +438,11 @@ BEGIN
 					(symbol, decision, price, slope5s, movav5s, slope10s, movav10s, slope15s, movav15s, slope30s, movav30s, slope45s, movav45s,
 					slope1m, movav1m, slope2m, movav2m, slope3m, movav3m, slope5m, movav5m, slope7m, movav7m, slope10m, movav10m,
 					slope15m, movav15m, slope30m, movav30m, slope1h, movav1h, slope2h, movav2h, slope3h, movav3h,
-					slope6h, movav6h, slope12h, movav12h, slope18h, movav18h, slope1d, movav1d)
+					slope6h, movav6h, slope12h, movav12h, slope18h, movav18h, slope1d, movav1d, path)
 			VALUES (p_symbol, p_decision, p_price, p_slope5s, p_movav5s, p_slope10s, p_movav10s, p_slope15s, p_movav15s, p_slope30s, p_movav30s, p_slope45s, p_movav45s,
 					p_slope1m, p_movav1m, p_slope2m, p_movav2m, p_slope3m, p_movav3m, p_slope5m, p_movav5m, p_slope7m, p_movav7m, p_slope10m, p_movav10m,
 					p_slope15m, p_movav15m, p_slope30m, p_movav30m, p_slope1h, p_movav1h, p_slope2h, p_movav2h, p_slope3h, p_movav3h,
-					p_slope6h, p_movav6h, p_slope12h, p_movav12h, p_slope18h, p_movav18h, p_slope1d, p_movav1d);
+					p_slope6h, p_movav6h, p_slope12h, p_movav12h, p_slope18h, p_movav18h, p_slope1d, p_movav1d, p_path);
 
 END;
 $$
@@ -460,10 +462,10 @@ CREATE OR REPLACE FUNCTION public.stats_3s(
 AS $BODY$
 BEGIN
 	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 seconds'))::NUMERIC, 8) AS slope_5s,
-		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 seconds'))::NUMERIC, 8) AS slope_10s,
-		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '15 seconds'))::NUMERIC, 8) AS slope_15s,
-		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8) AS slope_30s,
+		ROUND(((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 seconds'))*5)::NUMERIC, 8) AS slope_5s,
+		ROUND(((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 seconds'))*10)::NUMERIC, 8) AS slope_10s,
+		ROUND(((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '15 seconds'))*15)::NUMERIC, 8) AS slope_15s,
+		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time))*30)::NUMERIC, 8) AS slope_30s,
 		ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 seconds') 
 			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '5 seconds')), 8) AS movav_5s,
 		ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 seconds') 
@@ -491,10 +493,10 @@ CREATE OR REPLACE FUNCTION public.stats_15s(
 AS $BODY$
 BEGIN
 	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '45 seconds'))::NUMERIC, 8) AS slope_45s,
-		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '1 minute'))::NUMERIC, 8) AS slope_1m,
-		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '2 minutes'))::NUMERIC, 8) AS slope_2m,
-		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8) AS slope_3m,
+		ROUND(((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '45 seconds'))*45)::NUMERIC, 8) AS slope_45s,
+		ROUND(((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '1 minute'))*60)::NUMERIC, 8) AS slope_1m,
+		ROUND(((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '2 minutes'))*60*2)::NUMERIC, 8) AS slope_2m,
+		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time))*60*3)::NUMERIC, 8) AS slope_3m,
 		ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) FILTER (WHERE event_time >= NOW() - INTERVAL '45 second') 
 			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '45 second')), 8) AS movav_45s,
 			ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) FILTER (WHERE event_time >= NOW() - INTERVAL '1 minute') 
@@ -525,10 +527,10 @@ CREATE OR REPLACE FUNCTION public.stats_2m(
 AS $BODY$
 BEGIN
 	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes'))::NUMERIC, 8) AS slope_5m,
-		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes'))::NUMERIC, 8) AS slope_7m,
-		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes'))::NUMERIC, 8) AS slope_10,
-		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8) AS slope_15m,
+		ROUND(((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes'))*60*5)::NUMERIC, 8) AS slope_5m,
+		ROUND(((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes'))*60*7)::NUMERIC, 8) AS slope_7m,
+		ROUND(((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '10 minutes'))*60*10)::NUMERIC, 8) AS slope_10,
+		ROUND((REGR_SLOPE(ROUND((best_ask_price + best_bid_price ) /2, 8), EXTRACT(EPOCH FROM event_time))*60*15)::NUMERIC, 8) AS slope_15m,
 		ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes') 
 			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '5 minutes')), 8) AS movav_5m,
 			ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) FILTER (WHERE event_time >= NOW() - INTERVAL '7 minutes') 
@@ -560,10 +562,10 @@ RETURNS TABLE (
 $$
 BEGIN
 	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '30 minutes'))::NUMERIC, 8) AS slope_30m,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '1 hour'))::NUMERIC, 8) AS slope_1h,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '2 hours'))::NUMERIC, 8) AS slope_2h,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8) AS slope_3h,
+		ROUND(((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '30 minutes'))*60*30)::NUMERIC, 8) AS slope_30m,
+		ROUND(((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '1 hour'))*60*60)::NUMERIC, 8) AS slope_1h,
+		ROUND(((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '2 hours'))*60*60*2)::NUMERIC, 8) AS slope_2h,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time))*60*60*3)::NUMERIC, 8) AS slope_3h,
 		ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '30 minutes') 
 			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '30 minutes')), 8) AS movav_30m,
 			ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '1 hours') 
@@ -596,10 +598,10 @@ RETURNS TABLE (
 $$
 BEGIN
 	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '6 hours'))::NUMERIC, 8) AS slope_6h,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '12 hours'))::NUMERIC, 8) AS slope_12h,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '18 hours'))::NUMERIC, 8) AS slope_18h,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)))::NUMERIC, 8) AS slope_1d,
+		ROUND(((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '6 hours'))*60*60*6)::NUMERIC, 8) AS slope_6h,
+		ROUND(((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '12 hours'))*60*60*12)::NUMERIC, 8) AS slope_12h,
+		ROUND(((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time)) FILTER (WHERE event_time >= NOW() - INTERVAL '18 hours'))*60*60*18)::NUMERIC, 8) AS slope_18h,
+		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM event_time))*60*60*24)::NUMERIC, 8) AS slope_1d,
 		ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '6 hours') 
 			/ COUNT(*) FILTER (WHERE event_time >= NOW() - INTERVAL '6 hours')), 8) AS movav_6h,
 			ROUND((SUM(current_day_close_price) FILTER (WHERE event_time >= NOW() - INTERVAL '12 hours') 
@@ -1132,28 +1134,28 @@ LANGUAGE plpgsql VOLATILE;
 
 
 
+CREATE OR REPLACE FUNCTION public.select_last_orders(
+	p_symbol text)
+    RETURNS TABLE(r_binance_placed_order_id bigint, r_transaction_time timestamp with time zone, r_symbol text, r_side text, r_price numeric, r_quantity numeric, r_consumed numeric, r_consumed_price numeric) 
+    LANGUAGE 'plpgsql'
 
-CREATE OR REPLACE FUNCTION select_last_orders(p_symbol TEXT)
-RETURNS TABLE
-(
-	r_binance_placed_order_id BIGINT,
-	r_transaction_time TIMESTAMPTZ,	
-	r_symbol TEXT,
-	r_side TEXT,
-	r_price NUMERIC,
-	r_quantity NUMERIC,
-	r_consumed NUMERIC,
-	r_consumed_price NUMERIC
-)
-AS
-$$
+    COST 100
+    VOLATILE STRICT 
+    ROWS 1000
+    
+AS $BODY$
 BEGIN
-	RETURN QUERY SELECT binance_placed_order_id, transaction_time, symbol, bpo.side, bot.price, quantity, consumed, consumed_price FROM binance_order_trade bot
+	RETURN QUERY SELECT binance_placed_order_id, transaction_time, symbol, bpo.side, bot.price,
+			quantity, ROUND(consumed::NUMERIC, 8), ROUND(consumed_price::NUMERIC, 8) FROM binance_order_trade bot
 		INNER JOIN binance_placed_order bpo ON bpo.id = bot.binance_placed_order_id
-		WHERE bpo.symbol = p_symbol AND consumed < quantity;
+		WHERE bpo.symbol = p_symbol AND consumed < quantity AND bpo.executed_quantity > 0
+		ORDER BY binance_placed_order_id DESC;
 END;
-$$
-LANGUAGE plpgsql VOLATILE STRICT;
+$BODY$;
+
+ALTER FUNCTION public.select_last_orders(text)
+    OWNER TO trape;
+	
 
 
 
@@ -1438,16 +1440,9 @@ ALTER FUNCTION public.get_price_on(text, timestamp with time zone)
 
 
 
-
-CREATE OR REPLACE FUNCTION public.report_walking_profit(p_symbol text)
-    RETURNS TABLE(r_transaction_time timestamp with time zone,
-				  r_side text,
-				  r_turnover numeric,
-				  r_sum_buy numeric,
-				  r_sum_sell numeric,
-				  r_walking_profit numeric,
-				  r_lead_buy numeric,
-				  r_lead_sell numeric) 
+CREATE OR REPLACE FUNCTION public.report_walking_profit(
+	p_symbol text)
+    RETURNS TABLE(r_transaction_time timestamp with time zone, r_symbol text, r_side text, r_turnover numeric, r_sum_buy numeric, r_sum_sell numeric, r_walking_profit numeric, r_lead_buy numeric, r_lead_sell numeric) 
     LANGUAGE 'plpgsql'
 
     COST 100
@@ -1459,20 +1454,22 @@ BEGIN
 
 	RETURN QUERY
 	WITH data AS (
-		SELECT transaction_time, bpo.side, bot.price * bot.quantity AS turnover FROM binance_order_trade bot
+		SELECT transaction_time, bpo.symbol, bpo.side, bot.price * bot.quantity AS turnover FROM binance_order_trade bot
 		INNER JOIN binance_placed_order bpo ON bot.binance_placed_order_id = bpo.id
 		WHERE bpo.symbol = p_symbol
 		ORDER BY bpo.transaction_time ASC
 	)
-	SELECT transaction_time, side, 
+	SELECT transaction_time,
+		symbol,
+		side, 
 		ROUND(turnover, 8) AS turnover, 
 		ROUND(sum_buy, 8) AS sum_buy,
-		ROUND(sum_sell, 8) AS sum_sell,
-		ROUND(sum_sell - sum_buy, 8) as walking_profit,
+		COALESCE(ROUND(sum_sell, 8), 0) AS sum_sell,
+		COALESCE(ROUND(sum_sell - sum_buy, 8), 0) AS walking_profit,
 		ROUND(LEAD(sum_buy, 1) OVER (ORDER BY transaction_time ASC), 8) AS lead_buy,
 		ROUND(LEAD(sum_sell, 1) OVER (ORDER BY transaction_time ASC), 8) AS lead_sell
 			FROM (
-				SELECT transaction_time, side, turnover,
+				SELECT transaction_time, symbol, side, turnover,
 					SUM(turnover) FILTER (WHERE side = 'Buy') OVER (ORDER BY transaction_time ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) sum_buy,
 					SUM(turnover) FILTER (WHERE side = 'Sell') OVER (ORDER BY transaction_time ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) sum_sell
 				FROM data
@@ -1482,21 +1479,36 @@ END;
 $BODY$;
 
 
-CREATE OR REPLACE FUNCTION report_profits(p_symbol text)
-RETURNS TABLE (r_date DATE, r_profit NUMERIC) AS
-$$
+CREATE OR REPLACE FUNCTION public.report_profits(
+	p_symbol text)
+    RETURNS TABLE(r_date date, r_profit numeric, r_increase numeric) 
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    STABLE STRICT 
+    ROWS 1000
+    
+AS $BODY$
 BEGIN
-	RETURN QUERY SELECT r_transaction_time::DATE, SUM(r_walking_profit) FROM 
+	RETURN QUERY 
+			SELECT r_transaction_time, profit, profit - lag_profit FROM
 			(
-				select * from report_walking_profit(p_symbol)
-				WHERE  r_side = 'Sell'
-			) b
-			WHERE r_walking_profit > 0 AND (r_sum_buy < r_lead_buy OR r_lead_buy IS NULL)
-			GROUP BY r_transaction_time::DATE
+				SELECT r_transaction_time, profit,
+						COALESCE(ROUND(LAG(profit, 1) OVER (ORDER BY r_transaction_time ASC), 8), 0) AS lag_profit
+						FROM
+							(SELECT r_transaction_time::DATE, MAX(r_walking_profit) profit
+								FROM 
+							(
+								select * from report_walking_profit(p_symbol)
+								WHERE  r_side = 'Sell'
+							) b
+							WHERE r_walking_profit > 0 AND (r_sum_buy < r_lead_buy OR r_lead_buy IS NULL)
+							GROUP BY r_transaction_time::DATE) a
+				) c
+			WHERE profit > lag_profit
 			ORDER BY r_transaction_time::DATE ASC;
 END;
-$$
-LANGUAGE plpgsql STRICT STABLE;
+$BODY$;
 
 
 

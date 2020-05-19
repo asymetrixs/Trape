@@ -20,6 +20,6 @@ namespace trape.cli.trader.Analyze
         /// <summary>
         /// Stops an analyst
         /// </summary>
-        void Finish();
+        void Terminate();
     }
 }
