@@ -4,11 +4,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Account;
-using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Fees;
-using trape.cli.trader.Trading;
-using trape.cli.trader.WatchDog;
+using trape.cli.trader.Team;
 
 namespace trape.cli.trader
 {
@@ -30,11 +28,6 @@ namespace trape.cli.trader
         private IBuffer _buffer;
 
         /// <summary>
-        /// Analyst
-        /// </summary>
-        private IAnalyst _analyst;
-
-        /// <summary>
         /// Trading Team
         /// </summary>
         private ITradingTeam _tradingTeam;
@@ -50,11 +43,6 @@ namespace trape.cli.trader
         private IFeeWatchdog _feeWatchdog;
 
         /// <summary>
-        /// Checker
-        /// </summary>
-        private IWarden _checker;
-
-        /// <summary>
         /// Disposed
         /// </summary>
         private bool _disposed;
@@ -68,12 +56,10 @@ namespace trape.cli.trader
         /// </summary>
         /// <param name="logger">Logger</param>
         /// <param name="buffer">Buffer</param>
-        /// <param name="analyst">Analyst</param>
         /// <param name="tradingTeam">Trading Team</param>
         /// <param name="accountant">Accountant</param>
         /// <param name="feeWatchdog">Fee Watchdog</param>
-        /// <param name="checker">Checker</param>
-        public Engine(ILogger logger, IBuffer buffer, IAnalyst analyst, ITradingTeam tradingTeam, IAccountant accountant, IFeeWatchdog feeWatchdog, IWarden checker)
+        public Engine(ILogger logger, IBuffer buffer, ITradingTeam tradingTeam, IAccountant accountant, IFeeWatchdog feeWatchdog)
         {
             #region Argument checks
 
@@ -81,25 +67,19 @@ namespace trape.cli.trader
 
             _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
-            _ = analyst ?? throw new ArgumentNullException(paramName: nameof(analyst));
-
             _ = tradingTeam ?? throw new ArgumentNullException(paramName: nameof(tradingTeam));
 
             _ = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
             _ = feeWatchdog ?? throw new ArgumentNullException(paramName: nameof(feeWatchdog));
 
-            _ = checker ?? throw new ArgumentNullException(paramName: nameof(checker));
-
             #endregion
 
             this._logger = logger.ForContext<Engine>();
             this._buffer = buffer;
-            this._analyst = analyst;
             this._tradingTeam = tradingTeam;
             this._accountant = accountant;
             this._feeWatchdog = feeWatchdog;
-            this._checker = checker;
         }
 
         #endregion
@@ -117,16 +97,11 @@ namespace trape.cli.trader
 
             await this._buffer.Start().ConfigureAwait(true);
 
-            this._analyst.Start();
-
             await this._accountant.Start().ConfigureAwait(true);
 
             this._tradingTeam.Start();
 
             this._feeWatchdog.Start();
-
-            var checker = Program.Container.GetInstance<IWarden>();
-            checker.Start();
 
             this._logger.Information("Engine is started");
         }
@@ -140,16 +115,11 @@ namespace trape.cli.trader
         {
             this._logger.Information("Engine is stopping");
 
-            var checker = Program.Container.GetInstance<IWarden>();
-            checker.Terminate();
-
             this._feeWatchdog.Terminate();
 
             await this._tradingTeam.Terminate().ConfigureAwait(true);
 
             await this._accountant.Terminate().ConfigureAwait(true);
-
-            this._analyst.Terminate();
 
             this._buffer.Terminate();
 
@@ -184,7 +154,6 @@ namespace trape.cli.trader
             {
                 this._buffer.Dispose();
                 this._accountant.Dispose();
-                this._analyst.Dispose();
                 this._tradingTeam.Dispose();
             }
 

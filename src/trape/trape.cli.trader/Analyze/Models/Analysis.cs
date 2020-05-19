@@ -1,5 +1,8 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore.Internal;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using trape.datalayer.Models;
 using Action = trape.datalayer.Enums.Action;
 
 namespace trape.cli.trader.Analyze.Models
@@ -14,7 +17,7 @@ namespace trape.cli.trader.Analyze.Models
         /// <summary>
         /// Records last time an action occured
         /// </summary>
-        private Dictionary<Action, DateTime> _lastActionTime;
+        private List<LastDecision> _lastDecisionTimes;
 
         #endregion
 
@@ -24,14 +27,14 @@ namespace trape.cli.trader.Analyze.Models
         /// Initializes a new instance of the <c>Analysis</c> class.
         /// </summary>
         /// <param name="symbol"></param>
-        public Analysis(string symbol)
+        public Analysis(string symbol, IEnumerable<LastDecision> lastDecisions)
         {
             this.Symbol = symbol;
-            this._lastActionTime = new Dictionary<Action, DateTime>();
             this.Now = DateTime.UtcNow;
             this.IssuedBuyAfterLastPanicSell = default;
             this.LastPanicModeDetected = default;
             this.LastPanicModeEnded = default;
+            this._lastDecisionTimes = lastDecisions.ToList();
         }
 
         #endregion
@@ -104,12 +107,16 @@ namespace trape.cli.trader.Analyze.Models
         /// <param name="action">Action</param>        
         public void UpdateAction(Action action)
         {
-            if (!this._lastActionTime.ContainsKey(action))
+            var decision = this._lastDecisionTimes.FirstOrDefault(l => l.Decision == Action);
+            if (decision == null)
             {
-                this._lastActionTime.Add(action, this.Now);
+                this._lastDecisionTimes.Add(new LastDecision() { Decision = action, Symbol = this.Symbol, EventTime = DateTime.UtcNow });
+            }
+            else
+            {
+                decision.EventTime = DateTime.UtcNow;
             }
 
-            this._lastActionTime[action] = this.Now;
             this.Action = action;
         }
 
@@ -172,9 +179,10 @@ namespace trape.cli.trader.Analyze.Models
         /// <returns></returns>
         public DateTime GetLastDateOf(Action action)
         {
-            if (this._lastActionTime.ContainsKey(action))
+            var decision = this._lastDecisionTimes.FirstOrDefault(l => l.Decision == action);
+            if (decision != null)
             {
-                return this._lastActionTime[action];
+                return decision.EventTime;
             }
 
             return DateTime.MinValue;

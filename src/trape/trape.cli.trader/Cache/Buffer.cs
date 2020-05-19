@@ -89,6 +89,11 @@ namespace trape.cli.trader.Cache
         /// </summary>
         private Dictionary<string, OpenOrder> _openOrders;
 
+        /// <summary>
+        /// Holds recommendations per symbol that are pushed by <c>Analyst</c> and consumed by <c>Broker</c>
+        /// </summary>
+        private ConcurrentDictionary<string, Recommendation> _recommendations;
+
         #region Jobs
 
         private readonly Job _jobStats3s;
@@ -156,6 +161,7 @@ namespace trape.cli.trader.Cache
             this._latestMA1hAnd3hCrossing = new List<LatestMA1hAndMA3hCrossing>();
             this._fallingPrices = new Dictionary<string, FallingPrice>();
             this._openOrders = new Dictionary<string, OpenOrder>();
+            this._recommendations = new ConcurrentDictionary<string, Recommendation>();
 
             #region Job setup
 
@@ -190,9 +196,9 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._latestMA10mAnd30mCrossing = database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token);
-                    this._latestMA30mAnd1hCrossing = database.GetLatestMA30mAndMA1hCrossing(this._cancellationTokenSource.Token);
-                    this._latestMA1hAnd3hCrossing = database.GetLatestMA1hAndMA3hCrossing(this._cancellationTokenSource.Token);
+                    this._latestMA10mAnd30mCrossing = database.GetLatestMA10mAndMA30mCrossing();
+                    this._latestMA30mAnd1hCrossing = database.GetLatestMA30mAndMA1hCrossing();
+                    this._latestMA1hAnd3hCrossing = database.GetLatestMA1hAndMA3hCrossing();
                 }
                 catch (Exception e)
                 {
@@ -217,7 +223,7 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._stats3s = database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token);
+                    this._stats3s = database.Get3SecondsTrendAsync();
                 }
                 catch (Exception e)
                 {
@@ -272,7 +278,7 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._stats15s = database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token);
+                    this._stats15s = database.Get15SecondsTrendAsync();
                 }
                 catch (Exception e)
                 {
@@ -297,7 +303,7 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._stats2m = database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token);
+                    this._stats2m = database.Get2MinutesTrendAsync();
                 }
                 catch (Exception e)
                 {
@@ -322,7 +328,7 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._stats10m = database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token);
+                    this._stats10m = database.Get10MinutesTrendAsync();
                 }
                 catch (Exception e)
                 {
@@ -347,7 +353,7 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._stats2h = database.Get2HoursTrendAsync(this._cancellationTokenSource.Token);
+                    this._stats2h = database.Get2HoursTrendAsync();
                 }
                 catch (Exception e)
                 {
@@ -376,6 +382,36 @@ namespace trape.cli.trader.Cache
         #endregion
 
         #region Methods
+
+        /// <summary>
+        /// Updates a recommendation
+        /// </summary>
+        /// <param name="recommendation"></param>
+        public void UpdateRecommendation(Recommendation recommendation)
+        {
+            #region Argument checks
+
+            _ = recommendation ?? throw new ArgumentNullException(nameof(recommendation));
+
+            #endregion
+
+            this._recommendations.AddOrUpdate(recommendation.Symbol, recommendation, (key, value) => value = recommendation);
+        }
+
+        /// <summary>
+        /// Returns a recommendation for a <paramref name="symbol"/>.
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        public Recommendation GetRecommendation(string symbol)
+        {
+            if (!this._recommendations.ContainsKey(symbol))
+            {
+                return new Recommendation() { Action = datalayer.Enums.Action.Hold };
+            }
+
+            return this._recommendations[symbol];
+        }
 
         /// <summary>
         /// Stores open orders
@@ -655,12 +691,12 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    this._stats3s = database.Get3SecondsTrendAsync(this._cancellationTokenSource.Token);
-                    this._stats15s = database.Get15SecondsTrendAsync(this._cancellationTokenSource.Token);
-                    this._stats2m = database.Get2MinutesTrendAsync(this._cancellationTokenSource.Token);
-                    this._stats10m = database.Get10MinutesTrendAsync(this._cancellationTokenSource.Token);
-                    this._stats2h = database.Get2HoursTrendAsync(this._cancellationTokenSource.Token);
-                    this._latestMA10mAnd30mCrossing = database.GetLatestMA10mAndMA30mCrossing(this._cancellationTokenSource.Token);
+                    this._stats3s = database.Get3SecondsTrendAsync();
+                    this._stats15s = database.Get15SecondsTrendAsync();
+                    this._stats2m = database.Get2MinutesTrendAsync();
+                    this._stats10m = database.Get10MinutesTrendAsync();
+                    this._stats2h = database.Get2HoursTrendAsync();
+                    this._latestMA10mAnd30mCrossing = database.GetLatestMA10mAndMA30mCrossing();
 
                     while (!availableSymbols.Any())
                     {

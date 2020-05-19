@@ -44,6 +44,19 @@ namespace trape.cli.trader.Cache
         decimal GetBidPrice(string symbol);
 
         /// <summary>
+        /// Updates a recommendation
+        /// </summary>
+        /// <param name="recommendation"></param>
+        void UpdateRecommendation(Recommendation recommendation);
+
+        /// <summary>
+        /// Returns a recommendation for a <paramref name="symbol"/>.
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <returns></returns>
+        Recommendation GetRecommendation(string symbol);
+
+        /// <summary>
         /// Stores open orders
         /// </summary>
         /// <param name="openOrder"></param>

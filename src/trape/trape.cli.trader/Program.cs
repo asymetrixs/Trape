@@ -16,8 +16,8 @@ using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Fees;
 using trape.cli.trader.Market;
+using trape.cli.trader.Team;
 using trape.cli.trader.Trading;
-using trape.cli.trader.WatchDog;
 using trape.datalayer;
 using Trape.BinanceNet.Logger;
 
@@ -128,13 +128,12 @@ namespace trape.cli.trader
 
             // Registration
 
-            Container.Register<IBroker, Broker>(Lifestyle.Scoped);
             Container.Register<TrapeContext, TrapeContext>(Lifestyle.Scoped);
-
+            
             Container.Register<IStockExchange, StockExchange>(Lifestyle.Transient);
+            Container.Register<IBroker, Broker>(Lifestyle.Transient);
+            Container.Register<IAnalyst, Analyst>(Lifestyle.Transient);
 
-            Container.Register<IWarden, Warden>(Lifestyle.Singleton);
-            Container.Register<IAnalyst, Analyst>(Lifestyle.Singleton);
             Container.Register<IBuffer, Cache.Buffer>(Lifestyle.Singleton);
             Container.Register<IAccountant, Accountant>(Lifestyle.Singleton);
             Container.Register<IFeeWatchdog, FeeWatchdog>(Lifestyle.Singleton);

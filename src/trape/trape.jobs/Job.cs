@@ -132,7 +132,7 @@ namespace trape.jobs
 
                 this._action.Invoke();
             }
-            catch (Exception)
+            catch
             {
                 throw;
             }

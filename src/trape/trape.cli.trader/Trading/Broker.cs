@@ -12,7 +12,7 @@ using trape.cli.trader.Account;
 using trape.cli.trader.Analyze;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Market;
-using trape.cli.trader.WatchDog;
+using trape.cli.trader.Team;
 using trape.datalayer;
 using trape.datalayer.Models;
 using trape.jobs;
@@ -28,7 +28,7 @@ namespace trape.cli.trader.Trading
     /// <summary>
     /// Does the actual trading taking into account the <c>Recommendation</c> of the <c>Analyst</c> and previous trades
     /// </summary>
-    public class Broker : IBroker, IActive
+    public class Broker : IBroker, IDisposable, IStartable
     {
         #region Fields
 
@@ -48,11 +48,6 @@ namespace trape.cli.trader.Trading
         private readonly IAccountant _accountant;
 
         /// <summary>
-        /// Analyst
-        /// </summary>
-        private readonly IAnalyst _analyst;
-
-        /// <summary>
         /// Buffer
         /// </summary>
         private readonly IBuffer _buffer;
@@ -60,7 +55,7 @@ namespace trape.cli.trader.Trading
         /// <summary>
         /// Job to check if sell/buy is recommended
         /// </summary>
-        private Job _jobTrading;
+        private readonly Job _jobTrading;
 
         /// <summary>
         /// Minimum required increase of the price before another chunk is sold
@@ -121,9 +116,8 @@ namespace trape.cli.trader.Trading
         /// </summary>
         /// <param name="logger">Logger</param>
         /// <param name="accountant">Accountant</param>
-        /// <param name="analyst">Analyst</param>
         /// <param name="buffer">Buffer</param>
-        public Broker(ILogger logger, IAccountant accountant, IAnalyst analyst, IBuffer buffer)
+        public Broker(ILogger logger, IAccountant accountant, IBuffer buffer)
         {
             #region Argument checks
 
@@ -131,15 +125,12 @@ namespace trape.cli.trader.Trading
 
             _ = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            _ = analyst ?? throw new ArgumentNullException(paramName: nameof(analyst));
-
             _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             #endregion
 
             this._logger = logger.ForContext<Broker>();
             this._accountant = accountant;
-            this._analyst = analyst;
             this._buffer = buffer;
             this._cancellationTokenSource = new CancellationTokenSource();
             this._lastRecommendation = new Dictionary<Action, DateTime>();
@@ -176,7 +167,7 @@ namespace trape.cli.trader.Trading
             this._logger.Verbose($"{this.Symbol}: Going to trade");
 
             // Get recommendation
-            var recommendation = this._analyst.GetRecommendation(this.Symbol);
+            var recommendation = this._buffer.GetRecommendation(this.Symbol);
             if (null == recommendation)
             {
                 this._logger.Verbose($"{this.Symbol}: No recommendation available.");
@@ -668,7 +659,7 @@ namespace trape.cli.trader.Trading
 
         #endregion
 
-        #region Start / Stop
+        #region Start / Terminate
 
         /// <summary>
         /// Start the Broker
@@ -690,7 +681,7 @@ namespace trape.cli.trader.Trading
 
                 this._jobTrading.Start();
 
-                this._logger.Information($"{this.Symbol}: Broker started");
+                this._logger.Information($"{symbolToTrade}: Broker started");
             }
             else
             {

@@ -425,3 +425,26 @@ $BODY$;
 
 ALTER FUNCTION public.get_highest_price(text, timestamp with time zone)
     OWNER TO postgres;
+
+
+
+CREATE OR REPLACE FUNCTION public.get_last_decisions(
+	)
+    RETURNS TABLE(r_symbol text, r_decision text, r_event_time timestamp with time zone) 
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    STABLE STRICT 
+    ROWS 1000
+    
+AS $BODY$
+BEGIN
+	RETURN QUERY SELECT DISTINCT ON (symbol, decision) symbol, decision, event_time
+					FROM recommendation
+					WHERE event_time > NOW() - INTERVAL '24 hours'
+					ORDER BY symbol, decision, event_time DESC;
+END;
+$BODY$;
+
+ALTER FUNCTION public.get_last_decisions()
+    OWNER TO trape;

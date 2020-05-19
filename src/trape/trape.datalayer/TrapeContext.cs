@@ -1,12 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Npgsql.NameTranslation;
-using Serilog;
-using Serilog.Context;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Data;
 using System.Linq;
 using System.Threading;
@@ -32,6 +28,8 @@ namespace trape.datalayer
         }
 
         #endregion
+
+        #region Properties
 
         /// <summary>
         /// Account information
@@ -103,6 +101,10 @@ namespace trape.datalayer
         /// </summary>
         public DbSet<OrderTrade> OrderTrades { get; set; }
 
+        #endregion
+
+        #region DbContext Methods
+
         /// <summary>
         /// Override of <see cref="OnConfiguring(DbContextOptionsBuilder)"/>
         /// </summary>
@@ -137,6 +139,8 @@ namespace trape.datalayer
             modelBuilder.Entity<LatestMA30mAndMA1hCrossing>()
                 .HasNoKey();
             modelBuilder.Entity<LatestMA1hAndMA3hCrossing>()
+                .HasNoKey();
+            modelBuilder.Entity<LastDecision>()
                 .HasNoKey();
 
             #endregion
@@ -314,6 +318,8 @@ namespace trape.datalayer
             }
         }
 
+        #endregion
+
         /// <summary>
         /// Cleans up the <c>BinanceBookTick</c>s
         /// </summary>
@@ -334,7 +340,7 @@ namespace trape.datalayer
         }
 
 
-        public IEnumerable<Stats3s> Get3SecondsTrendAsync(CancellationToken cancellationToken = default)
+        public IEnumerable<Stats3s> Get3SecondsTrendAsync()
         {
             return this.Set<Stats3s>().FromSqlRaw("SELECT * FROM stats_3s();").AsNoTracking().AsEnumerable();
 
@@ -421,7 +427,7 @@ namespace trape.datalayer
             #endregion
         }
 
-        public IEnumerable<Stats15s> Get15SecondsTrendAsync(CancellationToken cancellationToken = default)
+        public IEnumerable<Stats15s> Get15SecondsTrendAsync()
         {
             return this.Set<Stats15s>().FromSqlRaw("SELECT * FROM stats_15s();").AsNoTracking().AsEnumerable();
 
@@ -509,7 +515,7 @@ namespace trape.datalayer
             #endregion
         }
 
-        public IEnumerable<Stats2m> Get2MinutesTrendAsync(CancellationToken cancellationToken = default)
+        public IEnumerable<Stats2m> Get2MinutesTrendAsync()
         {
             return this.Set<Stats2m>().FromSqlRaw("SELECT * FROM stats_2m();").AsNoTracking().AsEnumerable();
 
@@ -597,7 +603,7 @@ namespace trape.datalayer
             #endregion
         }
 
-        public IEnumerable<Stats10m> Get10MinutesTrendAsync(CancellationToken cancellationToken = default)
+        public IEnumerable<Stats10m> Get10MinutesTrendAsync()
         {
             return this.Set<Stats10m>().FromSqlRaw("SELECT * FROM stats_10m();").AsNoTracking().AsEnumerable();
 
@@ -685,7 +691,7 @@ namespace trape.datalayer
             #endregion
         }
 
-        public IEnumerable<Stats2h> Get2HoursTrendAsync(CancellationToken cancellationToken = default)
+        public IEnumerable<Stats2h> Get2HoursTrendAsync()
         {
             return this.Set<Stats2h>().FromSqlRaw("SELECT * FROM stats_2h();").AsNoTracking().AsEnumerable();
 
@@ -773,7 +779,7 @@ namespace trape.datalayer
             #endregion
         }
 
-        public IEnumerable<LatestMA10mAndMA30mCrossing> GetLatestMA10mAndMA30mCrossing(CancellationToken cancellationToken = default)
+        public IEnumerable<LatestMA10mAndMA30mCrossing> GetLatestMA10mAndMA30mCrossing()
         {
             return this.Set<LatestMA10mAndMA30mCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma10m_ma30m_crossing();").AsNoTracking().AsEnumerable();
 
@@ -849,7 +855,7 @@ namespace trape.datalayer
             #endregion
         }
 
-        public IEnumerable<LatestMA30mAndMA1hCrossing> GetLatestMA30mAndMA1hCrossing(CancellationToken cancellationToken = default)
+        public IEnumerable<LatestMA30mAndMA1hCrossing> GetLatestMA30mAndMA1hCrossing()
         {
             return this.Set<LatestMA30mAndMA1hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma30m_ma1h_crossing();").AsNoTracking().AsEnumerable();
 
@@ -925,9 +931,9 @@ namespace trape.datalayer
             #endregion
         }
 
-        public IEnumerable<LatestMA1hAndMA3hCrossing> GetLatestMA1hAndMA3hCrossing(CancellationToken cancellationToken = default)
+        public IEnumerable<LatestMA1hAndMA3hCrossing> GetLatestMA1hAndMA3hCrossing()
         {
-            return this.Set<LatestMA1hAndMA3hCrossing>().FromSqlRaw ("SELECT * FROM get_latest_ma1h_ma3h_crossing();").AsNoTracking().AsEnumerable();
+            return this.Set<LatestMA1hAndMA3hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma1h_ma3h_crossing();").AsNoTracking().AsEnumerable();
 
             #region old
             //var latestCrossings = new List<LatestMA1hAndMA3hCrossing>();
@@ -999,6 +1005,11 @@ namespace trape.datalayer
 
             //return latestCrossings;
             #endregion
+        }
+
+        public IEnumerable<LastDecision> GetLastDecisions()
+        {
+            return this.Set<LastDecision>().FromSqlRaw("SELECT * FROM get_last_decisions();").AsNoTracking().AsEnumerable();
         }
 
 
