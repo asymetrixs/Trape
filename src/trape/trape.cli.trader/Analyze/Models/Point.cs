@@ -92,6 +92,35 @@ namespace trape.cli.trader.Analyze.Models
         }
 
         /// <summary>
+        /// Checks if this <c>Point</c> is close to the <paramref name="other"/> one.
+        /// Close means an a distance of 0.1% of each <see cref="Price"/> value or less.
+        /// </summary>
+        /// <param name="other"></param>
+        /// <returns></returns>
+        public bool IsClose([AllowNull] Point other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            const decimal lower = 0.999M;
+            const decimal higher = 1.001M;
+
+            if (this.Price > other.Price)
+            {
+                return (other.Price * higher) >= (this.Price * lower);
+            }
+            else if (this.Price < other.Price)
+            {
+                return (this.Price * higher) >= (other.Price * lower);
+            }
+
+            // Same point
+            return true;
+        }
+
+        /// <summary>
         /// Checks if this point is between <paramref name="point1"/> and <paramref name="point2"/>. If <paramref name="isTtouching"/> is true,
         /// this point may be a bit higher/lower than point1/point2
         /// </summary>

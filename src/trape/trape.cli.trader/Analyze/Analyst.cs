@@ -1,12 +1,13 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using SimpleInjector.Lifestyles;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using trape.cli.trader.Account;
 using trape.cli.trader.Analyze.Models;
 using trape.cli.trader.Cache;
 using trape.cli.trader.Team;
@@ -14,6 +15,7 @@ using trape.datalayer;
 using trape.datalayer.Models;
 using trape.jobs;
 using Action = trape.datalayer.Enums.Action;
+using OrderSide = trape.datalayer.Enums.OrderSide;
 
 namespace trape.cli.trader.Analyze
 {
@@ -34,6 +36,11 @@ namespace trape.cli.trader.Analyze
         /// Buffer
         /// </summary>
         private readonly IBuffer _buffer;
+
+        /// <summary>
+        /// Accountant
+        /// </summary>
+        private readonly IAccountant _accountant;
 
         /// <summary>
         /// Cancellation Token
@@ -69,7 +76,8 @@ namespace trape.cli.trader.Analyze
         /// </summary>
         /// <param name="logger">Logger</param>
         /// <param name="buffer">Buffer</param>
-        public Analyst(ILogger logger, IBuffer buffer)
+        /// /// <param name="accountant">Accountant</param>
+        public Analyst(ILogger logger, IBuffer buffer, IAccountant accountant)
         {
             #region Argument checks
 
@@ -77,10 +85,13 @@ namespace trape.cli.trader.Analyze
 
             _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
+            _ = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
+
             #endregion
 
             this._logger = logger.ForContext<Analyst>();
             this._buffer = buffer;
+            this._accountant = accountant;
             this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
             this._disposed = false;
             this._logTrendLimiter = 61;
@@ -162,11 +173,11 @@ namespace trape.cli.trader.Analyze
 
             if (movav1hInterceptingPrice != null)
             {
-                this._logger.Verbose($"movav1hInterceptingPrice: {movav1hInterceptingPrice.Price:0.00} {movav1hInterceptingPrice.Time.TotalMinutes:#0.00}m");
+                this._logger.Verbose($"{this.Symbol}: movav1hInterceptingPrice: {movav1hInterceptingPrice.Price:0.00} {movav1hInterceptingPrice.Time.TotalMinutes:#0.00}m");
             }
             if (priceInterceptingMovAv1h != null)
             {
-                this._logger.Verbose($"priceInterceptingMovAv1h: {priceInterceptingMovAv1h.Price:0.00} {priceInterceptingMovAv1h.Time.TotalMinutes:#0.00}m");
+                this._logger.Verbose($"{this.Symbol}: priceInterceptingMovAv1h: {priceInterceptingMovAv1h.Price:0.00} {priceInterceptingMovAv1h.Time.TotalMinutes:#0.00}m");
             }
 
             // Make the decision
@@ -210,53 +221,83 @@ namespace trape.cli.trader.Analyze
                     && stat3s.Slope30s > 9
                     && stat15s.Slope1m > 0)
             {
-                path.Append("jump");
-                // If Slope1h is negative, then only join the jumping trend if the current price
-                // is higher than the value of the Slope1h in 15 minutes
-                if (stat10m.Slope1h < -10)
+                decimal? stockQuantity = null;
+                // Check what is in stock
+                using (AsyncScopedLifestyle.BeginScope(Program.Container))
                 {
-                    path.Append("a");
-                    // Only jump if price goes higher than intercept with Slope1h in 15 minutes
-                    var intercept15min = movingAverage1h.WillInterceptWith(currentPrice);
-                    // 15 minutes
-                    if (intercept15min?.Time < TimeSpan.FromMinutes(15))
+                    var database = Program.Container.GetService<TrapeContext>();
+                    try
                     {
+                        // TODO: Think about querying Binance this._accountant.GetBalance("BTC")
+                        stockQuantity = database.PlacedOrders
+                                                .Where(p => p.Side == OrderSide.Buy
+                                                    && p.Symbol == this.Symbol
+                                                    && p.ExecutedQuantity > 0)
+                                                .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity))
+                                                .Sum(f => f.Quantity - f.ConsumedQuantity);
+                    }
+                    catch (Exception ex)
+                    {
+                        this._logger.Error(ex.Message, ex);
+                    }
+                }
+
+                var usdt = await this._accountant.GetBalance("USDT").ConfigureAwait(false);
+
+                // Calculate value
+                var stockValue = stockQuantity * currentPrice.Price;
+                var totalValue = stockValue + usdt?.Free;
+                // Check if more than 60% of assets are USDT, only then jumpbuy
+                if (totalValue.HasValue && totalValue.Value * 0.6M < usdt?.Free)
+                {
+                    path.Append("jump");
+                    // If Slope1h is negative, then only join the jumping trend if the current price
+                    // is higher than the value of the Slope1h in 15 minutes
+                    if (stat10m.Slope1h < -10)
+                    {
+                        path.Append("a");
+                        // Only jump if price goes higher than intercept with Slope1h in 15 minutes
+                        var intercept15min = movingAverage1h.WillInterceptWith(currentPrice);
+                        // 15 minutes
+                        if (intercept15min?.Time < TimeSpan.FromMinutes(15))
+                        {
+                            this._logger.Verbose("[jump]");
+                            action = Action.JumpBuy;
+                            this._lastAnalysis.JumpDetected();
+                            path.Append("|b");
+                        }
+                    }
+                    // Slope1h is (almost) positive, always jump
+                    else
+                    {
+                        path.Append("|b");
                         this._logger.Verbose("[jump]");
                         action = Action.JumpBuy;
                         this._lastAnalysis.JumpDetected();
-                        path.Append("|b");
                     }
                 }
-                // Slope1h is (almost) positive, always jump
-                else
-                {
-                    path.Append("|b");
-                    this._logger.Verbose("[jump]");
-                    action = Action.JumpBuy;
-                    this._lastAnalysis.JumpDetected();
-                }
             }
-            else if (stat2m.Slope10m < 0 && (currentPrice > movingAverage1h))
+            else if (currentPrice > movingAverage1h)
             {
-                if (stat10m.Slope3h > 0)
-                {
-                    action = Action.Sell;
-                    path.Append("|sell");
-                }
-                else
+                if (movingAverage1h.IsClose(movingAverage3h) && stat2m.Slope5m < 0)
                 {
                     action = Action.StrongSell;
                     path.Append("|strongsell");
                 }
+                else if (!movingAverage1h.IsClose(movingAverage3h) && stat2m.Slope5m < 0)
+                {
+                    action = Action.Sell;
+                    path.Append("|sell");
+                }
             }
-            else if (stat2m.Slope7m > 0 && (currentPrice < movingAverage1h))
+            else if (currentPrice < movingAverage1h)
             {
-                if (stat10m.Slope3h > 0)
+                if (movingAverage1h.IsClose(movingAverage3h) && stat2m.Slope5m > 0)
                 {
                     action = Action.StrongBuy;
                     path.Append("|strongbuy");
                 }
-                else
+                else if (!movingAverage1h.IsClose(movingAverage3h) && stat2m.Slope5m > 0)
                 {
                     action = Action.Buy;
                     path.Append("|buy");

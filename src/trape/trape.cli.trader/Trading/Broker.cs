@@ -480,7 +480,7 @@ namespace trape.cli.trader.Trading
                     {
                         // Get last orders
                         var lastOrder = database.PlacedOrders
-                                            .Where(p => p.Symbol == this.Symbol)
+                                            .Where(p => p.Symbol == this.Symbol && p.ExecutedQuantity > 0)
                                             .OrderByDescending(p => p.TransactionTime).AsNoTracking().FirstOrDefault();
 
                         // Base query
@@ -491,15 +491,16 @@ namespace trape.cli.trader.Trading
                                     .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity)).AsNoTracking();
 
                         // Normal quantity
+                        var margin = recommendation.Action == Action.StrongSell ? 1.001M : 1.003M;
                         var normalQuantity = buyTrades
                                                         .Where(f =>
                                                             /* Bid price is 0.2% higher */
-                                                            f.Price * 1.006M < bestAskPrice
+                                                            f.Price * margin < bestAskPrice
                                                             && f.Quantity > f.ConsumedQuantity)
                                                     .Sum(f => (f.Quantity - f.ConsumedQuantity));
 
                         // Sell what is maximal possible (from what was bought or (in case of discrepancy between recorded and actual value) what is possible
-                        var multiplier = recommendation.Action == Action.StrongBuy ? 0.8M : 0.6M;
+                        var multiplier = recommendation.Action == Action.StrongSell ? 0.8M : 0.6M;
                         var quantity = Math.Min(assetBalance.Free * multiplier, normalQuantity);
 
                         // Panic Mode, sell everything
@@ -567,7 +568,7 @@ namespace trape.cli.trader.Trading
                         // Check if last transaction was also sell but price has gained and transaction is older than 5 minutes
                         var isLastOrderSellAndPriceIncreased = !isLastOrderNull && lastOrder.Side == OrderSide.Sell
                                                                     && lastOrder.Price * requiredPriceGainForResell < bestAskPrice
-                                                                    && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow;
+                                                                    && lastOrder.TransactionTime.AddMinutes(7) < DateTime.UtcNow;
 
                         // Only one strong sell per minute
                         var shallFollowStrongSell = (!this._lastRecommendation.ContainsKey(recommendation.Action)
@@ -576,7 +577,7 @@ namespace trape.cli.trader.Trading
 
                         // Only one panic sell per minute
                         var shallFollowPanicSell = (!this._lastRecommendation.ContainsKey(recommendation.Action)
-                                                                    || this._lastRecommendation[recommendation.Action].AddMinutes(10) < DateTime.UtcNow)
+                                                                    || this._lastRecommendation[recommendation.Action].AddMinutes(2) < DateTime.UtcNow)
                                                                 && recommendation.Action == Action.PanicSell;
 
                         // Check if we just take profits
