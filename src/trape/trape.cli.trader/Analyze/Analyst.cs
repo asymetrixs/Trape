@@ -247,8 +247,8 @@ namespace trape.cli.trader.Analyze
                 // Calculate value
                 var stockValue = stockQuantity * currentPrice.Price;
                 var totalValue = stockValue + usdt?.Free;
-                // Check if more than 60% of assets are USDT, only then jumpbuy
-                if (totalValue.HasValue && totalValue.Value * 0.6M < usdt?.Free)
+                // Check if more than 50% of assets are USDT, only then jumpbuy
+                if (totalValue.HasValue && totalValue.Value * 0.5M < usdt?.Free)
                 {
                     path.Append("jump");
                     // If Slope1h is negative, then only join the jumping trend if the current price

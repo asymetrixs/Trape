@@ -292,8 +292,8 @@ namespace trape.cli.trader.Trading
             }
             else if (recommendation.Action == Action.JumpBuy)
             {
-                // 75%
-                availableUSDT = usdt.Free * 0.75M;
+                // 30%
+                availableUSDT = usdt.Free * 0.3M;
             }
 
             // Round to a valid value
