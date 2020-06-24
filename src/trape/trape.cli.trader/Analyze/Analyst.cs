@@ -136,8 +136,6 @@ namespace trape.cli.trader.Analyze
                 return;
             }
 
-            #endregion
-
             this._lastAnalysis.PrepareForUpdate();
 
             // Get stats
@@ -507,6 +505,8 @@ namespace trape.cli.trader.Analyze
                 this._logger.Verbose($"{recommendation.Symbol}: {reco} | S1h: {stat10m.Slope1h:0.0000} | S2h: {stat10m.Slope2h:0.0000} | MA1h: {stat10m.MovingAverage1h:0.0000} | MA2h: {stat10m.MovingAverage2h:0.0000} | MA6h: {stat2Hours.MovingAverage6h:0.0000}");
             }
         }
+
+        #endregion
 
         #region Start / Terminate
 

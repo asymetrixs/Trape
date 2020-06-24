@@ -286,14 +286,13 @@ namespace trape.cli.trader.Trading
             }
             else if (recommendation.Action == Action.StrongBuy)
             {
-                // During 'StrongBuy' market goes up, buy for more
-                // 55%
-                availableUSDT = usdt.Free * 0.55M;
+                // During 'StrongBuy' market goes up, buy 40%
+                availableUSDT = usdt.Free * 0.4M;
             }
             else if (recommendation.Action == Action.JumpBuy)
             {
                 // 30%
-                availableUSDT = usdt.Free * 0.3M;
+                availableUSDT = usdt.Free * 0.2M;
             }
 
             // Round to a valid value
