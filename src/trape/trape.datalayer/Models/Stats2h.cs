@@ -5,8 +5,22 @@ namespace trape.datalayer.Models
     /// <summary>
     /// [Deprecated] Class for stats of based on 2 hours refresh
     /// </summary>
+    [Table("stats2h", Schema = "stubs")]
     public sealed class Stats2h
     {
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the <c>Stats2h</c> class.
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        public Stats2h(string symbol = null)
+        {
+            this.Symbol = symbol;
+        }
+
+        #endregion
+
         #region Properties
 
         /// <summary>

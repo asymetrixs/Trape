@@ -117,7 +117,7 @@ namespace trape.cli.collector.DataCollection
             #region Timer Setup
 
             // Check every five seconds
-            this._jobSubscriptionManager = new Job(new TimeSpan(0, 0, 5), async () => await _manage());
+            this._jobSubscriptionManager = new Job(new TimeSpan(0, 0, 5), async () => await _manage().ConfigureAwait(true));
 
             #endregion
 
@@ -179,14 +179,20 @@ namespace trape.cli.collector.DataCollection
                 }
                 catch (Exception e)
                 {
-                    var logger = Program.Container.GetService<ILogger>();
-                    logger.ForContext(typeof(CollectionManager));
-                    logger.Error(e.Message, e);
+                    this._logger.ForContext(typeof(CollectionManager));
+                    this._logger.Error(e.Message, e);
+                    throw;
                 }
             }
 
             try
             {
+                if (requiredSymbols == null)
+                {
+                    this._logger.Error("Cannot check subscriptions");
+                    return;
+                }
+
                 // TODO: Sanity check if symbol exists on Binance
                 this._logger.Debug($"Holding {this._activeSubscriptions.Count()} symbols with a total of {this._activeSubscriptions.Sum(s => s.Value.Count)} subscriptions");
 
@@ -349,14 +355,9 @@ namespace trape.cli.collector.DataCollection
             // Check that start has finished/cancelled in case service is stopped while still starting
             await this._startStop.WaitAsync().ConfigureAwait(true);
 
-            // Check if timer is enabled. If not it is checking/un-/subscribing, so wait.
-            while (!this._jobSubscriptionManager.Enabled)
-            {
-                await Task.Delay(1000).ConfigureAwait(true);
-            }
-            // immediately stop timer
+            // Check if timer is enabled.
             this._jobSubscriptionManager.Terminate();
-
+                        
             try
             {
                 this._logger.Information($"Shutting down CollectionManager.");

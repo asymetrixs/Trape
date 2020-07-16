@@ -489,7 +489,7 @@ namespace trape.cli.trader.Cache
             var s15s = this._stats15s;
 
             // Extract data for current symbol
-            return s15s.FirstOrDefault(t => t.Symbol == symbol);
+            return s15s.FirstOrDefault(t => t.Symbol == symbol) ?? new Stats15s();
         }
 
         /// <summary>
@@ -503,7 +503,7 @@ namespace trape.cli.trader.Cache
             var s2m = this._stats2m;
 
             // Extract data for current symbol
-            return s2m.FirstOrDefault(t => t.Symbol == symbol);
+            return s2m.FirstOrDefault(t => t.Symbol == symbol) ?? new Stats2m();
         }
 
         /// <summary>
@@ -517,7 +517,7 @@ namespace trape.cli.trader.Cache
             var s10m = this._stats10m;
 
             // Extract data for current symbol
-            return s10m.FirstOrDefault(t => t.Symbol == symbol);
+            return s10m.FirstOrDefault(t => t.Symbol == symbol) ?? new Stats10m();
         }
 
         /// <summary>
@@ -531,7 +531,7 @@ namespace trape.cli.trader.Cache
             var s2h = this._stats2h;
 
             // Extract data for current symbol            
-            return s2h.FirstOrDefault(t => t.Symbol == symbol);
+            return s2h.FirstOrDefault(t => t.Symbol == symbol) ?? new Stats2h();
         }
 
         /// <summary>
@@ -607,7 +607,7 @@ namespace trape.cli.trader.Cache
                 return null;
             }
 
-            var symbolInfo = this._binanceExchangeInfo.Symbols.SingleOrDefault(s => s.Name == symbol);
+            var symbolInfo = this._binanceExchangeInfo.Symbols.FirstOrDefault(s => s.Name == symbol);
 
             if (symbolInfo == null || symbolInfo.Status != SymbolStatus.Trading)
             {
@@ -627,7 +627,7 @@ namespace trape.cli.trader.Cache
         {
             // Save ref
             var latest = this._latestMA10mAnd30mCrossing;
-            return latest.SingleOrDefault(s => s.Symbol == symbol);
+            return latest.FirstOrDefault(s => s.Symbol == symbol);
         }
 
         /// <summary>
@@ -639,7 +639,7 @@ namespace trape.cli.trader.Cache
         {
             // Save ref
             var latest = this._latestMA30mAnd1hCrossing;
-            return latest.SingleOrDefault(s => s.Symbol == symbol);
+            return latest.FirstOrDefault(s => s.Symbol == symbol);
         }
 
         /// <summary>
@@ -651,7 +651,7 @@ namespace trape.cli.trader.Cache
         {
             //Save ref
             var latest = this._latestMA1hAnd3hCrossing;
-            return latest.SingleOrDefault(s => s.Symbol == symbol);
+            return latest.FirstOrDefault(s => s.Symbol == symbol);
         }
 
         /// <summary>
@@ -713,6 +713,12 @@ namespace trape.cli.trader.Cache
                 {
                     this._logger.Error(e.Message, e);
                 }
+            }
+
+            if(!availableSymbols.Any())
+            {
+                this._logger.Error("Cannot check subscriptions");
+                return;
             }
 
             this._logger.Debug("Buffer preloaded");

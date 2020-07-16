@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using trape.cli.trader.Cache;
 
 namespace trape.cli.trader.Analyze.Models
 {
@@ -23,7 +20,7 @@ namespace trape.cli.trader.Analyze.Models
         public Point(TimeSpan time = default, decimal price = 0, decimal slope = 0, TimeSpan slopeBase = default)
         {
             this.Time = time;
-            this.Price = price;
+            this.Value = price;
             this.Slope = slope;
 
             if (slopeBase.TotalSeconds < 1)
@@ -46,7 +43,7 @@ namespace trape.cli.trader.Analyze.Models
         /// <summary>
         /// Price (Y)
         /// </summary>
-        public decimal Price { get; private set; }
+        public decimal Value { get; private set; }
 
         /// <summary>
         /// Slope
@@ -64,7 +61,7 @@ namespace trape.cli.trader.Analyze.Models
 
         /// <summary>
         /// Checks if this <c>Point</c> is in the vicinity of the <paramref name="other"/> one.
-        /// Vicinity is an overlap by 0.05% of each <see cref="Price"/> value.
+        /// Vicinity is an overlap by 0.05% of each <see cref="Value"/> value.
         /// </summary>
         /// <param name="other"></param>
         /// <returns></returns>
@@ -78,13 +75,13 @@ namespace trape.cli.trader.Analyze.Models
             const decimal lower = 0.9998M;
             const decimal higher = 1.0002M;
 
-            if (this.Price > other.Price)
+            if (this.Value > other.Value)
             {
-                return (other.Price * higher) >= (this.Price * lower);
+                return (other.Value * higher) >= (this.Value * lower);
             }
-            else if (this.Price < other.Price)
+            else if (this.Value < other.Value)
             {
-                return (this.Price * higher) >= (other.Price * lower);
+                return (this.Value * higher) >= (other.Value * lower);
             }
 
             // Same point
@@ -93,7 +90,7 @@ namespace trape.cli.trader.Analyze.Models
 
         /// <summary>
         /// Checks if this <c>Point</c> is close to the <paramref name="other"/> one.
-        /// Close means an a distance of 0.1% of each <see cref="Price"/> value or less.
+        /// Close means an a distance of 0.1% of each <see cref="Value"/> value or less.
         /// </summary>
         /// <param name="other"></param>
         /// <returns></returns>
@@ -107,13 +104,13 @@ namespace trape.cli.trader.Analyze.Models
             const decimal lower = 0.999M;
             const decimal higher = 1.001M;
 
-            if (this.Price > other.Price)
+            if (this.Value > other.Value)
             {
-                return (other.Price * higher) >= (this.Price * lower);
+                return (other.Value * higher) >= (this.Value * lower);
             }
-            else if (this.Price < other.Price)
+            else if (this.Value < other.Value)
             {
-                return (this.Price * higher) >= (other.Price * lower);
+                return (this.Value * higher) >= (other.Value * lower);
             }
 
             // Same point
@@ -157,17 +154,22 @@ namespace trape.cli.trader.Analyze.Models
         /// </summary>
         /// <param name="other">The other point</param>
         /// <returns>Returns point where interception will take place or null in case it does not.</returns>
-        public Point WillInterceptWith(Point other)
+        public Point WillInterceptWith([AllowNull] Point other)
         {
+            if (other == null)
+            {
+                return null;
+            }
+
             var thisSlopeInSec = this.Slope / (decimal)this.SlopeBase.TotalSeconds;
             var otherSlopeInSec = other.Slope / (decimal)other.SlopeBase.TotalSeconds;
 
             // Never intercept
-            if (this.Price < other.Price && thisSlopeInSec < otherSlopeInSec)
+            if (this.Value < other.Value && thisSlopeInSec < otherSlopeInSec)
             {
                 return null;
             }
-            else if (this.Price > other.Price && thisSlopeInSec > otherSlopeInSec)
+            else if (this.Value > other.Value && thisSlopeInSec > otherSlopeInSec)
             {
                 return null;
             }
@@ -179,9 +181,9 @@ namespace trape.cli.trader.Analyze.Models
             try
             {
                 // Calculate Intercept
-                var iTime = (this.Price - other.Price) / (otherSlopeInSec - thisSlopeInSec);
+                var iTime = (this.Value - other.Value) / (otherSlopeInSec - thisSlopeInSec);
 
-                var iPrice = this.Price + thisSlopeInSec * iTime;
+                var iPrice = this.Value + thisSlopeInSec * iTime;
 
                 return new Point(TimeSpan.FromSeconds((int)iTime), iPrice, 0);
             }
@@ -214,7 +216,7 @@ namespace trape.cli.trader.Analyze.Models
         #region Operators
 
         /// <summary>
-        /// Compares the <see cref="Price"/> of this <c>Point</c> against the <see cref="Price"/> of the <paramref name="other"/> one.
+        /// Compares the <see cref="Value"/> of this <c>Point</c> against the <see cref="Value"/> of the <paramref name="other"/> one.
         /// </summary>
         /// <param name="other">Point</param>
         /// <returns></returns>
@@ -224,7 +226,7 @@ namespace trape.cli.trader.Analyze.Models
         }
 
         /// <summary>
-        /// Internal compare of <see cref="Price"/> values.
+        /// Internal compare of <see cref="Value"/> values.
         /// </summary>
         /// <param name="p1">Point 1</param>
         /// <param name="p2">Point 2</param>
@@ -244,11 +246,11 @@ namespace trape.cli.trader.Analyze.Models
                 return 1;
             }
 
-            if (p1.Price > p2.Price)
+            if (p1.Value > p2.Value)
             {
                 return 1;
             }
-            else if (p1.Price < p2.Price)
+            else if (p1.Value < p2.Value)
             {
                 return -1;
             }
@@ -287,7 +289,7 @@ namespace trape.cli.trader.Analyze.Models
         /// <returns></returns>
         public static Point operator *(Point p, decimal c)
         {
-            return new Point(default, p.Price * c, 0);
+            return new Point(default, p.Value * c, 0);
         }
 
         /// <summary>
@@ -298,7 +300,7 @@ namespace trape.cli.trader.Analyze.Models
         /// <returns></returns>
         public static Point operator *(Point p1, Point p2)
         {
-            return new Point(default, p1.Price * p2.Price, 0);
+            return new Point(default, p1.Value * p2.Value, 0);
         }
 
         /// <summary>
@@ -309,7 +311,7 @@ namespace trape.cli.trader.Analyze.Models
         /// <returns></returns>
         public static Point operator /(Point p, decimal c)
         {
-            return new Point(default, p.Price / c, default);
+            return new Point(default, p.Value / c, default);
         }
 
         /// <summary>
@@ -320,7 +322,7 @@ namespace trape.cli.trader.Analyze.Models
         /// <returns></returns>
         public static Point operator /(Point p1, Point p2)
         {
-            return new Point(default, p1.Price / p2.Price, 0);
+            return new Point(default, p1.Value / p2.Value, 0);
         }
 
         /// <summary>
@@ -340,7 +342,7 @@ namespace trape.cli.trader.Analyze.Models
                 return false;
             }
 
-            return p1.Price == p2.Price;
+            return p1.Value == p2.Value;
         }
 
         /// <summary>
@@ -360,7 +362,7 @@ namespace trape.cli.trader.Analyze.Models
                 return true;
             }
 
-            return p1.Price != p2.Price;
+            return p1.Value != p2.Value;
         }
 
         /// <summary>
@@ -380,7 +382,7 @@ namespace trape.cli.trader.Analyze.Models
                 return false;
             }
 
-            return p1.Price >= p2.Price;
+            return p1.Value >= p2.Value;
         }
 
         /// <summary>
@@ -391,7 +393,7 @@ namespace trape.cli.trader.Analyze.Models
         /// <returns></returns>
         public static bool operator <=(Point p1, Point p2)
         {
-            return p1.Price <= p2.Price;
+            return p1.Value <= p2.Value;
         }
 
         /// <summary>
@@ -402,7 +404,7 @@ namespace trape.cli.trader.Analyze.Models
         /// <returns></returns>
         public static Point operator -(Point p1, Point p2)
         {
-            return new Point(default, p1.Price - p2.Price, 0);
+            return new Point(default, p1.Value - p2.Value, 0);
         }
 
 
@@ -414,7 +416,7 @@ namespace trape.cli.trader.Analyze.Models
         /// <returns></returns>
         public static Point operator +(Point p1, Point p2)
         {
-            return new Point(default, p1.Price + p2.Price, 0);
+            return new Point(default, p1.Value + p2.Value, 0);
         }
 
         /// <summary>
@@ -423,7 +425,36 @@ namespace trape.cli.trader.Analyze.Models
         /// <returns></returns>
         public override string ToString()
         {
-            return this.Price.ToString();
+            return this.Value.ToString();
+        }
+
+        /// <summary>
+        /// Determines whether the specified object is equal to the current object.
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object.</param>
+        /// <returns></returns>
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
+
+            if (ReferenceEquals(obj, null))
+            {
+                return false;
+            }
+            
+            return (obj as Point)?.Value == this.Value;
+        }
+
+        /// <summary>
+        /// Returns the hash code for this instance.
+        /// </summary>
+        /// <returns></returns>
+        public override int GetHashCode()
+        {
+            return this.Value.GetHashCode();
         }
 
         #endregion

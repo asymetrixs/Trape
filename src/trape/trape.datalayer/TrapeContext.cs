@@ -342,7 +342,13 @@ namespace trape.datalayer
 
         public IEnumerable<Stats3s> Get3SecondsTrendAsync()
         {
-            return this.Set<Stats3s>().FromSqlRaw("SELECT * FROM stats_3s();").AsNoTracking().AsEnumerable();
+            try
+            {
+                return this.Set<Stats3s>().FromSqlRaw("SELECT * FROM stats_3s();").AsNoTracking().ToList();
+            }
+            catch { }
+
+            return new List<Stats3s>();
 
             #region old
             //IDisposable pushedProperty = null;
@@ -429,7 +435,13 @@ namespace trape.datalayer
 
         public IEnumerable<Stats15s> Get15SecondsTrendAsync()
         {
-            return this.Set<Stats15s>().FromSqlRaw("SELECT * FROM stats_15s();").AsNoTracking().AsEnumerable();
+            try
+            {
+                return this.Set<Stats15s>().FromSqlRaw("SELECT * FROM stats_15s();").AsNoTracking().ToList();
+            }
+            catch { }
+
+            return new List<Stats15s>();
 
             #region old
             //var trends = new List<Stats15s>();
@@ -517,7 +529,13 @@ namespace trape.datalayer
 
         public IEnumerable<Stats2m> Get2MinutesTrendAsync()
         {
-            return this.Set<Stats2m>().FromSqlRaw("SELECT * FROM stats_2m();").AsNoTracking().AsEnumerable();
+            try
+            {
+                return this.Set<Stats2m>().FromSqlRaw("SELECT * FROM stats_2m();").AsNoTracking().ToList();
+            }
+            catch { }
+
+            return new List<Stats2m>();
 
             #region old
             //var trends = new List<Stats2m>();
@@ -605,7 +623,13 @@ namespace trape.datalayer
 
         public IEnumerable<Stats10m> Get10MinutesTrendAsync()
         {
-            return this.Set<Stats10m>().FromSqlRaw("SELECT * FROM stats_10m();").AsNoTracking().AsEnumerable();
+            try
+            {
+                return this.Set<Stats10m>().FromSqlRaw("SELECT * FROM stats_10m();").AsNoTracking().ToList();
+            }
+            catch { }
+
+            return new List<Stats10m>();
 
             #region old
             //var trends = new List<Stats10m>();
@@ -693,7 +717,13 @@ namespace trape.datalayer
 
         public IEnumerable<Stats2h> Get2HoursTrendAsync()
         {
-            return this.Set<Stats2h>().FromSqlRaw("SELECT * FROM stats_2h();").AsNoTracking().AsEnumerable();
+            try
+            {
+                return this.Set<Stats2h>().FromSqlRaw("SELECT * FROM stats_2h();").AsNoTracking().ToList();
+            }
+            catch { }
+
+            return new List<Stats2h>();
 
             #region old
             //var trends = new List<Stats2h>();
@@ -781,7 +811,13 @@ namespace trape.datalayer
 
         public IEnumerable<LatestMA10mAndMA30mCrossing> GetLatestMA10mAndMA30mCrossing()
         {
-            return this.Set<LatestMA10mAndMA30mCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma10m_ma30m_crossing();").AsNoTracking().AsEnumerable();
+            try
+            {
+                return this.Set<LatestMA10mAndMA30mCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma10m_ma30m_crossing();").AsNoTracking().ToList();
+            }
+            catch { }
+
+            return new List<LatestMA10mAndMA30mCrossing>();
 
             #region old
 
@@ -857,7 +893,13 @@ namespace trape.datalayer
 
         public IEnumerable<LatestMA30mAndMA1hCrossing> GetLatestMA30mAndMA1hCrossing()
         {
-            return this.Set<LatestMA30mAndMA1hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma30m_ma1h_crossing();").AsNoTracking().AsEnumerable();
+            try
+            {
+                return this.Set<LatestMA30mAndMA1hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma30m_ma1h_crossing();").AsNoTracking().ToList();
+            }
+            catch { }
+
+            return new List<LatestMA30mAndMA1hCrossing>();
 
             #region old
             //var latestCrossings = new List<LatestMA30mAndMA1hCrossing>();
@@ -933,7 +975,13 @@ namespace trape.datalayer
 
         public IEnumerable<LatestMA1hAndMA3hCrossing> GetLatestMA1hAndMA3hCrossing()
         {
-            return this.Set<LatestMA1hAndMA3hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma1h_ma3h_crossing();").AsNoTracking().AsEnumerable();
+            try
+            {
+                return this.Set<LatestMA1hAndMA3hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma1h_ma3h_crossing();").AsNoTracking().ToList();
+            }
+            catch { }
+
+            return new List<LatestMA1hAndMA3hCrossing>();
 
             #region old
             //var latestCrossings = new List<LatestMA1hAndMA3hCrossing>();
@@ -1009,7 +1057,7 @@ namespace trape.datalayer
 
         public IEnumerable<LastDecision> GetLastDecisions()
         {
-            return this.Set<LastDecision>().FromSqlRaw("SELECT * FROM get_last_decisions();").AsNoTracking().AsEnumerable();
+            return this.Set<LastDecision>().FromSqlRaw("SELECT * FROM get_last_decisions();").AsNoTracking().ToList();
         }
 
 

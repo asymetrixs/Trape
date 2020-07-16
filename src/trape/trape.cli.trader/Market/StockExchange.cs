@@ -98,7 +98,7 @@ namespace trape.cli.trader.Market
                     var binanceResponseType = (OrderResponseType)(int)order.OrderResponseType;
                     var timeInForce = (TimeInForce)(int)order.TimeInForce;
 
-                    var placedOrder = await this._binanceClient.PlaceTestOrderAsync(order.Symbol, binanceSide, binanceType, price: order.Price,
+                    var placedOrder = await this._binanceClient.PlaceOrderAsync(order.Symbol, binanceSide, binanceType, price: order.Price,
                         quantity: order.Quantity, newClientOrderId: order.Id, orderResponseType: binanceResponseType, timeInForce: timeInForce,
                         ct: cancellationToken).ConfigureAwait(true);
 

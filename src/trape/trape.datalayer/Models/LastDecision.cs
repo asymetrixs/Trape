@@ -7,6 +7,7 @@ namespace trape.datalayer.Models
     /// <summary>
     /// Holds information about when a decision was taken for the last time
     /// </summary>
+    [Table("last_decisions", Schema = "stubs")]
     public class LastDecision
     {
         #region Properties
@@ -18,10 +19,10 @@ namespace trape.datalayer.Models
         public string Symbol { get; set; }
 
         /// <summary>
-        /// Decision
+        /// Action
         /// </summary>
-        [Column("r_decision", TypeName = "text")]
-        public Action Decision { get; set; }
+        [Column("r_action", TypeName = "int4")]
+        public Action Action { get; set; }
 
         /// <summary>
         /// Last occurence

@@ -110,6 +110,11 @@ namespace trape.cli.trader.Analyze
         public string Symbol { get; private set; }
 
         /// <summary>
+        /// Asset
+        /// </summary>
+        public string Asset { get; private set; }
+
+        /// <summary>
         /// Take Profit threshold
         /// </summary>
         public const decimal TakeProfitLimit = 0.991M;
@@ -163,19 +168,28 @@ namespace trape.cli.trader.Analyze
             // Use regular approach
             // Get current symbol price
             var currentPrice = new Point(time: default, price: this._buffer.GetBidPrice(this.Symbol), slope: 0);
+
+            if(currentPrice.Value < 0)
+            {
+                this._logger.Warning($"Skipped {this.Symbol} due to old or incomplete data: {currentPrice.Value:0.00}");
+
+                this._buffer.UpdateRecommendation(new Recommendation() { Symbol = this.Symbol, Action = Action.Hold });
+                return;
+            }
+
             var movingAverage1h = new Point(price: stat10m.MovingAverage1h, slope: stat10m.Slope1h, slopeBase: TimeSpan.FromHours(1));
             var movingAverage3h = new Point(price: stat10m.MovingAverage3h, slope: stat10m.Slope3h, slopeBase: TimeSpan.FromHours(3));
             var panicLimit = movingAverage3h * 0.9975M;
             var movav1hInterceptingPrice = currentPrice.WillInterceptWith(movingAverage1h);
-            var priceInterceptingMovAv1h = movingAverage1h.WillInterceptWith(currentPrice.Price, slope: stat2m.Slope10m, slopeBase: 10 * 60);
+            var priceInterceptingMovAv1h = movingAverage1h.WillInterceptWith(currentPrice.Value, slope: stat2m.Slope10m, slopeBase: 10 * 60);
 
             if (movav1hInterceptingPrice != null)
             {
-                this._logger.Verbose($"{this.Symbol}: movav1hInterceptingPrice: {movav1hInterceptingPrice.Price:0.00} {movav1hInterceptingPrice.Time.TotalMinutes:#0.00}m");
+                this._logger.Verbose($"{this.Symbol}: movav1hInterceptingPrice: {movav1hInterceptingPrice.Value:0.00} {movav1hInterceptingPrice.Time.TotalMinutes:#0.00}m");
             }
             if (priceInterceptingMovAv1h != null)
             {
-                this._logger.Verbose($"{this.Symbol}: priceInterceptingMovAv1h: {priceInterceptingMovAv1h.Price:0.00} {priceInterceptingMovAv1h.Time.TotalMinutes:#0.00}m");
+                this._logger.Verbose($"{this.Symbol}: priceInterceptingMovAv1h: {priceInterceptingMovAv1h.Value:0.00} {priceInterceptingMovAv1h.Time.TotalMinutes:#0.00}m");
             }
 
             // Make the decision
@@ -188,15 +202,15 @@ namespace trape.cli.trader.Analyze
 
             var path = new StringBuilder();
 
-            // Panic
-            if (stat3s.Slope5s < -8
-                && stat3s.Slope10s < -5
-                && stat3s.Slope15s < -6
-                && stat3s.Slope30s < -15
-                && stat15s.Slope45s < -12
-                && stat15s.Slope1m < -10
-                && stat15s.Slope2m < -5
-                && stat15s.Slope3m < -1
+            // Panic, threshold is relative to price 
+            if (stat3s.Slope5s < -currentPrice.Value.TenThousandth(8)
+                && stat3s.Slope10s < -currentPrice.Value.TenThousandth(5)
+                && stat3s.Slope15s < -currentPrice.Value.TenThousandth(6)
+                && stat3s.Slope30s < -currentPrice.Value.TenThousandth(15)
+                && stat15s.Slope45s < -currentPrice.Value.TenThousandth(12)
+                && stat15s.Slope1m < -currentPrice.Value.TenThousandth(10)
+                && stat15s.Slope2m < -currentPrice.Value.TenThousandth(5)
+                && stat15s.Slope3m < -currentPrice.Value.TenThousandth(1)
                 // Define threshhold from when on panic mode is active
                 && panicLimit < movingAverage3h
                 // Price has to drop for more than 10 seconds
@@ -209,30 +223,34 @@ namespace trape.cli.trader.Analyze
 
                 this._lastAnalysis.PanicDetected();
 
-                this._logger.Warning($"{this.Symbol}: {currentPrice.Price:0.00} - Panic Mode");
+                this._logger.Warning($"{this.Symbol}: {currentPrice.Value:0.00} - Panic Mode");
                 path.Append("|panic");
             }
             // Jump increase
-            else if (stat3s.Slope5s > 15
-                    && stat3s.Slope10s > 10
-                    && stat3s.Slope15s > 15
-                    && stat3s.Slope30s > 9
+            else if (stat3s.Slope5s > currentPrice.Value.TenThousandth(15)
+                    && stat3s.Slope10s > currentPrice.Value.TenThousandth(1)
+                    && stat3s.Slope15s > currentPrice.Value.TenThousandth(15)
+                    && stat3s.Slope30s > currentPrice.Value.TenThousandth(9)
                     && stat15s.Slope1m > 0)
             {
-                decimal? stockQuantity = null;
+                decimal stockQuantity = 0;
                 // Check what is in stock
                 using (AsyncScopedLifestyle.BeginScope(Program.Container))
                 {
                     var database = Program.Container.GetService<TrapeContext>();
                     try
                     {
-                        // TODO: Think about querying Binance this._accountant.GetBalance("BTC")
-                        stockQuantity = database.PlacedOrders
+                        var recordedStockQuantity = database.PlacedOrders
                                                 .Where(p => p.Side == OrderSide.Buy
                                                     && p.Symbol == this.Symbol
                                                     && p.ExecutedQuantity > 0)
                                                 .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity))
                                                 .Sum(f => f.Quantity - f.ConsumedQuantity);
+
+                        var binanceBalance = await this._accountant.GetBalance(this.Asset).ConfigureAwait(true);
+                        decimal actualStockQuantity = binanceBalance?.Free ?? 0;
+
+                        stockQuantity = Math.Max(recordedStockQuantity, actualStockQuantity);
                     }
                     catch (Exception ex)
                     {
@@ -243,7 +261,7 @@ namespace trape.cli.trader.Analyze
                 var usdt = await this._accountant.GetBalance("USDT").ConfigureAwait(false);
 
                 // Calculate value
-                var stockValue = stockQuantity * currentPrice.Price;
+                var stockValue = stockQuantity * currentPrice.Value;
                 var totalValue = stockValue + usdt?.Free;
                 // Check if more than 50% of assets are USDT, only then jumpbuy
                 if (totalValue.HasValue && totalValue.Value * 0.5M < usdt?.Free)
@@ -251,7 +269,7 @@ namespace trape.cli.trader.Analyze
                     path.Append("jump");
                     // If Slope1h is negative, then only join the jumping trend if the current price
                     // is higher than the value of the Slope1h in 15 minutes
-                    if (stat10m.Slope1h < -10)
+                    if (stat10m.Slope1h < -currentPrice.Value.TenThousandth(10))
                     {
                         path.Append("a");
                         // Only jump if price goes higher than intercept with Slope1h in 15 minutes
@@ -304,9 +322,9 @@ namespace trape.cli.trader.Analyze
 
             var calcAction = action;
 
-            // If a race is ongoing or after it has stopped wait for 9 minutes for market to cool down
+            // If a race is ongoing or after it has stopped wait for 5 minutes for market to cool down
             // before another buy is made
-            if (this._lastAnalysis.LastRaceEnded.AddMinutes(9) > DateTime.UtcNow
+            if (this._lastAnalysis.LastRaceEnded.AddMinutes(5) > DateTime.UtcNow
                 && (action == Action.Buy || action == Action.JumpBuy || action == Action.StrongBuy))
             {
                 this._logger.Verbose($"{this.Symbol}: Race ended less than 9 minutes ago, don't buy.");
@@ -329,7 +347,12 @@ namespace trape.cli.trader.Analyze
             // If Panic mode ended and action is not buy but trend is strongly upwards
             else if (this._lastAnalysis.LastPanicModeEnded.AddMinutes(7) > DateTime.UtcNow
                 && action != Action.Buy
-                && stat3s.Slope5s > 10 && stat3s.Slope10s > 10 && stat3s.Slope15s > 7.5M && stat3s.Slope30s > 0 && stat3s.Slope30s > 0 && stat10m.Slope3h > -64.8M
+                && stat3s.Slope5s > currentPrice.Value.TenThousandth(10)
+                && stat3s.Slope10s > currentPrice.Value.TenThousandth(10)
+                && stat3s.Slope15s > currentPrice.Value.TenThousandth(7.5M)
+                && stat3s.Slope30s > 0
+                && stat3s.Slope30s > 0
+                && stat10m.Slope3h > -currentPrice.Value.TenThousandth(64.8M)
                 && currentPrice < movingAverage1h)
             {
                 this._logger.Verbose($"{this.Symbol}: Panic mode ended more than 7 minutes ago and trend is strongly upwards, buy.");
@@ -339,7 +362,7 @@ namespace trape.cli.trader.Analyze
 
 
             // If strong sell happened or slope is too negative, do not buy immediately
-            if ((this._lastAnalysis.GetLastDateOf(Action.StrongSell).AddMinutes(2) > DateTime.UtcNow || stat10m.Slope30m < -20M)
+            if ((this._lastAnalysis.GetLastDateOf(Action.StrongSell).AddMinutes(2) > DateTime.UtcNow || stat10m.Slope30m < -currentPrice.Value.TenThousandth(20))
                 && (action == Action.Buy || action == Action.JumpBuy || action == Action.StrongBuy))
             {
                 this._logger.Verbose($"{this.Symbol}: Last strong sell was less than 1 minutes ago, don't buy.");
@@ -367,17 +390,17 @@ namespace trape.cli.trader.Analyze
             }
 
             /// Advise to sell on <see cref="TakeProfitLimit"/> % gain
-            if (raceStartingPrice.Price != default && raceStartingPrice < (currentPrice * TakeProfitLimit))
+            if (raceStartingPrice.Value != default && raceStartingPrice < (currentPrice * TakeProfitLimit))
             {
-                this._logger.Verbose($"{this.Symbol}: Race detected at {currentPrice.Price:0.00}.");
+                this._logger.Verbose($"{this.Symbol}: Race detected at {currentPrice.Value:0.00}.");
                 this._lastAnalysis.RaceDetected();
                 path.Append("_racestart");
 
                 // Check market movement, if a huge sell is detected advice to take profits
-                if (stat3s.Slope10s < -10)
+                if (stat3s.Slope10s < -currentPrice.Value.TenThousandth(10))
                 {
                     action = Action.TakeProfitsSell;
-                    this._logger.Verbose($"{this.Symbol}: Race ended at {currentPrice.Price:0.00}.");
+                    this._logger.Verbose($"{this.Symbol}: Race ended at {currentPrice.Value:0.00}.");
                     path.Append("|raceend");
                     this._lastAnalysis.RaceEnded();
                 }
@@ -397,7 +420,7 @@ namespace trape.cli.trader.Analyze
             // Print strategy changes
             if (this._lastAnalysis.Action != action)
             {
-                this._logger.Information($"{this.Symbol}: {currentPrice.Price:0.00} - Switching stategy: {this._lastAnalysis.Action} -> {action}");
+                this._logger.Information($"{this.Symbol}: {currentPrice.Value:0.00} - Switching stategy: {this._lastAnalysis.Action} -> {action}");
                 this._lastAnalysis.UpdateAction(action);
             }
             // Print strategy every hour in log
@@ -406,13 +429,13 @@ namespace trape.cli.trader.Analyze
                 this._logger.Information($"{this.Symbol}: Stategy: {action}");
             }
 
-            this._logger.Debug($"{this.Symbol}: {currentPrice.Price:0.00} Decision - Calculated / Final: {calcAction} / {action} - {path}");
+            this._logger.Debug($"{this.Symbol}: {currentPrice.Value:0.00} Decision - Calculated / Final: {calcAction} / {action} - {path}");
 
             // Instantiate new recommendation
             var newRecommendation = new Recommendation()
             {
                 Action = action,
-                Price = currentPrice.Price,
+                Price = currentPrice.Value,
                 Symbol = this.Symbol,
                 CreatedOn = DateTime.UtcNow,
                 Slope5s = stat3s.Slope5s,
@@ -528,6 +551,7 @@ namespace trape.cli.trader.Analyze
             if (this._buffer.GetSymbols().Contains(this.Symbol))
             {
                 this.Symbol = symbol;
+                this.Asset = symbol.Replace("USDT", string.Empty);
 
                 using (AsyncScopedLifestyle.BeginScope(Program.Container))
                 {

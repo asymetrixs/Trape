@@ -155,6 +155,9 @@ namespace trape.jobs
         /// </summary>
         public void Terminate()
         {
+            // block synchronizer
+            this._synchronizer.Wait();
+
             this._timer.Stop();
         }
 

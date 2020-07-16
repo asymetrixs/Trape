@@ -52,7 +52,7 @@ namespace Trape.BinanceNet.Logger
                 switch (nativeLogType)
                 {
                     case LogVerbosity.Debug:
-                        this._logger.Debug($"{prefix}: {message}");
+                        this._logger.Verbose($"{prefix}: {message}");
                         break;
                     case LogVerbosity.Info:
                         this._logger.Information($"{prefix}: {message}");

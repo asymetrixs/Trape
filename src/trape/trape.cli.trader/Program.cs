@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Exceptions;
 using SimpleInjector;
+using SimpleInjector.Diagnostics;
 using SimpleInjector.Lifestyles;
 using System;
 using System.Threading.Tasks;
@@ -129,10 +130,15 @@ namespace trape.cli.trader
             // Registration
 
             Container.Register<TrapeContext, TrapeContext>(Lifestyle.Scoped);
-            
+
             Container.Register<IStockExchange, StockExchange>(Lifestyle.Transient);
             Container.Register<IBroker, Broker>(Lifestyle.Transient);
             Container.Register<IAnalyst, Analyst>(Lifestyle.Transient);
+
+            Registration registration = Container.GetRegistration(typeof(IBroker)).Registration;
+            registration.SuppressDiagnosticWarning(DiagnosticType.DisposableTransientComponent, "Application takes care of disposal.");
+            registration = Container.GetRegistration(typeof(IAnalyst)).Registration;
+            registration.SuppressDiagnosticWarning(DiagnosticType.DisposableTransientComponent, "Application takes care of disposal.");
 
             Container.Register<IBuffer, Cache.Buffer>(Lifestyle.Singleton);
             Container.Register<IAccountant, Accountant>(Lifestyle.Singleton);

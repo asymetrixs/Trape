@@ -15,7 +15,7 @@ namespace trape.datalayer.Models
         public DateTime CreatedOn { get; set; }
 
         /// <summary>
-        /// Decision
+        /// Action
         /// </summary>
         public Enums.Action Action { get; set; }
 

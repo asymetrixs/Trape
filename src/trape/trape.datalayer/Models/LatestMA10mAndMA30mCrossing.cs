@@ -6,6 +6,7 @@ namespace trape.datalayer.Models
     /// <summary>
     /// Has information when slope10m and slope30m last crossed
     /// </summary>
+    [Table("latest_ma10m_and_ma30m_crossing", Schema = "stubs")]
     public class LatestMA10mAndMA30mCrossing
     {
         #region Properties

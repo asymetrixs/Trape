@@ -107,10 +107,10 @@ namespace trape.cli.trader.Analyze.Models
         /// <param name="action">Action</param>        
         public void UpdateAction(Action action)
         {
-            var decision = this._lastDecisionTimes.FirstOrDefault(l => l.Decision == Action);
+            var decision = this._lastDecisionTimes.FirstOrDefault(l => l.Action == Action);
             if (decision == null)
             {
-                this._lastDecisionTimes.Add(new LastDecision() { Decision = action, Symbol = this.Symbol, EventTime = DateTime.UtcNow });
+                this._lastDecisionTimes.Add(new LastDecision() { Action = action, Symbol = this.Symbol, EventTime = DateTime.UtcNow });
             }
             else
             {
@@ -179,7 +179,7 @@ namespace trape.cli.trader.Analyze.Models
         /// <returns></returns>
         public DateTime GetLastDateOf(Action action)
         {
-            var decision = this._lastDecisionTimes.FirstOrDefault(l => l.Decision == action);
+            var decision = this._lastDecisionTimes.FirstOrDefault(l => l.Action == action);
             if (decision != null)
             {
                 return decision.EventTime;

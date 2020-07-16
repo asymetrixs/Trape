@@ -1,6 +1,9 @@
 ﻿ 
- Steps to produce migration strategies. Add a proper name for <...>
+ Install dotnet ef:
+ dotnet tool install --global dotnet-ef
  
+ Steps to produce migration strategies. Add a proper name for <...>
+
  Create migration strategy:
  # cd ..
  # dotnet ef migrations add <...> --project .\trape.datalayer\ --startup-project .\trape.cli.collector\

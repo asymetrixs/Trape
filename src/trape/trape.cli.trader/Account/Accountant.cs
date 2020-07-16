@@ -284,7 +284,7 @@ namespace trape.cli.trader.Account
                         }
                     }
 
-                    await database.SaveChangesAsync();
+                    await database.SaveChangesAsync().ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -316,7 +316,7 @@ namespace trape.cli.trader.Account
                 try
                 {
                     database.OrderLists.Add(Translator.Translate(binanceStreamOrderList));
-                    await database.SaveChangesAsync();
+                    await database.SaveChangesAsync().ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -340,7 +340,7 @@ namespace trape.cli.trader.Account
                 try
                 {
                     database.Balances.AddRange(Translator.Translate(binanceStreamBalances));
-                    await database.SaveChangesAsync();
+                    await database.SaveChangesAsync().ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -364,7 +364,7 @@ namespace trape.cli.trader.Account
                 try
                 {
                     database.BalanceUpdates.AddRange(Translator.Translate(binanceStreamBalanceUpdate));
-                    await database.SaveChangesAsync();
+                    await database.SaveChangesAsync().ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -386,7 +386,7 @@ namespace trape.cli.trader.Account
             // Take reference to original instance in case _binanceAccountInfo is updated
             var bac = await this.GetAccountInfo().ConfigureAwait(true);
 
-            return bac?.Balances.SingleOrDefault(b => b.Asset == asset);
+            return bac?.Balances.FirstOrDefault(b => b.Asset == asset);
         }
 
         /// <summary>
