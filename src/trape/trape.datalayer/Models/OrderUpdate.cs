@@ -93,7 +93,7 @@ namespace trape.datalayer.Models
         /// <summary>
         /// The original client order id
         /// </summary>
-        public string? OriginalClientOrderId { get; set; }
+        public string OriginalClientOrderId { get; set; }
 
         /// <summary>
         /// The iceberg quantity of the order

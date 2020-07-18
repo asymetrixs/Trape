@@ -84,19 +84,5 @@ namespace trape.datalayer.Models
         public decimal MovingAverage1d { get; private set; }
 
         #endregion
-
-        #region Methods
-
-        /// <summary>
-        /// [Deprecated] If true, then the data basis is valid
-        /// </summary>
-        /// <returns></returns>
-        public bool IsValid()
-        {
-            // Roughly 24 * 60 * 60 (24 hours)
-            return this.DataBasis > 86200;
-        }
-
-        #endregion
     }
 }

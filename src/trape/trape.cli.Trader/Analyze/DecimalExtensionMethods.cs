@@ -6,14 +6,20 @@
     public static class DecimalExtensionMethods
     {
         /// <summary>
-        /// Multiplies the current value times the ten thousandth of <paramref name="multiplyer"/>
+        /// Returns a part of the value multiplied by <paramref name="multiplyer"/> and adjusted to the values size.
         /// </summary>
         /// <param name="value">Value to be multiplied.</param>
-        /// <param name="multiplyer">Value which tenthousandth part is used for multiplication.</param>
-        /// <returns>Tenthousandth <paramref name="multiplyer"/> times <paramref name="value"/>.</returns>
-        public static decimal TenThousandth(this decimal value, decimal multiplyer)
+        /// <param name="multiplyer">Value which X part is used for multiplication.</param>
+        /// <returns>X part of <paramref name="multiplyer"/> times <paramref name="value"/>.</returns>
+        public static decimal XPartOf(this decimal value, decimal multiplyer)
         {
-            return value * (multiplyer / 10000);
+            var correction = 1;
+            if(value < 500)
+            {
+                correction = 10;
+            }
+
+            return value * (multiplyer * correction / 10000);
         }
     }
 }

@@ -24,7 +24,9 @@ BEGIN
 		ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) / COUNT(*)), 8) AS movav_30s
 	FROM book_ticks
 	WHERE created_on >= NOW() - INTERVAL '30 seconds'
-	GROUP BY symbol;
+	GROUP BY symbol
+	HAVING COUNT(*) > 25;
+	-- at least a value per second
 END;
 $BODY$;
 
@@ -55,7 +57,9 @@ BEGIN
 			ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) / COUNT(*)), 8) AS movav_3m
 	FROM book_ticks
 	WHERE created_on >= NOW() - INTERVAL '3 minutes'
-	GROUP BY symbol;
+	GROUP BY symbol
+	HAVING COUNT(*) > 170;
+	-- at least a value per second
 END;
 $BODY$;
 
@@ -87,7 +91,9 @@ BEGIN
 			ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) / COUNT(*)), 8) AS movav_15m
 	FROM book_ticks
 	WHERE created_on >= NOW() - INTERVAL '15 minutes'
-	GROUP BY symbol;
+	GROUP BY symbol
+	HAVING COUNT(*) > 860;
+	-- at least a value per second
 END;
 $BODY$;
 
@@ -122,7 +128,9 @@ BEGIN
 			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) AS movav_3h
 	FROM ticks
 	WHERE statistics_close_time >= NOW() - INTERVAL '3 hours'
-	GROUP BY symbol;
+	GROUP BY symbol
+	HAVING COUNT(*) > 10300;
+	-- at least roughly 3 * 60 * 60 (3 hours) values
 END;
 $$
 LANGUAGE plpgsql STRICT;
@@ -157,8 +165,10 @@ BEGIN
 			/ COUNT(*) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '18 hours')), 8) AS movav_18h,
 			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) AS movav_1d
 	FROM ticks
-	WHERE statistics_close_time >= NOW() - INTERVAL '1 day'
-	GROUP BY symbol;
+	WHERE statistics_close_time >= NOW() - INTERVAL '1 day'	
+	GROUP BY symbol
+	HAVING COUNT(*) > 86200;
+	-- at least roughly 24 * 60 * 60 (24 hours) values
 END;
 $$
 LANGUAGE plpgsql STRICT;

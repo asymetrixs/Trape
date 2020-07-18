@@ -71,19 +71,5 @@ namespace trape.datalayer.Models
         public decimal MovingAverage30s { get; private set; }
 
         #endregion
-
-        #region Methods
-
-        /// <summary>
-        /// If true, then the data basis is valid
-        /// </summary>
-        /// <returns></returns>
-        public bool IsValid()
-        {
-            // Should have at least a value per second
-            return this.DataBasis > 25;
-        }
-
-        #endregion
     }
 }

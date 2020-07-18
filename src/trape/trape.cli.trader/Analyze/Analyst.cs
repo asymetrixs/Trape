@@ -151,15 +151,16 @@ namespace trape.cli.trader.Analyze
             var stat2h = this._buffer.Stats2hFor(this.Symbol);
 
             // Check that data is valid
-            if (stat3s == null || !stat3s.IsValid()
-                || stat15s == null || !stat15s.IsValid()
-                || stat2m == null || !stat2m.IsValid()
-                || stat10m == null || !stat10m.IsValid())
+            if (stat3s == null
+                || stat15s == null
+                || stat2m == null
+                || stat10m == null)
             {
-                this._logger.Warning($"Skipped {this.Symbol} due to old or incomplete data: 3s:{(stat3s == null ? false : stat3s?.IsValid())} " +
-                    $"15s:{(stat15s == null ? false : stat15s?.IsValid())} " +
-                    $"2m:{(stat2m == null ? false : stat2m?.IsValid())} " +
-                    $"10m:{(stat10m == null ? false : stat10m?.IsValid())}");
+                this._logger.Warning($"Skipped {this.Symbol} due to old or incomplete data: 3s:{(stat3s == null)} " +
+                    $"15s:{(stat15s == null)} " +
+                    $"2m:{(stat2m == null)} " +
+                    $"10m:{(stat10m == null)}" +
+                    $"2h:{(stat2h == null)}");
 
                 this._buffer.UpdateRecommendation(new Recommendation() { Symbol = this.Symbol, Action = Action.Hold });
                 return;
@@ -169,7 +170,7 @@ namespace trape.cli.trader.Analyze
             // Get current symbol price
             var currentPrice = new Point(time: default, price: this._buffer.GetBidPrice(this.Symbol), slope: 0);
 
-            if(currentPrice.Value < 0)
+            if (currentPrice.Value < 0)
             {
                 this._logger.Warning($"Skipped {this.Symbol} due to old or incomplete data: {currentPrice.Value:0.00}");
 
@@ -203,14 +204,14 @@ namespace trape.cli.trader.Analyze
             var path = new StringBuilder();
 
             // Panic, threshold is relative to price 
-            if (stat3s.Slope5s < -currentPrice.Value.TenThousandth(8)
-                && stat3s.Slope10s < -currentPrice.Value.TenThousandth(5)
-                && stat3s.Slope15s < -currentPrice.Value.TenThousandth(6)
-                && stat3s.Slope30s < -currentPrice.Value.TenThousandth(15)
-                && stat15s.Slope45s < -currentPrice.Value.TenThousandth(12)
-                && stat15s.Slope1m < -currentPrice.Value.TenThousandth(10)
-                && stat15s.Slope2m < -currentPrice.Value.TenThousandth(5)
-                && stat15s.Slope3m < -currentPrice.Value.TenThousandth(1)
+            if (stat3s.Slope5s < -currentPrice.Value.XPartOf(8)
+                && stat3s.Slope10s < -currentPrice.Value.XPartOf(5)
+                && stat3s.Slope15s < -currentPrice.Value.XPartOf(6)
+                && stat3s.Slope30s < -currentPrice.Value.XPartOf(15)
+                && stat15s.Slope45s < -currentPrice.Value.XPartOf(12)
+                && stat15s.Slope1m < -currentPrice.Value.XPartOf(10)
+                && stat15s.Slope2m < -currentPrice.Value.XPartOf(5)
+                && stat15s.Slope3m < -currentPrice.Value.XPartOf(1)
                 // Define threshhold from when on panic mode is active
                 && panicLimit < movingAverage3h
                 // Price has to drop for more than 10 seconds
@@ -227,10 +228,10 @@ namespace trape.cli.trader.Analyze
                 path.Append("|panic");
             }
             // Jump increase
-            else if (stat3s.Slope5s > currentPrice.Value.TenThousandth(15)
-                    && stat3s.Slope10s > currentPrice.Value.TenThousandth(1)
-                    && stat3s.Slope15s > currentPrice.Value.TenThousandth(15)
-                    && stat3s.Slope30s > currentPrice.Value.TenThousandth(9)
+            else if (stat3s.Slope5s > currentPrice.Value.XPartOf(15)
+                    && stat3s.Slope10s > currentPrice.Value.XPartOf(1)
+                    && stat3s.Slope15s > currentPrice.Value.XPartOf(15)
+                    && stat3s.Slope30s > currentPrice.Value.XPartOf(9)
                     && stat15s.Slope1m > 0)
             {
                 decimal stockQuantity = 0;
@@ -269,7 +270,7 @@ namespace trape.cli.trader.Analyze
                     path.Append("jump");
                     // If Slope1h is negative, then only join the jumping trend if the current price
                     // is higher than the value of the Slope1h in 15 minutes
-                    if (stat10m.Slope1h < -currentPrice.Value.TenThousandth(10))
+                    if (stat10m.Slope1h < -currentPrice.Value.XPartOf(10))
                     {
                         path.Append("a");
                         // Only jump if price goes higher than intercept with Slope1h in 15 minutes
@@ -347,12 +348,12 @@ namespace trape.cli.trader.Analyze
             // If Panic mode ended and action is not buy but trend is strongly upwards
             else if (this._lastAnalysis.LastPanicModeEnded.AddMinutes(7) > DateTime.UtcNow
                 && action != Action.Buy
-                && stat3s.Slope5s > currentPrice.Value.TenThousandth(10)
-                && stat3s.Slope10s > currentPrice.Value.TenThousandth(10)
-                && stat3s.Slope15s > currentPrice.Value.TenThousandth(7.5M)
+                && stat3s.Slope5s > currentPrice.Value.XPartOf(10)
+                && stat3s.Slope10s > currentPrice.Value.XPartOf(10)
+                && stat3s.Slope15s > currentPrice.Value.XPartOf(7.5M)
                 && stat3s.Slope30s > 0
                 && stat3s.Slope30s > 0
-                && stat10m.Slope3h > -currentPrice.Value.TenThousandth(64.8M)
+                && stat10m.Slope3h > -currentPrice.Value.XPartOf(64.8M)
                 && currentPrice < movingAverage1h)
             {
                 this._logger.Verbose($"{this.Symbol}: Panic mode ended more than 7 minutes ago and trend is strongly upwards, buy.");
@@ -362,7 +363,7 @@ namespace trape.cli.trader.Analyze
 
 
             // If strong sell happened or slope is too negative, do not buy immediately
-            if ((this._lastAnalysis.GetLastDateOf(Action.StrongSell).AddMinutes(2) > DateTime.UtcNow || stat10m.Slope30m < -currentPrice.Value.TenThousandth(20))
+            if ((this._lastAnalysis.GetLastDateOf(Action.StrongSell).AddMinutes(2) > DateTime.UtcNow || stat10m.Slope30m < -currentPrice.Value.XPartOf(20))
                 && (action == Action.Buy || action == Action.JumpBuy || action == Action.StrongBuy))
             {
                 this._logger.Verbose($"{this.Symbol}: Last strong sell was less than 1 minutes ago, don't buy.");
@@ -389,15 +390,21 @@ namespace trape.cli.trader.Analyze
                 }
             }
 
-            /// Advise to sell on <see cref="TakeProfitLimit"/> % gain
-            if (raceStartingPrice.Value != default && raceStartingPrice < (currentPrice * TakeProfitLimit))
+            // Advise to sell on <see cref="TakeProfitLimit"/> % gain
+            var raceIdentifier = TakeProfitLimit;
+            if (currentPrice.Value < 100)
+            {
+                raceIdentifier = 0.97M;
+            }
+
+            if (raceStartingPrice.Value != default && raceStartingPrice < (currentPrice * raceIdentifier))
             {
                 this._logger.Verbose($"{this.Symbol}: Race detected at {currentPrice.Value:0.00}.");
                 this._lastAnalysis.RaceDetected();
                 path.Append("_racestart");
 
                 // Check market movement, if a huge sell is detected advice to take profits
-                if (stat3s.Slope10s < -currentPrice.Value.TenThousandth(10))
+                if (stat3s.Slope10s < -currentPrice.Value.XPartOf(10))
                 {
                     action = Action.TakeProfitsSell;
                     this._logger.Verbose($"{this.Symbol}: Race ended at {currentPrice.Value:0.00}.");
@@ -538,45 +545,38 @@ namespace trape.cli.trader.Analyze
         /// </summary>
         public void Start(string symbol)
         {
-            this.Symbol = symbol;
+            _ = symbol ?? throw new ArgumentNullException(paramName: symbol);
 
             if (this._jobRecommendationMaker.Enabled)
             {
-                this._logger.Warning($"{this.Symbol}: Analyst is already active");
+                this._logger.Warning($"{symbol}: Analyst is already active");
                 return;
             }
 
             this._logger.Information($"{this.Symbol}: Starting Analyst");
 
-            if (this._buffer.GetSymbols().Contains(this.Symbol))
-            {
-                this.Symbol = symbol;
-                this.Asset = symbol.Replace("USDT", string.Empty);
+            this.Symbol = symbol;
+            this.Asset = symbol.Replace("USDT", string.Empty);
 
-                using (AsyncScopedLifestyle.BeginScope(Program.Container))
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
+            {
+                var database = Program.Container.GetService<TrapeContext>();
+                try
                 {
-                    var database = Program.Container.GetService<TrapeContext>();
-                    try
-                    {
-                        var decisions = database.GetLastDecisions().Where(d => d.Symbol == this.Symbol);
+                    var decisions = database.GetLastDecisions().Where(d => d.Symbol == this.Symbol);
 
-                        this._lastAnalysis = new Analysis(this.Symbol, decisions);
-                    }
-                    catch (Exception e)
-                    {
-                        this._logger.Error(e.Message, e);
-                        throw;
-                    }
+                    this._lastAnalysis = new Analysis(this.Symbol, decisions);
                 }
-
-                this._jobRecommendationMaker.Start();
-
-                this._logger.Information($"{this.Symbol}: Analyst started");
+                catch (Exception e)
+                {
+                    this._logger.Error(e.Message, e);
+                    throw;
+                }
             }
-            else
-            {
-                this._logger.Error($"{this.Symbol}: Analyst cannot be started, symbol does not exist");
-            }
+
+            this._jobRecommendationMaker.Start();
+
+            this._logger.Information($"{this.Symbol}: Analyst started");
         }
 
         /// <summary>

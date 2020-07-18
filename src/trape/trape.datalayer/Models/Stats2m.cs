@@ -84,19 +84,5 @@ namespace trape.datalayer.Models
         public decimal MovingAverage15m { get; private set; }
 
         #endregion
-
-        #region Methods
-
-        /// <summary>
-        /// If true, then the data basis is valid
-        /// </summary>
-        /// <returns></returns>
-        public bool IsValid()
-        {
-            // Roughly 15 * 60 (15 Minutes)
-            return this.DataBasis > 858;
-        }
-
-        #endregion
     }
 }

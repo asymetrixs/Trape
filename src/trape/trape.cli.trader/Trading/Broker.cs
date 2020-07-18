@@ -664,29 +664,24 @@ namespace trape.cli.trader.Trading
         /// <summary>
         /// Start the Broker
         /// </summary>
-        /// <param name="symbolToTrade">Symbol to trade</param>
-        public void Start(string symbolToTrade)
+        /// <param name="symbol">Symbol to trade</param>
+        public void Start(string symbol)
         {
+            _ = symbol ?? throw new ArgumentNullException(paramName: symbol);
+
             if (this._jobTrading.Enabled)
             {
-                this._logger.Warning($"{symbolToTrade}: Broker is already active");
+                this._logger.Warning($"{symbol}: Broker is already active");
                 return;
             }
 
-            this._logger.Information($"{symbolToTrade}: Starting Broker");
+            this._logger.Information($"{symbol}: Starting Broker");
 
-            if (this._buffer.GetSymbols().Contains(symbolToTrade))
-            {
-                this.Symbol = symbolToTrade;
+            this.Symbol = symbol;
 
-                this._jobTrading.Start();
+            this._jobTrading.Start();
 
-                this._logger.Information($"{symbolToTrade}: Broker started");
-            }
-            else
-            {
-                this._logger.Error($"{symbolToTrade}: Broker cannot be started, symbol does not exist");
-            }
+            this._logger.Information($"{symbol}: Broker started");
         }
 
         /// <summary>
