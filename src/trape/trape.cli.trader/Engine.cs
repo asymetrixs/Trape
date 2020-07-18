@@ -65,21 +65,17 @@ namespace trape.cli.trader
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
-            _ = tradingTeam ?? throw new ArgumentNullException(paramName: nameof(tradingTeam));
+            this._tradingTeam = tradingTeam ?? throw new ArgumentNullException(paramName: nameof(tradingTeam));
 
-            _ = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
+            this._accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            _ = feeWatchdog ?? throw new ArgumentNullException(paramName: nameof(feeWatchdog));
+            this._feeWatchdog = feeWatchdog ?? throw new ArgumentNullException(paramName: nameof(feeWatchdog));
 
             #endregion
 
             this._logger = logger.ForContext<Engine>();
-            this._buffer = buffer;
-            this._tradingTeam = tradingTeam;
-            this._accountant = accountant;
-            this._feeWatchdog = feeWatchdog;
         }
 
         #endregion

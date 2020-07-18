@@ -101,12 +101,11 @@ namespace trape.cli.collector.DataCollection
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _ = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
+            this._binanceSocketClient = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
 
             #endregion
 
             this._logger = logger.ForContext<CollectionManager>();
-            this._binanceSocketClient = binanceSocketClient;
             this._disposed = false;
             this._cancellationTokenSource = new CancellationTokenSource();
             this._startStop = new SemaphoreSlim(1, 1);
@@ -180,7 +179,7 @@ namespace trape.cli.collector.DataCollection
                 catch (Exception e)
                 {
                     this._logger.ForContext(typeof(CollectionManager));
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                     throw;
                 }
             }
@@ -251,7 +250,7 @@ namespace trape.cli.collector.DataCollection
                 {
                     var logger = Program.Container.GetService<ILogger>();
                     logger.ForContext(typeof(CollectionManager));
-                    logger.Error(e.Message, e);
+                    logger.Error(e, e.Message);
                 }
             }
 
@@ -278,7 +277,7 @@ namespace trape.cli.collector.DataCollection
                 {
                     var logger = Program.Container.GetService<ILogger>();
                     logger.ForContext(typeof(CollectionManager));
-                    logger.Error(e.Message, e);
+                    logger.Error(e, e.Message);
                 }
             }
 
@@ -305,7 +304,7 @@ namespace trape.cli.collector.DataCollection
                 {
                     var logger = Program.Container.GetService<ILogger>();
                     logger.ForContext(typeof(CollectionManager));
-                    logger.Error(e.Message, e);
+                    logger.Error(e, e.Message);
                 }
             }
 
@@ -508,7 +507,7 @@ namespace trape.cli.collector.DataCollection
                 catch (Exception e)
                 {
                     this._logger.Fatal($"{symbol}: Connecting to Binance failed, retrying, {31 - countTillHardExit}/30");
-                    this._logger.Fatal(e.Message, e);
+                    this._logger.Fatal(e, e.Message);
 
                     countTillHardExit--;
 
@@ -555,7 +554,7 @@ namespace trape.cli.collector.DataCollection
             catch (Exception e)
             {
                 this._logger.Debug($"{symbol}: Unsubscribing failed");
-                this._logger.Fatal(e.Message, e);
+                this._logger.Fatal(e, e.Message);
                 return;
             }
             finally

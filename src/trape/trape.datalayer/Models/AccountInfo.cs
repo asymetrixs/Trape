@@ -1,11 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace trape.datalayer.Models
 {
     public class AccountInfo : AbstractKey
     {
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the <c>AccountInfo</c> class.
+        /// </summary>
+        public AccountInfo()
+        {
+            this.Balances = new List<Balance>();
+        }
+
+        #endregion
+
+        #region Properties
+
         /// <summary>
         /// Last Update
         /// </summary>
@@ -50,5 +63,7 @@ namespace trape.datalayer.Models
         /// List of assets with their current balances
         /// </summary>
         public virtual List<Balance> Balances { get; set; }
+
+        #endregion
     }
 }

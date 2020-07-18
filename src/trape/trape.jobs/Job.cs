@@ -71,13 +71,12 @@ namespace trape.jobs
         {
             #region Argument checks
 
-            _ = action ?? throw new ArgumentNullException(paramName: nameof(action));
+            this._action = action ?? throw new ArgumentNullException(paramName: nameof(action));
 
             #endregion
 
             this._disposed = false;
             this.ExecutionInterval = executionInterval;
-            this._action = action;
             this._cancellationToken = cancellationToken;
             this._synchronizer = new SemaphoreSlim(1, 1);
 

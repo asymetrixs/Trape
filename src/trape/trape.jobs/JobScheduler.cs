@@ -3,6 +3,9 @@ using System.Threading;
 
 namespace trape.jobs
 {
+    /// <summary>
+    /// Executes jobs regularly.
+    /// </summary>
     class JobScheduler : IDisposable
     {
         #region Fields
@@ -36,17 +39,20 @@ namespace trape.jobs
 
         #region Constructor
 
+        /// <summary>
+        /// Initializes a new instance of the <c>JobScheduler</c> class.
+        /// </summary>
+        /// <param name="job"></param>
         internal JobScheduler(IJob job)
         {
             #region Argument checks
 
-            _ = job ?? throw new ArgumentNullException(paramName: nameof(job));
+            this._job = job ?? throw new ArgumentNullException(paramName: nameof(job));
 
             #endregion
 
             this._disposed = false;
             this._execute = new SemaphoreSlim(1, 1);
-            this._job = job;
             this._cancellationTokenSource = new CancellationTokenSource();
 
             TimeSpan timeInterval = default;

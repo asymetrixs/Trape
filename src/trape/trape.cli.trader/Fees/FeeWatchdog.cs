@@ -71,15 +71,13 @@ namespace trape.cli.trader.Fees
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _ = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
+            this._accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             #endregion
 
             this._logger = logger.ForContext(typeof(FeeWatchdog));
-            this._accountant = accountant;
-            this._buffer = buffer;
             this._cancellationTokenSource = new CancellationTokenSource();
             this._feeSymbol = "BNBUSDT";
 

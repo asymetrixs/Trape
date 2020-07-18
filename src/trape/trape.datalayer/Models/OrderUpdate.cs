@@ -5,6 +5,8 @@ namespace trape.datalayer.Models
 {
     public class OrderUpdate : AbstractKey
     {
+        #region Properties
+
         /// <summary>
         /// Last quote asset transacted quantity (i.e. LastPrice * LastQuantity)
         /// </summary>
@@ -151,8 +153,10 @@ namespace trape.datalayer.Models
         public virtual OrderList OrderList { get; set; }
 
         /// <summary>
-        /// Unused
+        /// [Unknown] Unused
         /// </summary>
         public long I { get; set; }
+
+        #endregion
     }
 }

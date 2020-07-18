@@ -6,8 +6,16 @@ using trape.datalayer.Models;
 
 namespace trape.mapper
 {
+    /// <summary>
+    /// Translates Binance.Net objects into Trape objects
+    /// </summary>
     public static class Translator
     {
+        /// <summary>
+        /// Translates from <c>BinancePlacedOrder</c> to <c>PlacedOrder</c>.
+        /// </summary>
+        /// <param name="binancePlacedOrder"></param>
+        /// <returns></returns>
         public static PlacedOrder Translate(BinancePlacedOrder binancePlacedOrder)
         {
             var placedOrder = new PlacedOrder()
@@ -40,6 +48,33 @@ namespace trape.mapper
             return placedOrder;
         }
 
+        /// <summary>
+        /// Translates from <c>BinanceBalance</c> to <c>Balance</c>.
+        /// </summary>
+        /// <param name="binanceBalance"></param>
+        /// <param name="accountInfo"></param>
+        /// <returns></returns>
+        public static Balance Translate(BinanceBalance binanceBalance, AccountInfo accountInfo)
+        {
+            var balance = new Balance()
+            {
+                AccountInfo = accountInfo,
+                Asset = binanceBalance.Asset,
+                CreatedOn = DateTime.UtcNow,
+                Free = binanceBalance.Free,
+                Locked = binanceBalance.Locked,
+                Total = binanceBalance.Total
+            };
+
+            return balance;
+        }
+
+        /// <summary>
+        /// Translates from <c>BinanceOrderTrade</c> to <c>OrderTrade</c>.
+        /// </summary>
+        /// <param name="binanceOrderTrade"></param>
+        /// <param name="placedOrder"></param>
+        /// <returns></returns>
         public static OrderTrade Translate(BinanceOrderTrade binanceOrderTrade, PlacedOrder placedOrder = null)
         {
             return new OrderTrade()
@@ -53,6 +88,11 @@ namespace trape.mapper
             };
         }
 
+        /// <summary>
+        /// Translates from <c>BinanceStreamOrderList</c> to <c>OrderList</c>.
+        /// </summary>
+        /// <param name="binanceStreamOrderList"></param>
+        /// <returns></returns>
         public static OrderList Translate(BinanceStreamOrderList binanceStreamOrderList)
         {
             var orderList = new OrderList()
@@ -74,6 +114,12 @@ namespace trape.mapper
             return orderList;
         }
 
+        /// <summary>
+        /// Translates from <c>BinanceStreamOrderid</c> to <c>Order</c>.
+        /// </summary>
+        /// <param name="binanceStreamOrderId"></param>
+        /// <param name="orderList"></param>
+        /// <returns></returns>
         public static Order Translate(BinanceStreamOrderId binanceStreamOrderId, OrderList orderList = null)
         {
             return new Order()
@@ -86,6 +132,11 @@ namespace trape.mapper
             };
         }
 
+        /// <summary>
+        /// Translates from <c>BinanceStreamBalance</c> to <c>Balance</c>.
+        /// </summary>
+        /// <param name="binanceStreamBalances"></param>
+        /// <returns></returns>
         public static IEnumerable<Balance> Translate(IEnumerable<BinanceStreamBalance> binanceStreamBalances)
         {
             var list = new List<Balance>();
@@ -104,6 +155,11 @@ namespace trape.mapper
             return list;
         }
 
+        /// <summary>
+        /// Translates from <c>BinanceStreamBalanceUpdate</c> to <c>BalanceUpdate</c>.
+        /// </summary>
+        /// <param name="binanceStreamBalanceUpdate"></param>
+        /// <returns></returns>
         public static BalanceUpdate Translate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
         {
             return new BalanceUpdate()
@@ -114,6 +170,11 @@ namespace trape.mapper
             };
         }
 
+        /// <summary>
+        /// Translates from <c>BinanceStreamOrderUpdate</c> to <c>OrderUpdate</c>.
+        /// </summary>
+        /// <param name="binanceStreamOrderUpdate"></param>
+        /// <returns></returns>
         public static OrderUpdate Translate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
         {
             return new OrderUpdate()
@@ -149,6 +210,11 @@ namespace trape.mapper
             };
         }
 
+        /// <summary>
+        /// Translates from <c>BinanceStreamTick</c> to <c>Tick</c>.
+        /// </summary>
+        /// <param name="binanceStreamTick"></param>
+        /// <returns></returns>
         public static Tick Translate(BinanceStreamTick binanceStreamTick)
         {
             return new Tick()
@@ -177,6 +243,11 @@ namespace trape.mapper
             };
         }
 
+        /// <summary>
+        /// Translates from <c>BinanceStreamKlineDate</c> to <c>Kline</c>.
+        /// </summary>
+        /// <param name="binanceStreamKlineData"></param>
+        /// <returns></returns>
         public static Kline Translate(BinanceStreamKlineData binanceStreamKlineData)
         {
             return new Kline()
@@ -200,6 +271,11 @@ namespace trape.mapper
             };
         }
 
+        /// <summary>
+        /// Translates from <c>BinanceBookTick</c> to <c>BookTick</c>.
+        /// </summary>
+        /// <param name="binanceBookTick"></param>
+        /// <returns></returns>
         public static BookTick Translate(BinanceBookTick binanceBookTick)
         {
             return new BookTick()

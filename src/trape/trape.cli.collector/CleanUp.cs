@@ -30,7 +30,7 @@ namespace trape.cli.collector
                 }
                 catch (Exception e)
                 {
-                    logger.Error(e.Message, e);
+                    logger.Error(e, e.Message);
                 }
             }
         }

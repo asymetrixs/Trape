@@ -142,15 +142,13 @@ namespace trape.cli.trader.Cache
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _ = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
+            this._binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
 
-            _ = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
+            this._binanceSocketClient = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
 
             #endregion
 
             this._logger = logger.ForContext<Buffer>();
-            this._binanceClient = binanceClient;
-            this._binanceSocketClient = binanceSocketClient;
             this._cancellationTokenSource = new CancellationTokenSource();
             this._disposed = false;
             this._bestAskPrices = new ConcurrentDictionary<string, BestPrice>();
@@ -202,7 +200,7 @@ namespace trape.cli.trader.Cache
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                 }
             }
 
@@ -227,7 +225,7 @@ namespace trape.cli.trader.Cache
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                 }
             }
 
@@ -282,7 +280,7 @@ namespace trape.cli.trader.Cache
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                 }
             }
 
@@ -307,7 +305,7 @@ namespace trape.cli.trader.Cache
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                 }
             }
 
@@ -332,7 +330,7 @@ namespace trape.cli.trader.Cache
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                 }
             }
 
@@ -357,7 +355,7 @@ namespace trape.cli.trader.Cache
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                 }
             }
 
@@ -391,7 +389,7 @@ namespace trape.cli.trader.Cache
         {
             #region Argument checks
 
-            _ = recommendation ?? throw new ArgumentNullException(nameof(recommendation));
+            _ = recommendation ?? throw new ArgumentNullException(paramName: nameof(recommendation));
 
             #endregion
 
@@ -711,7 +709,7 @@ namespace trape.cli.trader.Cache
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                 }
             }
 
@@ -779,7 +777,7 @@ namespace trape.cli.trader.Cache
                 catch (Exception e)
                 {
                     this._logger.Fatal($"Connecting to Binance failed, retrying, {31 - countTillHardExit}/30");
-                    this._logger.Fatal(e.Message, e);
+                    this._logger.Fatal(e, e.Message);
 
                     countTillHardExit--;
 

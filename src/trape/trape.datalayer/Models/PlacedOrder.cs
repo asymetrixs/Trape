@@ -6,10 +6,19 @@ namespace trape.datalayer.Models
 {
     public class PlacedOrder
     {
+        #region Contructor
+
+        /// <summary>
+        /// Initializes a new instance of the <c>PlacedOrder</c> class.
+        /// </summary>
         public PlacedOrder()
         {
             this.Fills = new List<OrderTrade>();
         }
+
+        #endregion
+
+        #region
 
         /// <summary>
         /// Only present if a margin trade happened
@@ -105,5 +114,7 @@ namespace trape.datalayer.Models
         /// Fills for the order
         /// </summary>
         public virtual List<OrderTrade> Fills { get; set; }
+
+        #endregion
     }
 }

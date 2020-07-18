@@ -1,6 +1,8 @@
 ﻿using Binance.Net.Interfaces;
 using Binance.Net.Objects;
+using CryptoExchange.Net;
 using CryptoExchange.Net.Objects;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Context;
@@ -54,13 +56,13 @@ namespace trape.cli.trader.Market
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _ = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
+            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+
+            this._binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
 
             #endregion
 
             this._logger = logger.ForContext(typeof(StockExchange));
-            this._buffer = buffer;
-            this._binanceClient = binanceClient;
         }
 
         #endregion
@@ -73,47 +75,65 @@ namespace trape.cli.trader.Market
         /// <param name="Order">Order</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        public async Task PlaceOrder(ClientOrder order, CancellationToken cancellationToken = default)
+        public async Task PlaceOrder(ClientOrder clientOrder, CancellationToken cancellationToken = default)
         {
             #region Argument checks
 
-            _ = order ?? throw new ArgumentNullException(paramName: nameof(order));
+            _ = clientOrder ?? throw new ArgumentNullException(paramName: nameof(clientOrder));
 
             #endregion
             // https://nsubstitute.github.io/help/getting-started/
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                this._logger.Information($"{order.Symbol} @ {order.Price:0.00}: Issuing {order.Side.ToString().ToLower()} of {order.Quantity}");
+                this._logger.Information($"{clientOrder.Symbol} @ {clientOrder.Price:0.00}: Issuing {clientOrder.Side.ToString().ToLower()} of {clientOrder.Quantity}");
 
                 var database = Program.Container.GetService<TrapeContext>();
 
                 try
                 {
                     // Block quantity until order is processed
-                    this._buffer.AddOpenOrder(new OpenOrder(order.Id, order.Symbol, order.Quantity));
+                    this._buffer.AddOpenOrder(new OpenOrder(clientOrder.Id, clientOrder.Symbol, clientOrder.Quantity));
 
                     // Place the order with binance tools
-                    var binanceSide = (OrderSide)(int)order.Side;
-                    var binanceType = (OrderType)(int)order.Type;
-                    var binanceResponseType = (OrderResponseType)(int)order.OrderResponseType;
-                    var timeInForce = (TimeInForce)(int)order.TimeInForce;
+                    var binanceSide = (OrderSide)(int)clientOrder.Side;
+                    var binanceType = (OrderType)(int)clientOrder.Type;
+                    var binanceResponseType = (OrderResponseType)(int)clientOrder.OrderResponseType;
+                    var timeInForce = (TimeInForce)(int)clientOrder.TimeInForce;
 
-                    var placedOrder = await this._binanceClient.PlaceOrderAsync(order.Symbol, binanceSide, binanceType, price: order.Price,
-                        quantity: order.Quantity, newClientOrderId: order.Id, orderResponseType: binanceResponseType, timeInForce: timeInForce,
+                    var placedOrder = await this._binanceClient.PlaceOrderAsync(clientOrder.Symbol, binanceSide, binanceType, price: clientOrder.Price,
+                        quantity: clientOrder.Quantity, newClientOrderId: clientOrder.Id, orderResponseType: binanceResponseType, timeInForce: timeInForce,
                         ct: cancellationToken).ConfigureAwait(true);
 
                     // Log order in custom format
-                    database.ClientOrder.Add(order);
+                    // Due to timing from Binance this might be executed after updates occurred
+                    // So check if it exists in the database and update, otherwise add new
+                    var existingClientOrder = await database.ClientOrder.FirstOrDefaultAsync(c => c.Id == clientOrder.Id).ConfigureAwait(false);
+                    if (existingClientOrder == null)
+                    {
+                        database.ClientOrder.Add(clientOrder);
+                    }
+                    else
+                    {
+                        existingClientOrder.CreatedOn = clientOrder.CreatedOn;
+                        existingClientOrder.Order = clientOrder.Order;
+                        existingClientOrder.OrderResponseType = clientOrder.OrderResponseType;
+                        existingClientOrder.Price = clientOrder.Price;
+                        existingClientOrder.Quantity = clientOrder.Quantity;
+                        existingClientOrder.Side = clientOrder.Side;
+                        existingClientOrder.Symbol = clientOrder.Symbol;
+                        existingClientOrder.TimeInForce = clientOrder.TimeInForce;
+                        existingClientOrder.Type = clientOrder.Type;                        
+                    }
+                    
+                    this._logger.Debug($"{clientOrder.Symbol}: {clientOrder.Side} {clientOrder.Quantity} {clientOrder.Price:0.00} {clientOrder.Id}");
 
-                    this._logger.Debug($"{order.Symbol}: {order.Side} {order.Quantity} {order.Price:0.00} {order.Id}");
-
-                    await LogOrder(database, order.Id, placedOrder, cancellationToken).ConfigureAwait(true);
+                    await LogOrder(database, clientOrder.Id, placedOrder, cancellationToken).ConfigureAwait(true);
 
                     await database.SaveChangesAsync(cancellationToken).ConfigureAwait(true);
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                 }
             }
         }

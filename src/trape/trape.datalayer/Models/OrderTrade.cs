@@ -2,6 +2,8 @@
 {
     public class OrderTrade
     {
+        #region Properties
+
         /// <summary>
         /// The id of the trade
         /// </summary>
@@ -32,8 +34,16 @@
         /// </summary>
         public decimal ConsumedQuantity { get; set; }
 
+        /// <summary>
+        /// Placed order id
+        /// </summary>
         public long PlacedOrderId { get; set; }
 
+        /// <summary>
+        /// Placed order
+        /// </summary>
         public virtual PlacedOrder PlacedOrder { get; set; }
+
+        #endregion
     }
 }

@@ -4,6 +4,8 @@ namespace trape.datalayer.Models
 {
     public class Recommendation : AbstractKey
     {
+        #region Properties
+
         /// <summary>
         /// Symbol
         /// </summary>
@@ -223,5 +225,7 @@ namespace trape.datalayer.Models
         /// Moving Average 1d
         /// </summary>
         public decimal MovingAverage1d { get; set; }
+
+        #endregion
     }
 }

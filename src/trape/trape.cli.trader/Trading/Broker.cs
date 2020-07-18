@@ -123,15 +123,13 @@ namespace trape.cli.trader.Trading
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _ = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
+            this._accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             #endregion
 
             this._logger = logger.ForContext<Broker>();
-            this._accountant = accountant;
-            this._buffer = buffer;
             this._cancellationTokenSource = new CancellationTokenSource();
             this._lastRecommendation = new Dictionary<Action, DateTime>();
             this.Symbol = null;
@@ -286,12 +284,12 @@ namespace trape.cli.trader.Trading
             }
             else if (recommendation.Action == Action.StrongBuy)
             {
-                // During 'StrongBuy' market goes up, buy 40%
+                // During 'StrongBuy' market goes up, buy for 40%
                 availableUSDT = usdt.Free * 0.4M;
             }
             else if (recommendation.Action == Action.JumpBuy)
             {
-                // 30%
+                //  Buy for 20%
                 availableUSDT = usdt.Free * 0.2M;
             }
 
@@ -651,7 +649,7 @@ namespace trape.cli.trader.Trading
                     }
                     catch (Exception e)
                     {
-                        this._logger.Error(e.Message, e);
+                        this._logger.Error(e, e.Message);
                     }
                 }
             }

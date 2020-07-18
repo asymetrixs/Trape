@@ -83,15 +83,13 @@ namespace trape.cli.trader.Analyze
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
-            _ = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
+            this._accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
             #endregion
 
             this._logger = logger.ForContext<Analyst>();
-            this._buffer = buffer;
-            this._accountant = accountant;
             this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
             this._disposed = false;
             this._logTrendLimiter = 61;
@@ -156,7 +154,7 @@ namespace trape.cli.trader.Analyze
                 || stat2m == null
                 || stat10m == null)
             {
-                this._logger.Warning($"Skipped {this.Symbol} due to old or incomplete data: 3s:{(stat3s == null)} " +
+                this._logger.Verbose($"Skipped {this.Symbol} due to old or incomplete data: 3s:{(stat3s == null)} " +
                     $"15s:{(stat15s == null)} " +
                     $"2m:{(stat2m == null)} " +
                     $"10m:{(stat10m == null)}" +
@@ -172,7 +170,7 @@ namespace trape.cli.trader.Analyze
 
             if (currentPrice.Value < 0)
             {
-                this._logger.Warning($"Skipped {this.Symbol} due to old or incomplete data: {currentPrice.Value:0.00}");
+                this._logger.Verbose($"Skipped {this.Symbol} due to old or incomplete data: {currentPrice.Value:0.00}");
 
                 this._buffer.UpdateRecommendation(new Recommendation() { Symbol = this.Symbol, Action = Action.Hold });
                 return;
@@ -385,7 +383,7 @@ namespace trape.cli.trader.Analyze
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                     raceStartingPrice = new Point();
                 }
             }
@@ -509,7 +507,7 @@ namespace trape.cli.trader.Analyze
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                 }
             }
 
@@ -545,7 +543,7 @@ namespace trape.cli.trader.Analyze
         /// </summary>
         public void Start(string symbol)
         {
-            _ = symbol ?? throw new ArgumentNullException(paramName: symbol);
+            _ = symbol ?? throw new ArgumentNullException(paramName: nameof(symbol));
 
             if (this._jobRecommendationMaker.Enabled)
             {
@@ -569,7 +567,7 @@ namespace trape.cli.trader.Analyze
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                     throw;
                 }
             }

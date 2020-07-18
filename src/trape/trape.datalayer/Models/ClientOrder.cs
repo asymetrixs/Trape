@@ -18,6 +18,15 @@ namespace trape.datalayer.Models
             this.Id = Guid.NewGuid().ToString("N");
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <c>Order</c> class.
+        /// </summary>
+        /// <param name="id">Id of the client order</param>
+        public ClientOrder(string id)
+        {
+            this.Id = id;
+        }
+
         #endregion
 
         #region Properties

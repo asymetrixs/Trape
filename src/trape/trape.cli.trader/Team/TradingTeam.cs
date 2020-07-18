@@ -66,12 +66,11 @@ namespace trape.cli.trader.Team
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _ = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             #endregion
 
             this._logger = logger.ForContext<TradingTeam>();
-            this._buffer = buffer;
             this._team = new List<IStartable>();
 
             // Timer
@@ -104,7 +103,7 @@ namespace trape.cli.trader.Team
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e.Message, e);
+                    this._logger.Error(e, e.Message);
                 }
             }
 

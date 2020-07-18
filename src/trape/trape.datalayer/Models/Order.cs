@@ -5,6 +5,20 @@ namespace trape.datalayer.Models
 {
     public class Order : AbstractKey
     {
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the <c>Order</c> class.
+        /// </summary>
+        public Order()
+        {
+            this.OrderUpdates = new List<OrderUpdate>();
+        }
+
+        #endregion
+
+        #region Properties
+
         /// <summary>
         /// The symbol of the order
         /// </summary>
@@ -39,5 +53,7 @@ namespace trape.datalayer.Models
         /// Order Updates
         /// </summary>
         public virtual List<OrderUpdate> OrderUpdates { get; set; }
+
+        #endregion
     }
 }
