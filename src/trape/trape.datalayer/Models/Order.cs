@@ -20,19 +20,24 @@ namespace trape.datalayer.Models
         #region Properties
 
         /// <summary>
-        /// The symbol of the order
+        /// Symbol
         /// </summary>
         public string Symbol { get; set; }
 
         /// <summary>
-        /// The id of the order
+        /// Id
         /// </summary>
         public long OrderId { get; set; }
 
         /// <summary>
-        /// The client order id
+        /// Client order id
         /// </summary>        
         public string ClientOrderId { get; set; }
+
+        /// <summary>
+        /// Client order
+        /// </summary>
+        public virtual ClientOrder ClientOrder { get; set; }
 
         /// <summary>
         /// Order List Id

@@ -329,7 +329,7 @@ namespace trape.cli.trader.Trading
                 }
                 catch
                 {
-
+                    // nothing
                 }
             }
 
@@ -421,7 +421,7 @@ namespace trape.cli.trader.Trading
                 {
                     Symbol = this.Symbol,
                     Side = OrderSide.Buy,
-                    Type = isJumpBuy ? OrderType.Market : OrderType.Limit,
+                    Type = (isJumpBuy || bestBidPrice < 50) ? OrderType.Market : OrderType.Limit,
                     OrderResponseType = OrderResponseType.Full,
                     Quantity = quantity,
                     Price = bestBidPrice,
@@ -635,7 +635,7 @@ namespace trape.cli.trader.Trading
                             {
                                 Symbol = this.Symbol,
                                 Side = OrderSide.Sell,
-                                Type = (isTakeProfitSell || shallFollowPanicSell) ? OrderType.Market : OrderType.Limit,
+                                Type = (isTakeProfitSell || shallFollowPanicSell || bestAskPrice < 50) ? OrderType.Market : OrderType.Limit,
                                 OrderResponseType = OrderResponseType.Full,
                                 Quantity = quantity,
                                 Price = bestAskPrice,

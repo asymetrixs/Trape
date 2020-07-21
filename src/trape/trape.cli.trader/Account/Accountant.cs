@@ -220,6 +220,53 @@ namespace trape.cli.trader.Account
                     // Parse the order update
                     var orderUpdate = Translator.Translate(binanceStreamOrderUpdate);
 
+                    // Client Order, add if does not already exists
+                    var attempts = 5;
+                    ClientOrder clientOrder = default;
+                    while (attempts > 0)
+                    {
+                        try
+                        {
+                            clientOrder = database.ClientOrder.FirstOrDefault(c => c.Id == orderUpdate.ClientOrderId);
+
+                            this._logger.Information($"Client Order is null: {clientOrder == null}");
+
+                            if (clientOrder == null)
+                            {
+                                clientOrder = new ClientOrder(orderUpdate.ClientOrderId)
+                                {
+                                    CreatedOn = DateTime.Now,
+                                    Price = orderUpdate.Price,
+                                    Quantity = orderUpdate.Quantity,
+                                    Side = orderUpdate.Side,
+                                    Type = orderUpdate.Type,
+                                    TimeInForce = orderUpdate.TimeInForce,
+                                    Symbol = orderUpdate.Symbol
+                                };
+
+                                this._logger.Information($"Adding new Client Order");
+
+                                database.ClientOrder.Add(clientOrder);
+
+                                await database.SaveChangesAsync().ConfigureAwait(false);
+                            }                            
+
+                            break;
+                        }
+                        catch(Exception coe)
+                        {
+                            attempts--;
+
+                            this._logger.Information($"Failed attempt to store Client Order {clientOrder.Id}; attempt: {attempts}");
+                            this._logger.Error(coe, coe.Message);
+
+                            if (attempts == 0)
+                            {
+                                throw;
+                            }
+                        }
+                    }
+
                     // Find existing order list
                     var orderList = await database.OrderLists.FirstOrDefaultAsync(o => o.OrderListId == orderUpdate.OrderListId).ConfigureAwait(false);
                     if (orderList == null)
@@ -250,6 +297,7 @@ namespace trape.cli.trader.Account
                             ClientOrderId = orderUpdate.ClientOrderId,
                             Symbol = orderUpdate.Symbol,
                             CreatedOn = DateTime.UtcNow,
+                            ClientOrder = clientOrder,
                             OrderList = orderList
                         };
 
@@ -274,24 +322,7 @@ namespace trape.cli.trader.Account
                     orderList.OrderUpdates.Add(orderUpdate);
                     orderUpdate.OrderList = orderList;
 
-                    // Client Order
-                    var clientOrder = await database.ClientOrder.FirstOrDefaultAsync(c => c.Id == orderUpdate.ClientOrderId).ConfigureAwait(true);
-                    if (null == clientOrder)
-                    {
-                        clientOrder = new ClientOrder(orderUpdate.ClientOrderId)
-                        {
-                            CreatedOn = DateTime.Now,
-                            Price = orderUpdate.Price,
-                            Quantity = orderUpdate.Quantity,
-                            Side = orderUpdate.Side,
-                            Type = orderUpdate.Type,
-                            TimeInForce = orderUpdate.TimeInForce,
-                            Order = order,
-                            Symbol = clientOrder.Symbol
-                        };
 
-                        database.ClientOrder.Add(clientOrder);
-                    }
 
                     // If sell and filled, remove quantity from buy
                     if (binanceStreamOrderUpdate.Side == OrderSide.Sell && binanceStreamOrderUpdate.Status == OrderStatus.Filled)

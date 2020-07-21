@@ -8,6 +8,7 @@ using Serilog;
 using Serilog.Context;
 using SimpleInjector.Lifestyles;
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache;
@@ -100,36 +101,76 @@ namespace trape.cli.trader.Market
                     var binanceResponseType = (OrderResponseType)(int)clientOrder.OrderResponseType;
                     var timeInForce = (TimeInForce)(int)clientOrder.TimeInForce;
 
-                    var placedOrder = await this._binanceClient.PlaceOrderAsync(clientOrder.Symbol, binanceSide, binanceType, price: clientOrder.Price,
-                        quantity: clientOrder.Quantity, newClientOrderId: clientOrder.Id, orderResponseType: binanceResponseType, timeInForce: timeInForce,
-                        ct: cancellationToken).ConfigureAwait(true);
+                    WebCallResult<BinancePlacedOrder> placedOrder;
 
-                    // Log order in custom format
-                    // Due to timing from Binance this might be executed after updates occurred
-                    // So check if it exists in the database and update, otherwise add new
-                    var existingClientOrder = await database.ClientOrder.FirstOrDefaultAsync(c => c.Id == clientOrder.Id).ConfigureAwait(false);
-                    if (existingClientOrder == null)
+                    // Market does not require parameter 'timeInForce' and 'price'
+                    if (binanceType == OrderType.Market)
                     {
-                        database.ClientOrder.Add(clientOrder);
+                        placedOrder = await this._binanceClient.PlaceOrderAsync(clientOrder.Symbol, binanceSide, binanceType,
+                          quantity: clientOrder.Quantity, newClientOrderId: clientOrder.Id, orderResponseType: binanceResponseType,
+                          ct: cancellationToken).ConfigureAwait(true);
                     }
                     else
                     {
-                        existingClientOrder.CreatedOn = clientOrder.CreatedOn;
-                        existingClientOrder.Order = clientOrder.Order;
-                        existingClientOrder.OrderResponseType = clientOrder.OrderResponseType;
-                        existingClientOrder.Price = clientOrder.Price;
-                        existingClientOrder.Quantity = clientOrder.Quantity;
-                        existingClientOrder.Side = clientOrder.Side;
-                        existingClientOrder.Symbol = clientOrder.Symbol;
-                        existingClientOrder.TimeInForce = clientOrder.TimeInForce;
-                        existingClientOrder.Type = clientOrder.Type;                        
+                        placedOrder = await this._binanceClient.PlaceOrderAsync(clientOrder.Symbol, binanceSide, binanceType, price: clientOrder.Price,
+                          quantity: clientOrder.Quantity, newClientOrderId: clientOrder.Id, orderResponseType: binanceResponseType, timeInForce: timeInForce,
+                          ct: cancellationToken).ConfigureAwait(true);
                     }
-                    
-                    this._logger.Debug($"{clientOrder.Symbol}: {clientOrder.Side} {clientOrder.Quantity} {clientOrder.Price:0.00} {clientOrder.Id}");
 
-                    await LogOrder(database, clientOrder.Id, placedOrder, cancellationToken).ConfigureAwait(true);
+                    var attempts = 3;
+                    while (attempts > 0)
+                    {
+                        try
+                        {
+                            // Log order in custom format
+                            // Due to timing from Binance this might be executed after updates occurred
+                            // So check if it exists in the database and update, otherwise add new
+                            var existingClientOrder = database.ClientOrder.FirstOrDefault(c => c.Id == clientOrder.Id);
 
-                    await database.SaveChangesAsync(cancellationToken).ConfigureAwait(true);
+                            this._logger.Information($"Existing Client Order is null: {existingClientOrder == null}");
+
+                            if (existingClientOrder == null)
+                            {
+                                database.ClientOrder.Add(clientOrder);
+
+                                this._logger.Information($"Adding new Client Order");
+                            }
+                            else
+                            {
+                                existingClientOrder.CreatedOn = clientOrder.CreatedOn;
+                                existingClientOrder.Order = clientOrder.Order;
+                                existingClientOrder.OrderResponseType = clientOrder.OrderResponseType;
+                                existingClientOrder.Price = clientOrder.Price;
+                                existingClientOrder.Quantity = clientOrder.Quantity;
+                                existingClientOrder.Side = clientOrder.Side;
+                                existingClientOrder.Symbol = clientOrder.Symbol;
+                                existingClientOrder.TimeInForce = clientOrder.TimeInForce;
+                                existingClientOrder.Type = clientOrder.Type;
+
+                                this._logger.Information($"Updating existing Client Order");
+                            }
+
+                            this._logger.Debug($"{clientOrder.Symbol}: {clientOrder.Side} {clientOrder.Quantity} {clientOrder.Price:0.00} {clientOrder.Id}");
+
+                            await database.SaveChangesAsync(cancellationToken).ConfigureAwait(true);
+
+                            await LogOrder(database, clientOrder.Id, placedOrder, cancellationToken).ConfigureAwait(true);
+                            
+                            break;
+                        }
+                        catch(Exception coe)
+                        {
+                            attempts--;
+
+                            this._logger.Information($"Failed attempt to store Client Order {clientOrder.Id}; attempt: {attempts}");
+                            this._logger.Error(coe, coe.Message);
+
+                            if (attempts == 0)
+                            {
+                                throw;
+                            }
+                        }
+                    }
                 }
                 catch (Exception e)
                 {
@@ -186,8 +227,56 @@ namespace trape.cli.trader.Market
                 }
                 else
                 {
-                    await database.PlacedOrders.AddAsync(Translator.Translate(placedOrder.Data)).ConfigureAwait(true);
-                    
+                    var attempts = 3;
+                    while (attempts > 0)
+                    {
+                        try
+                        {
+                            var newPlacedOrder = Translator.Translate(placedOrder.Data);
+                            var existingPlacedOrder = database.PlacedOrders.FirstOrDefault(p => p.OrderId == newPlacedOrder.OrderId);
+
+                            if (existingPlacedOrder == null)
+                            {
+                                await database.PlacedOrders.AddAsync(newPlacedOrder).ConfigureAwait(true);
+                            }
+                            else
+                            {
+                                existingPlacedOrder.ClientOrderId = newPlacedOrder.ClientOrderId;
+                                existingPlacedOrder.CummulativeQuoteQuantity = newPlacedOrder.CummulativeQuoteQuantity;
+                                existingPlacedOrder.ExecutedQuantity = newPlacedOrder.ExecutedQuantity;
+                                existingPlacedOrder.MarginBuyBorrowAmount = newPlacedOrder.MarginBuyBorrowAmount;
+                                existingPlacedOrder.MarginBuyBorrowAsset = newPlacedOrder.MarginBuyBorrowAsset;
+                                existingPlacedOrder.OrderListId = newPlacedOrder.OrderListId;
+                                existingPlacedOrder.OriginalClientOrderId = newPlacedOrder.OriginalClientOrderId;
+                                existingPlacedOrder.OriginalQuantity = newPlacedOrder.OriginalQuantity;
+                                existingPlacedOrder.OriginalQuoteOrderQuantity = newPlacedOrder.OriginalQuoteOrderQuantity;
+                                existingPlacedOrder.Price = newPlacedOrder.Price;
+                                existingPlacedOrder.Side = newPlacedOrder.Side;
+                                existingPlacedOrder.Status = newPlacedOrder.Status;
+                                existingPlacedOrder.StopPrice = newPlacedOrder.StopPrice;
+                                existingPlacedOrder.Symbol = newPlacedOrder.Symbol;
+                                existingPlacedOrder.TimeInForce = newPlacedOrder.TimeInForce;
+                                existingPlacedOrder.TransactionTime = newPlacedOrder.TransactionTime;
+                                existingPlacedOrder.Type = newPlacedOrder.Type;
+                            }
+
+                            await database.SaveChangesAsync(cancellationToken).ConfigureAwait(true);
+
+                            break;
+                        }
+                        catch
+                        {
+                            attempts--;
+
+                            Log.Information($"Failed attempt to store Placed Order {newClientOrderId}; attempt: {attempts}");
+
+                            if (attempts == 0)
+                            {
+                                throw;
+                            }
+                        }
+                    }
+
                     this._logger.Information($"{placedOrder.Data.Symbol} @ {placedOrder.Data.Price:0.00}: Issuing sell of {placedOrder.Data.ExecutedQuantity} / {placedOrder.Data.OriginalQuantity}");
                 }
             }

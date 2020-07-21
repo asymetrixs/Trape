@@ -72,6 +72,11 @@ namespace trape.datalayer.Models
         public virtual Order Order { get; set; }
 
         /// <summary>
+        /// Order Id
+        /// </summary>
+        public int? OrderId { get; set; }
+
+        /// <summary>
         /// Order response type
         /// </summary>
         public OrderResponseType OrderResponseType { get; set; }

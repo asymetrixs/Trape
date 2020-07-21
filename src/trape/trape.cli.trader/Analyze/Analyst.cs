@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using SimpleInjector.Lifestyles;
 using System;
@@ -262,6 +261,7 @@ namespace trape.cli.trader.Analyze
                 // Calculate value
                 var stockValue = stockQuantity * currentPrice.Value;
                 var totalValue = stockValue + usdt?.Free;
+
                 // Check if more than 50% of assets are USDT, only then jumpbuy
                 if (totalValue.HasValue && totalValue.Value * 0.5M < usdt?.Free)
                 {
