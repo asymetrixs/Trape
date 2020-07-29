@@ -1,0 +1,15 @@
+{
+  "binance": {
+    "apikey": "<apikey>",
+    "secretkey": "<secretkey>"
+  },
+  "ConnectionStrings": {
+    "trape-db": "Server=<server>;Port=<port>;uid=<uid>;pwd=<pwd>;database=<database>;enlist=true;Pooling=true;SSL Mode=Require;Trust Server Certificate=true"
+  },
+  "Serilog": {
+    "MinimumLevel": "Information",
+    "LogFileLocation": "collector-.log",
+    "OutputTemplateConsole": "[{Level:u3}] {Message:j}{NewLine}",
+    "OutputTemplateFile": "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] {Message:lj} {Properties}{NewLine}{Exception}"
+  }
+}
