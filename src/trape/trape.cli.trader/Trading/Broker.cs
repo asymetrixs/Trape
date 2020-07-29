@@ -1,4 +1,4 @@
-﻿using Binance.Net.Objects;
+﻿using Binance.Net.Objects.Spot.MarketData;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -477,14 +477,14 @@ namespace trape.cli.trader.Trading
                     {
                         // Get last orders
                         var lastOrder = database.PlacedOrders
-                                            .Where(p => p.Symbol == this.Symbol && p.ExecutedQuantity > 0)
+                                            .Where(p => p.Symbol == this.Symbol && p.QuantityFilled > 0)
                                             .OrderByDescending(p => p.TransactionTime).AsNoTracking().FirstOrDefault();
 
                         // Base query
                         buyTrades = database.PlacedOrders
                                     .Where(p => p.Side == OrderSide.Buy
                                         && p.Symbol == this.Symbol
-                                        && p.ExecutedQuantity > 0)
+                                        && p.QuantityFilled > 0)
                                     .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity)).AsNoTracking();
 
                         // Normal quantity

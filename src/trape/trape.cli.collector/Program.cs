@@ -1,6 +1,7 @@
 ﻿using Binance.Net;
 using Binance.Net.Interfaces;
 using Binance.Net.Objects;
+using Binance.Net.Objects.Spot;
 using CryptoExchange.Net.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,34 +40,40 @@ namespace trape.cli.collector
             // Setup configuration
             Config.SetUp();
 
+            ILogger logger;
+
             // Setup IoC container
-            var app = CreateHost();
-
-            var logger = Container.GetInstance<ILogger>().ForContext<Program>();
-            logger.Information("Start up complete");
-
-            try
+            using (var app = CreateHost())
             {
-                // Run App
-                await app.RunAsync().ConfigureAwait(false);
-            }
-            catch (OperationCanceledException oce)
-            {
-                // Ignore
-                logger.Warning(oce, oce.Message);
-            }
-            catch (Exception e)
-            {
-                logger.Error(e, e.Message);
+                logger = Container.GetInstance<ILogger>().ForContext<Program>();
+                logger.Information("Starting...");
 
-                // Wait 2 seconds
-                await Task.Delay(2000).ConfigureAwait(true);
+                try
+                {
+                    // Run App
+                    await app.RunAsync().ConfigureAwait(true);
 
-                // Signal unclean exit and rely on service manager (e.g. systemd) to restart the service
-                logger.Warning("Check previous errors. Exiting with 254.");
-                Environment.Exit(254);
+                    logger.Information("Terminating...");
+                }
+                catch (OperationCanceledException oce)
+                {
+                    // Ignore
+                    logger.Warning(oce, oce.Message);
+                }
+                catch (Exception e)
+                {
+                    logger.Error(e, e.Message);
+
+                    // Wait 2 seconds
+                    await Task.Delay(2000).ConfigureAwait(true);
+
+                    // Signal unclean exit and rely on service manager (e.g. systemd) to restart the service
+                    logger.Warning("Check previous errors. Exiting with 254.");
+                    Environment.Exit(254);
+                }
+
+                await app.WaitForShutdownAsync().ConfigureAwait(true);
             }
-
 
             logger.Information("Shut down complete");
 

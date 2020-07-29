@@ -15,7 +15,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Trape.BinanceNet.Logger", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "trape.datalayer", "trape.datalayer\trape.datalayer.csproj", "{0F385BC2-C2EB-4835-A634-2A9C1432CC14}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "trape.mapper", "trape.mapper\trape.mapper.csproj", "{C6FBE5E6-27B0-4BA9-8690-234F728C7132}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "trape.mapper", "trape.mapper\trape.mapper.csproj", "{C6FBE5E6-27B0-4BA9-8690-234F728C7132}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F66D124A-8E49-4C7E-B7CC-F1CB009B94DE}"
+	ProjectSection(SolutionItems) = preProject
+		..\buildCollector.bat = ..\buildCollector.bat
+		..\buildTrader.bat = ..\buildTrader.bat
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

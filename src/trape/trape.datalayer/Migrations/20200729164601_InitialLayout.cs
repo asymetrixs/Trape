@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace trape.datalayer.Migrations
 {
-    public partial class Initial : Migration
+    public partial class InitialLayout : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -57,7 +57,7 @@ namespace trape.datalayer.Migrations
                     best_bid_quantity = table.Column<decimal>(nullable: false),
                     best_ask_price = table.Column<decimal>(nullable: false),
                     best_ask_quantity = table.Column<decimal>(nullable: false),
-                    created_on = table.Column<DateTime>(nullable: false)
+                    transaction_time = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -75,6 +75,7 @@ namespace trape.datalayer.Migrations
                     type = table.Column<int>(nullable: false),
                     quantity = table.Column<decimal>(nullable: false),
                     price = table.Column<decimal>(nullable: false),
+                    order_id = table.Column<int>(nullable: true),
                     order_response_type = table.Column<int>(nullable: false),
                     time_in_force = table.Column<int>(nullable: true)
                 },
@@ -137,16 +138,17 @@ namespace trape.datalayer.Migrations
                     order_id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     margin_buy_borrow_asset = table.Column<string>(nullable: true),
+                    create_time = table.Column<DateTime>(nullable: false),
                     margin_buy_borrow_amount = table.Column<decimal>(nullable: true),
                     stop_price = table.Column<decimal>(nullable: true),
                     side = table.Column<int>(nullable: false),
                     type = table.Column<int>(nullable: false),
                     time_in_force = table.Column<int>(nullable: false),
                     status = table.Column<int>(nullable: false),
-                    original_quote_order_quantity = table.Column<decimal>(nullable: false),
-                    cummulative_quote_quantity = table.Column<decimal>(nullable: false),
-                    executed_quantity = table.Column<decimal>(nullable: false),
-                    original_quantity = table.Column<decimal>(nullable: false),
+                    quote_quantity = table.Column<decimal>(nullable: false),
+                    quote_quantity_filled = table.Column<decimal>(nullable: false),
+                    quantity_filled = table.Column<decimal>(nullable: false),
+                    quantity = table.Column<decimal>(nullable: false),
                     price = table.Column<decimal>(nullable: false),
                     transaction_time = table.Column<DateTime>(nullable: false),
                     original_client_order_id = table.Column<string>(nullable: true),
@@ -237,6 +239,8 @@ namespace trape.datalayer.Migrations
                     id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     total_trades = table.Column<long>(nullable: false),
+                    close_time = table.Column<DateTime>(nullable: false),
+                    open_time = table.Column<DateTime>(nullable: false),
                     last_trade_id = table.Column<long>(nullable: false),
                     first_trade_id = table.Column<long>(nullable: false),
                     total_traded_quote_asset_volume = table.Column<decimal>(nullable: false),
@@ -244,19 +248,17 @@ namespace trape.datalayer.Migrations
                     low_price = table.Column<decimal>(nullable: false),
                     high_price = table.Column<decimal>(nullable: false),
                     open_price = table.Column<decimal>(nullable: false),
-                    best_ask_quantity = table.Column<decimal>(nullable: false),
-                    best_ask_price = table.Column<decimal>(nullable: false),
-                    best_bid_quantity = table.Column<decimal>(nullable: false),
-                    best_bid_price = table.Column<decimal>(nullable: false),
-                    close_trades_quantity = table.Column<decimal>(nullable: false),
-                    current_day_close_price = table.Column<decimal>(nullable: false),
+                    ask_quantity = table.Column<decimal>(nullable: false),
+                    ask_price = table.Column<decimal>(nullable: false),
+                    bid_quantity = table.Column<decimal>(nullable: false),
+                    bid_price = table.Column<decimal>(nullable: false),
+                    last_quantity = table.Column<decimal>(nullable: false),
+                    last_price = table.Column<decimal>(nullable: false),
                     prev_day_close_price = table.Column<decimal>(nullable: false),
-                    weighted_average = table.Column<decimal>(nullable: false),
-                    price_change_percentage = table.Column<decimal>(nullable: false),
+                    weighted_average_price = table.Column<decimal>(nullable: false),
+                    price_change_percent = table.Column<decimal>(nullable: false),
                     price_change = table.Column<decimal>(nullable: false),
-                    symbol = table.Column<string>(nullable: true),
-                    statistics_open_time = table.Column<DateTime>(nullable: false),
-                    statistics_close_time = table.Column<DateTime>(nullable: false)
+                    symbol = table.Column<string>(nullable: true)
                 },
                 constraints: table =>
                 {
@@ -489,19 +491,21 @@ namespace trape.datalayer.Migrations
                 {
                     id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    last_quote_transacted_quantity = table.Column<decimal>(nullable: false),
+                    last_quote_quantity = table.Column<decimal>(nullable: false),
+                    create_time = table.Column<DateTime>(nullable: false),
+                    last_price_filled = table.Column<decimal>(nullable: false),
                     quote_order_quantity = table.Column<decimal>(nullable: false),
-                    cummulative_quote_quantity = table.Column<decimal>(nullable: false),
-                    order_creation_time = table.Column<DateTime>(nullable: false),
                     buyer_is_maker = table.Column<bool>(nullable: false),
                     is_working = table.Column<bool>(nullable: false),
                     trade_id = table.Column<long>(nullable: false),
                     commission_asset = table.Column<string>(nullable: true),
                     commission = table.Column<decimal>(nullable: false),
-                    price_last_filled_trade = table.Column<decimal>(nullable: false),
-                    accumulated_quantity_of_filled_trades = table.Column<decimal>(nullable: false),
-                    quantity_of_last_filled_trade = table.Column<decimal>(nullable: false),
+                    last_quantity_filled = table.Column<decimal>(nullable: false),
+                    quantity_filled = table.Column<decimal>(nullable: false),
                     order_id = table.Column<long>(nullable: false),
+                    quote_quantity = table.Column<decimal>(nullable: false),
+                    update_time = table.Column<DateTime>(nullable: false),
+                    quote_quantity_filled = table.Column<decimal>(nullable: false),
                     reject_reason = table.Column<int>(nullable: false),
                     status = table.Column<int>(nullable: false),
                     execution_type = table.Column<int>(nullable: false),
@@ -561,9 +565,9 @@ namespace trape.datalayer.Migrations
                 column: "update_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_book_ticks_created_on_symbol",
+                name: "IX_book_ticks_transaction_time_symbol",
                 table: "book_ticks",
-                columns: new[] { "created_on", "symbol" });
+                columns: new[] { "transaction_time", "symbol" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_client_order_created_on",
@@ -702,9 +706,9 @@ namespace trape.datalayer.Migrations
                 column: "id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ticks_statistics_open_time_statistics_close_time",
+                name: "IX_ticks_open_time_close_time",
                 table: "ticks",
-                columns: new[] { "statistics_open_time", "statistics_close_time" });
+                columns: new[] { "open_time", "close_time" });
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)

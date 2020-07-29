@@ -10,22 +10,22 @@ namespace trape.datalayer.Models
         /// <summary>
         /// Last quote asset transacted quantity (i.e. LastPrice * LastQuantity)
         /// </summary>
-        public decimal LastQuoteTransactedQuantity { get; set; }
+        public decimal LastQuoteQuantity { get; set; }
+
+        /// <summary>
+        /// Time the order was created
+        /// </summary>
+        public DateTime CreateTime { get; set; }
+
+        /// <summary>
+        /// The price of the last filled trade
+        /// </summary>
+        public decimal LastPriceFilled { get; set; }
 
         /// <summary>
         /// Quote order quantity
         /// </summary>
         public decimal QuoteOrderQuantity { get; set; }
-
-        /// <summary>
-        /// Cummulative amount
-        /// </summary>
-        public decimal CummulativeQuoteQuantity { get; set; }
-
-        /// <summary>
-        /// Time the order was created
-        /// </summary>
-        public DateTime OrderCreationTime { get; set; }
 
         /// <summary>
         /// Whether the buyer is the maker
@@ -53,24 +53,34 @@ namespace trape.datalayer.Models
         public decimal Commission { get; set; }
 
         /// <summary>
-        /// The price of the last filled trade
-        /// </summary>
-        public decimal PriceLastFilledTrade { get; set; }
-
-        /// <summary>
-        /// The quantity of all trades that were filled for this order
-        /// </summary>
-        public decimal AccumulatedQuantityOfFilledTrades { get; set; }
-
-        /// <summary>
         /// The quantity of the last filled trade of this order
         /// </summary>
-        public decimal QuantityOfLastFilledTrade { get; set; }
+        public decimal LastQuantityFilled { get; set; }
+
+        /// <summary>
+        /// The quantity of all trades that were filled for that order
+        /// </summary>
+        public decimal QuantityFilled { get; set; }
 
         /// <summary>
         /// The id of the order as assigned by Binance
         /// </summary>
         public long OrderId { get; set; }
+
+        /// <summary>
+        /// Quote order quantity
+        /// </summary>
+        public decimal QuoteQuantity { get; set; }
+
+        /// <summary>
+        /// Time of the update
+        /// </summary>
+        public DateTime UpdateTime { get; set; }
+
+        /// <summary>
+        /// Cummulative amount
+        /// </summary>
+        public decimal QuoteQuantityFilled { get; set; }
 
         /// <summary>
         /// Order

@@ -241,7 +241,7 @@ namespace trape.cli.trader.Analyze
                         var recordedStockQuantity = database.PlacedOrders
                                                 .Where(p => p.Side == OrderSide.Buy
                                                     && p.Symbol == this.Symbol
-                                                    && p.ExecutedQuantity > 0)
+                                                    && p.QuantityFilled > 0)
                                                 .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity))
                                                 .Sum(f => f.Quantity - f.ConsumedQuantity);
 

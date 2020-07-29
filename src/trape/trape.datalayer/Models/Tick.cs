@@ -10,6 +10,16 @@ namespace trape.datalayer.Models
         public long TotalTrades { get; set; }
 
         /// <summary>
+        /// The close time of these stats
+        /// </summary>
+        public DateTime CloseTime { get; set; }
+
+        /// <summary>
+        /// The open time of these stats
+        /// </summary>
+        public DateTime OpenTime { get; set; }
+
+        /// <summary>
         /// The last trade id of today
         /// </summary>
         public long LastTradeId { get; set; }
@@ -47,32 +57,32 @@ namespace trape.datalayer.Models
         /// <summary>
         /// The quantity of the best ask price
         /// </summary>
-        public decimal BestAskQuantity { get; set; }
+        public decimal AskQuantity { get; set; }
 
         /// <summary>
         /// The best ask price in the order book
         /// </summary>
-        public decimal BestAskPrice { get; set; }
+        public decimal AskPrice { get; set; }
 
         /// <summary>
         /// The quantity of the best bid price available
         /// </summary>
-        public decimal BestBidQuantity { get; set; }
+        public decimal BidQuantity { get; set; }
 
         /// <summary>
         /// The best bid price in the order book
         /// </summary>
-        public decimal BestBidPrice { get; set; }
+        public decimal BidPrice { get; set; }
 
         /// <summary>
-        /// The current day close quantity.
+        /// The most recent trade quantity
         /// </summary>
-        public decimal CloseTradesQuantity { get; set; }
+        public decimal LastQuantity { get; set; }
 
         /// <summary>
         /// The current day close price. This is the latest price for this symbol.
         /// </summary>
-        public decimal CurrentDayClosePrice { get; set; }
+        public decimal LastPrice { get; set; }
 
         /// <summary>
         /// The close price of the previous day
@@ -82,12 +92,12 @@ namespace trape.datalayer.Models
         /// <summary>
         /// The weighted average
         /// </summary>
-        public decimal WeightedAverage { get; set; }
+        public decimal WeightedAveragePrice { get; set; }
 
         /// <summary>
         /// The price change percentage of this symbol
         /// </summary>
-        public decimal PriceChangePercentage { get; set; }
+        public decimal PriceChangePercent { get; set; }
 
         /// <summary>
         /// The price change of this symbol
@@ -98,15 +108,5 @@ namespace trape.datalayer.Models
         /// The symbol this data is for
         /// </summary>
         public string Symbol { get; set; }
-
-        /// <summary>
-        /// The open time of these stats
-        /// </summary>
-        public DateTime StatisticsOpenTime { get; set; }
-
-        /// <summary>
-        /// The close time of these stats
-        /// </summary>
-        public DateTime StatisticsCloseTime { get; set; }
     }
 }

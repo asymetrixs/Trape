@@ -1,18 +1,14 @@
-﻿using Binance.Net.Interfaces;
-using Binance.Net.Objects;
-using Binance.Net.Objects.Sockets;
+﻿using Binance.Net.Enums;
+using Binance.Net.Interfaces;
+using Binance.Net.Objects.Spot.SpotData;
+using Binance.Net.Objects.Spot.UserStream;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
-using Microsoft.EntityFrameworkCore.Update;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json.Converters;
 using Serilog;
 using SimpleInjector.Lifestyles;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache;
@@ -227,12 +223,15 @@ namespace trape.cli.trader.Account
                     {
                         try
                         {
+                            this._logger.Information($"Loading existing Client Order: {orderUpdate.ClientOrderId}");
                             clientOrder = database.ClientOrder.FirstOrDefault(c => c.Id == orderUpdate.ClientOrderId);
 
-                            this._logger.Information($"Client Order is null: {clientOrder == null}");
+                            this._logger.Information($"Client Order found: {(clientOrder != null).ToString()}: {orderUpdate.ClientOrderId}");
 
                             if (clientOrder == null)
                             {
+                                this._logger.Information($"Adding new Client Order: {orderUpdate.ClientOrderId}");
+
                                 clientOrder = new ClientOrder(orderUpdate.ClientOrderId)
                                 {
                                     CreatedOn = DateTime.Now,
@@ -244,21 +243,32 @@ namespace trape.cli.trader.Account
                                     Symbol = orderUpdate.Symbol
                                 };
 
-                                this._logger.Information($"Adding new Client Order");
-
                                 database.ClientOrder.Add(clientOrder);
 
-                                await database.SaveChangesAsync().ConfigureAwait(false);
-                            }                            
+                                await database.SaveChangesAsync().ConfigureAwait(true);
+                            }
 
                             break;
                         }
-                        catch(Exception coe)
+                        catch (Exception coe)
                         {
                             attempts--;
 
                             this._logger.Information($"Failed attempt to store Client Order {clientOrder.Id}; attempt: {attempts}");
-                            this._logger.Error(coe, coe.Message);
+
+                            database.Entry(clientOrder).State = EntityState.Modified;
+
+                            try
+                            {
+                                await database.SaveChangesAsync().ConfigureAwait(true);
+                                this._logger.Warning($"Modified state accepted for: {clientOrder.Id}");
+                            }
+                            catch (Exception coe2)
+                            {
+                                this._logger.Error(coe, $"Finally attempt to store Client Order {clientOrder.Id} failed");
+
+                                this._logger.Warning(coe2, $"Modified state not accepted for: {clientOrder.Id}");
+                            }
 
                             if (attempts == 0)
                             {
@@ -335,7 +345,7 @@ namespace trape.cli.trader.Account
                                                                     && f.Price <= binanceStreamOrderUpdate.Price))
                                         .OrderByDescending(t => t.Price);
 
-                        var soldQuantity = binanceStreamOrderUpdate.AccumulatedQuantityOfFilledTrades;
+                        var soldQuantity = binanceStreamOrderUpdate.QuantityFilled;
 
                         // Fill trades with sold quantity
                         foreach (var trade in buyTrades)

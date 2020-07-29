@@ -1,6 +1,8 @@
 ﻿using Binance.Net;
+using Binance.Net.Enums;
 using Binance.Net.Interfaces;
 using Binance.Net.Objects;
+using Binance.Net.Objects.Spot;
 using CryptoExchange.Net.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,33 +49,38 @@ namespace trape.cli.trader
             // Set up configuration
             Config.SetUp();
 
+            ILogger logger;
+
             // Create IoC container
-            var app = CreateHost();
-
-            var logger = Container.GetInstance<ILogger>().ForContext<Program>();
-            logger.Information("Start up complete");
-
-            try
+            using (var app = CreateHost())
             {
-                // Run App
-                await app.RunAsync().ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                logger.Error(e, e.Message);
+                logger = Container.GetInstance<ILogger>().ForContext<Program>(); ;
 
-                // Wait 2 seconds
-                await Task.Delay(2000).ConfigureAwait(true);
+                logger.Information("Starting...");
 
-                // Signal unclean exit and rely on service manager (e.g. systemd) to restart the service
-                logger.Warning("Check previous errors. Exiting with 254.");
-                Environment.Exit(254);
+                try
+                {
+                    // Run App
+                    await app.RunAsync().ConfigureAwait(true);
+
+                    logger.Information("Terminating...");
+                }
+                catch (Exception e)
+                {
+                    logger.Error(e, e.Message);
+
+                    // Wait 2 seconds
+                    await Task.Delay(2000).ConfigureAwait(true);
+
+                    // Signal unclean exit and rely on service manager (e.g. systemd) to restart the service
+                    logger.Warning("Check previous errors. Exiting with 254.");
+                    Environment.Exit(254);
+                }
+
+                await app.WaitForShutdownAsync().ConfigureAwait(true);
             }
 
             logger.Information("Shut down complete");
-
-            // Exit code will be 0, clean exit
-            Environment.ExitCode = 0;
         }
 
         /// <summary>

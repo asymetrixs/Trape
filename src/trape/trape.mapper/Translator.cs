@@ -1,5 +1,6 @@
-﻿using Binance.Net.Objects;
-using Binance.Net.Objects.Sockets;
+﻿using Binance.Net.Objects.Spot.MarketStream;
+using Binance.Net.Objects.Spot.SpotData;
+using Binance.Net.Objects.Spot.UserStream;
 using System;
 using System.Collections.Generic;
 using trape.datalayer.Models;
@@ -21,22 +22,22 @@ namespace trape.mapper
             var placedOrder = new PlacedOrder()
             {
                 ClientOrderId = binancePlacedOrder.ClientOrderId,
-                CummulativeQuoteQuantity = binancePlacedOrder.CummulativeQuoteQuantity,
-                ExecutedQuantity = binancePlacedOrder.ExecutedQuantity,
+                CreateTime = binancePlacedOrder.CreateTime,
                 MarginBuyBorrowAmount = binancePlacedOrder.MarginBuyBorrowAmount,
                 MarginBuyBorrowAsset = binancePlacedOrder.MarginBuyBorrowAsset,
                 OrderId = binancePlacedOrder.OrderId,
                 OrderListId = binancePlacedOrder.OrderListId,
                 OriginalClientOrderId = binancePlacedOrder.OriginalClientOrderId,
-                OriginalQuantity = binancePlacedOrder.OriginalQuantity,
-                OriginalQuoteOrderQuantity = binancePlacedOrder.OriginalQuoteOrderQuantity,
                 Price = binancePlacedOrder.Price,
+                Quantity = binancePlacedOrder.Quantity,
+                QuantityFilled = binancePlacedOrder.QuantityFilled,
+                QuoteQuantity = binancePlacedOrder.QuoteQuantity,
+                QuoteQuantityFilled = binancePlacedOrder.QuoteQuantityFilled,                
                 Side = (datalayer.Enums.OrderSide)(int)binancePlacedOrder.Side,
                 Status = (datalayer.Enums.OrderStatus)(int)binancePlacedOrder.Status,
                 StopPrice = binancePlacedOrder.StopPrice,
                 Symbol = binancePlacedOrder.Symbol,
                 TimeInForce = (datalayer.Enums.TimeInForce)(int)binancePlacedOrder.TimeInForce,
-                TransactionTime = binancePlacedOrder.TransactTime,
                 Type = (datalayer.Enums.OrderType)(int)binancePlacedOrder.Type
             };
 
@@ -105,7 +106,7 @@ namespace trape.mapper
                 Symbol = binanceStreamOrderList.Symbol,
                 TransactionTime = binanceStreamOrderList.TransactionTime
             };
-
+            
             foreach (var ol in binanceStreamOrderList.Orders)
             {
                 orderList.Orders.Add(Translate(ol, orderList));
@@ -178,35 +179,36 @@ namespace trape.mapper
         public static OrderUpdate Translate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
         {
             return new OrderUpdate()
-            {
-                AccumulatedQuantityOfFilledTrades = binanceStreamOrderUpdate.AccumulatedQuantityOfFilledTrades,
+            {                
                 BuyerIsMaker = binanceStreamOrderUpdate.BuyerIsMaker,
                 ClientOrderId = binanceStreamOrderUpdate.ClientOrderId,
                 Commission = binanceStreamOrderUpdate.Commission,
                 CommissionAsset = binanceStreamOrderUpdate.CommissionAsset,
-                CummulativeQuoteQuantity = binanceStreamOrderUpdate.CummulativeQuoteQuantity,
+                CreateTime = binanceStreamOrderUpdate.CreateTime,                
                 ExecutionType = (datalayer.Enums.ExecutionType)(int)binanceStreamOrderUpdate.ExecutionType,
                 I = binanceStreamOrderUpdate.I,
                 IcebergQuantity = binanceStreamOrderUpdate.IcebergQuantity,
                 IsWorking = binanceStreamOrderUpdate.IsWorking,
-                LastQuoteTransactedQuantity = binanceStreamOrderUpdate.LastQuoteTransactedQuantity,
-                OrderCreationTime = binanceStreamOrderUpdate.OrderCreationTime,
+                LastPriceFilled = binanceStreamOrderUpdate.LastPriceFilled,
+                LastQuantityFilled = binanceStreamOrderUpdate.LastQuantityFilled,
+                LastQuoteQuantity = binanceStreamOrderUpdate.LastQuoteQuantity,
                 OrderId = binanceStreamOrderUpdate.OrderId,
                 OrderListId = binanceStreamOrderUpdate.OrderListId,
                 OriginalClientOrderId = binanceStreamOrderUpdate.OriginalClientOrderId,
                 Price = binanceStreamOrderUpdate.Price,
-                PriceLastFilledTrade = binanceStreamOrderUpdate.PriceLastFilledTrade,
                 Quantity = binanceStreamOrderUpdate.Quantity,
-                QuantityOfLastFilledTrade = binanceStreamOrderUpdate.QuantityOfLastFilledTrade,
-                RejectReason = (datalayer.Enums.OrderRejectReason)(int)binanceStreamOrderUpdate.RejectReason,
-                QuoteOrderQuantity = binanceStreamOrderUpdate.QuoteOrderQuantity,
+                QuantityFilled = binanceStreamOrderUpdate.QuantityFilled,
+                QuoteQuantity = binanceStreamOrderUpdate.QuoteQuantity,
+                QuoteQuantityFilled = binanceStreamOrderUpdate.QuoteQuantityFilled,
+                RejectReason = (datalayer.Enums.OrderRejectReason)(int)binanceStreamOrderUpdate.RejectReason,                
                 Side = (datalayer.Enums.OrderSide)(int)binanceStreamOrderUpdate.Side,
                 Status = (datalayer.Enums.OrderStatus)(int)binanceStreamOrderUpdate.Status,
                 StopPrice = binanceStreamOrderUpdate.StopPrice,
                 Symbol = binanceStreamOrderUpdate.Symbol,
                 TimeInForce = (datalayer.Enums.TimeInForce)(int)binanceStreamOrderUpdate.TimeInForce,
                 TradeId = binanceStreamOrderUpdate.TradeId,
-                Type = (datalayer.Enums.OrderType)(int)binanceStreamOrderUpdate.Type
+                Type = (datalayer.Enums.OrderType)(int)binanceStreamOrderUpdate.Type,
+                UpdateTime = binanceStreamOrderUpdate.UpdateTime
             };
         }
 
@@ -219,27 +221,27 @@ namespace trape.mapper
         {
             return new Tick()
             {
-                BestAskPrice = binanceStreamTick.BestAskPrice,
-                BestAskQuantity = binanceStreamTick.BestAskQuantity,
-                BestBidPrice = binanceStreamTick.BestBidPrice,
-                BestBidQuantity = binanceStreamTick.BestBidQuantity,
-                CloseTradesQuantity = binanceStreamTick.CloseTradesQuantity,
-                CurrentDayClosePrice = binanceStreamTick.CurrentDayClosePrice,
+                AskPrice = binanceStreamTick.AskPrice,
+                AskQuantity = binanceStreamTick.AskQuantity,
+                BidPrice = binanceStreamTick.BidPrice,
+                BidQuantity = binanceStreamTick.BidQuantity,
+                CloseTime = binanceStreamTick.CloseTime,
                 FirstTradeId = binanceStreamTick.FirstTradeId,
                 HighPrice = binanceStreamTick.HighPrice,
+                LastPrice = binanceStreamTick.LastPrice,
+                LastQuantity = binanceStreamTick.LastQuantity,
                 LastTradeId = binanceStreamTick.LastTradeId,
                 LowPrice = binanceStreamTick.LowPrice,
                 OpenPrice = binanceStreamTick.OpenPrice,
+                OpenTime = binanceStreamTick.OpenTime,
                 PrevDayClosePrice = binanceStreamTick.PrevDayClosePrice,
                 PriceChange = binanceStreamTick.PriceChange,
-                PriceChangePercentage = binanceStreamTick.PriceChangePercentage,
-                StatisticsCloseTime = binanceStreamTick.StatisticsCloseTime,
-                StatisticsOpenTime = binanceStreamTick.StatisticsOpenTime,
+                PriceChangePercent = binanceStreamTick.PriceChangePercent,
                 Symbol = binanceStreamTick.Symbol,
                 TotalTradedBaseAssetVolume = binanceStreamTick.TotalTradedBaseAssetVolume,
                 TotalTradedQuoteAssetVolume = binanceStreamTick.TotalTradedQuoteAssetVolume,
                 TotalTrades = binanceStreamTick.TotalTrades,
-                WeightedAverage = binanceStreamTick.WeightedAverage
+                WeightedAveragePrice = binanceStreamTick.WeightedAveragePrice
             };
         }
 
@@ -276,17 +278,17 @@ namespace trape.mapper
         /// </summary>
         /// <param name="binanceBookTick"></param>
         /// <returns></returns>
-        public static BookTick Translate(BinanceBookTick binanceBookTick)
+        public static BookPrice Translate(BinanceStreamBookPrice binanceStreamBookPrice)
         {
-            return new BookTick()
+            return new BookPrice()
             {
-                BestAskPrice = binanceBookTick.BestAskPrice,
-                BestAskQuantity = binanceBookTick.BestAskQuantity,
-                BestBidPrice = binanceBookTick.BestBidPrice,
-                BestBidQuantity = binanceBookTick.BestBidQuantity,
-                CreatedOn = DateTime.UtcNow,
-                Symbol = binanceBookTick.Symbol,
-                UpdateId = binanceBookTick.UpdateId
+                BestAskPrice = binanceStreamBookPrice.BestAskPrice,
+                BestAskQuantity = binanceStreamBookPrice.BestAskQuantity,
+                BestBidPrice = binanceStreamBookPrice.BestBidPrice,
+                BestBidQuantity = binanceStreamBookPrice.BestBidQuantity,
+                TransactionTime = binanceStreamBookPrice?.TransactionTime ?? DateTime.Now,
+                Symbol = binanceStreamBookPrice.Symbol,
+                UpdateId = binanceStreamBookPrice.UpdateId
             };
         }
     }

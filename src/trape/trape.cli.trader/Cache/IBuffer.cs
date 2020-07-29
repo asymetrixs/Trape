@@ -1,4 +1,4 @@
-﻿using Binance.Net.Objects;
+﻿using Binance.Net.Objects.Spot.MarketData;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;

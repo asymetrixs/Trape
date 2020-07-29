@@ -1,6 +1,6 @@
-﻿using Binance.Net.Interfaces;
-using Binance.Net.Objects;
-using CryptoExchange.Net;
+﻿using Binance.Net.Enums;
+using Binance.Net.Interfaces;
+using Binance.Net.Objects.Spot.SpotData;
 using CryptoExchange.Net.Objects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -125,15 +125,16 @@ namespace trape.cli.trader.Market
                             // Log order in custom format
                             // Due to timing from Binance this might be executed after updates occurred
                             // So check if it exists in the database and update, otherwise add new
+                            this._logger.Information($"Loading existing Client Order: {clientOrder.Id}");
                             var existingClientOrder = database.ClientOrder.FirstOrDefault(c => c.Id == clientOrder.Id);
 
-                            this._logger.Information($"Existing Client Order is null: {existingClientOrder == null}");
+                            this._logger.Information($"Client Order found: {(existingClientOrder != null).ToString()} : {clientOrder.Id}");
 
                             if (existingClientOrder == null)
                             {
                                 database.ClientOrder.Add(clientOrder);
 
-                                this._logger.Information($"Adding new Client Order");
+                                this._logger.Information($"Adding new Client Order: {clientOrder.Id}");
                             }
                             else
                             {
@@ -147,7 +148,7 @@ namespace trape.cli.trader.Market
                                 existingClientOrder.TimeInForce = clientOrder.TimeInForce;
                                 existingClientOrder.Type = clientOrder.Type;
 
-                                this._logger.Information($"Updating existing Client Order");
+                                this._logger.Information($"Updating existing Client Order: {clientOrder.Id}");
                             }
 
                             this._logger.Debug($"{clientOrder.Symbol}: {clientOrder.Side} {clientOrder.Quantity} {clientOrder.Price:0.00} {clientOrder.Id}");
@@ -155,15 +156,28 @@ namespace trape.cli.trader.Market
                             await database.SaveChangesAsync(cancellationToken).ConfigureAwait(true);
 
                             await LogOrder(database, clientOrder.Id, placedOrder, cancellationToken).ConfigureAwait(true);
-                            
+
                             break;
                         }
-                        catch(Exception coe)
+                        catch (Exception coe)
                         {
                             attempts--;
 
                             this._logger.Information($"Failed attempt to store Client Order {clientOrder.Id}; attempt: {attempts}");
-                            this._logger.Error(coe, coe.Message);
+
+                            database.Entry(clientOrder).State = EntityState.Modified;
+
+                            try
+                            {
+                                await database.SaveChangesAsync().ConfigureAwait(true);
+                                this._logger.Warning($"Modified state accepted for: {clientOrder.Id}");
+                            }
+                            catch (Exception coe2)
+                            {
+                                this._logger.Error(coe, $"Finally attempt to store Client Order {clientOrder.Id} failed");
+
+                                this._logger.Warning(coe2, $"Modified state not accepted for: {clientOrder.Id}");
+                            }
 
                             if (attempts == 0)
                             {
@@ -220,7 +234,7 @@ namespace trape.cli.trader.Market
 
                     if (placedOrder.Data != null)
                     {
-                        this._logger.Warning($"PlacedOrder: {placedOrder.Data.Symbol};{placedOrder.Data.Side};{placedOrder.Data.Type} > ClientOrderId:{placedOrder.Data.ClientOrderId} CummulativeQuoteQuantity:{placedOrder.Data.CummulativeQuoteQuantity} OriginalQuoteOrderQuantity:{placedOrder.Data.OriginalQuoteOrderQuantity} Status:{placedOrder.Data.Status}");
+                        this._logger.Warning($"PlacedOrder: {placedOrder.Data.Symbol};{placedOrder.Data.Side};{placedOrder.Data.Type} > ClientOrderId:{placedOrder.Data.ClientOrderId} QuoteQuantity:{placedOrder.Data.QuoteQuantity} QuoteQuantityFilled:{placedOrder.Data.QuoteQuantityFilled} Status:{placedOrder.Data.Status}");
                     }
 
                     // TODO: 1015 - TOO_MANY_ORDERS
@@ -242,14 +256,14 @@ namespace trape.cli.trader.Market
                             else
                             {
                                 existingPlacedOrder.ClientOrderId = newPlacedOrder.ClientOrderId;
-                                existingPlacedOrder.CummulativeQuoteQuantity = newPlacedOrder.CummulativeQuoteQuantity;
-                                existingPlacedOrder.ExecutedQuantity = newPlacedOrder.ExecutedQuantity;
+                                existingPlacedOrder.QuantityFilled = newPlacedOrder.QuoteQuantity;
+                                existingPlacedOrder.QuoteQuantityFilled = newPlacedOrder.QuoteQuantityFilled;                                
                                 existingPlacedOrder.MarginBuyBorrowAmount = newPlacedOrder.MarginBuyBorrowAmount;
                                 existingPlacedOrder.MarginBuyBorrowAsset = newPlacedOrder.MarginBuyBorrowAsset;
                                 existingPlacedOrder.OrderListId = newPlacedOrder.OrderListId;
                                 existingPlacedOrder.OriginalClientOrderId = newPlacedOrder.OriginalClientOrderId;
-                                existingPlacedOrder.OriginalQuantity = newPlacedOrder.OriginalQuantity;
-                                existingPlacedOrder.OriginalQuoteOrderQuantity = newPlacedOrder.OriginalQuoteOrderQuantity;
+                                existingPlacedOrder.Quantity = newPlacedOrder.Quantity;
+                                existingPlacedOrder.QuoteQuantity = newPlacedOrder.QuoteQuantity;
                                 existingPlacedOrder.Price = newPlacedOrder.Price;
                                 existingPlacedOrder.Side = newPlacedOrder.Side;
                                 existingPlacedOrder.Status = newPlacedOrder.Status;
@@ -277,7 +291,7 @@ namespace trape.cli.trader.Market
                         }
                     }
 
-                    this._logger.Information($"{placedOrder.Data.Symbol} @ {placedOrder.Data.Price:0.00}: Issuing sell of {placedOrder.Data.ExecutedQuantity} / {placedOrder.Data.OriginalQuantity}");
+                    this._logger.Information($"{placedOrder.Data.Symbol} @ {placedOrder.Data.Price:0.00}: Issuing sell of {placedOrder.Data.QuantityFilled} / {placedOrder.Data.Quantity}");
                 }
             }
         }

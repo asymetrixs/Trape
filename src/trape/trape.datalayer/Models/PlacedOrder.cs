@@ -26,6 +26,11 @@ namespace trape.datalayer.Models
         public string MarginBuyBorrowAsset { get; set; }
 
         /// <summary>
+        /// Date of creation
+        /// </summary>
+        public DateTime CreateTime { get; set; }
+
+        /// <summary>
         /// Only present if a margin trade happened
         /// </summary>
         public decimal? MarginBuyBorrowAmount { get; set; }
@@ -58,22 +63,22 @@ namespace trape.datalayer.Models
         /// <summary>
         /// The original quote order quantity
         /// </summary>
-        public decimal OriginalQuoteOrderQuantity { get; set; }
+        public decimal QuoteQuantity { get; set; }
 
         /// <summary>
         /// Cummulative amount
         /// </summary>
-        public decimal CummulativeQuoteQuantity { get; set; }
+        public decimal QuoteQuantityFilled { get; set; }
 
         /// <summary>
         /// The quantity of the order that is executed
         /// </summary>
-        public decimal ExecutedQuantity { get; set; }
+        public decimal QuantityFilled { get; set; }
 
         /// <summary>
         /// The original quantity of the order
         /// </summary>
-        public decimal OriginalQuantity { get; set; }
+        public decimal Quantity { get; set; }
 
         /// <summary>
         /// The price of the order

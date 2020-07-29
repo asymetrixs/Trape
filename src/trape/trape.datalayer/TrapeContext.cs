@@ -49,7 +49,7 @@ namespace trape.datalayer
         /// <summary>
         /// Book ticks
         /// </summary>
-        public DbSet<BookTick> BookTicks { get; set; }
+        public DbSet<BookPrice> BookTicks { get; set; }
 
         /// <summary>
         /// Orders
@@ -228,7 +228,7 @@ namespace trape.datalayer
             modelBuilder.Entity<Tick>()
                 .HasIndex(o => o.Id);
             modelBuilder.Entity<Tick>()
-                .HasIndex(o => new { o.StatisticsOpenTime, o.StatisticsCloseTime });
+                .HasIndex(o => new { o.OpenTime, o.CloseTime});
 
             // Kline
             modelBuilder.Entity<Kline>()
@@ -239,12 +239,12 @@ namespace trape.datalayer
                 .HasIndex(o => new { o.OpenTime, o.Interval, o.Symbol });
 
             // Book Tick
-            modelBuilder.Entity<BookTick>()
+            modelBuilder.Entity<BookPrice>()
                 .HasKey(o => o.UpdateId);
-            modelBuilder.Entity<BookTick>()
+            modelBuilder.Entity<BookPrice>()
                 .HasIndex(o => o.UpdateId);
-            modelBuilder.Entity<BookTick>()
-                .HasIndex(o => new { o.CreatedOn, o.Symbol });
+            modelBuilder.Entity<BookPrice>()
+                .HasIndex(o => new { o.TransactionTime, o.Symbol });
 
             // Recommendation
             modelBuilder.Entity<Recommendation>()
@@ -331,7 +331,7 @@ namespace trape.datalayer
             // And a dependency to to that elements is established
             var mapper = new NpgsqlSnakeCaseNameTranslator();
             var tableName = mapper.TranslateMemberName(nameof(this.BookTicks));
-            var columName = mapper.TranslateMemberName(nameof(BookTick.CreatedOn));
+            var columName = mapper.TranslateMemberName(nameof(BookPrice.TransactionTime));
 
             // Generate SQL statement
             var sql = $"DELETE FROM {tableName} WHERE {columName} < NOW() - INTERVAL '24 hours'";

@@ -2,7 +2,7 @@
 
 namespace trape.datalayer.Models
 {
-    public class BookTick
+    public class BookPrice
     {
         /// <summary>
         /// Update id
@@ -35,8 +35,8 @@ namespace trape.datalayer.Models
         public decimal BestAskQuantity { get; set; }
 
         /// <summary>
-        /// Created on
+        /// Timestamp
         /// </summary>
-        public DateTime CreatedOn { get; set; }
+        public DateTime TransactionTime { get; set; }
     }
 }

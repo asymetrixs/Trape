@@ -16,7 +16,7 @@ namespace trape.datalayer.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
-                .HasAnnotation("ProductVersion", "3.1.3")
+                .HasAnnotation("ProductVersion", "3.1.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             modelBuilder.Entity("trape.datalayer.Models.AccountInfo", b =>
@@ -134,7 +134,7 @@ namespace trape.datalayer.Migrations
                     b.ToTable("balance_updates");
                 });
 
-            modelBuilder.Entity("trape.datalayer.Models.BookTick", b =>
+            modelBuilder.Entity("trape.datalayer.Models.BookPrice", b =>
                 {
                     b.Property<long>("UpdateId")
                         .ValueGeneratedOnAdd()
@@ -158,19 +158,19 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("best_bid_quantity")
                         .HasColumnType("numeric");
 
-                    b.Property<DateTime>("CreatedOn")
-                        .HasColumnName("created_on")
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<string>("Symbol")
                         .HasColumnName("symbol")
                         .HasColumnType("text");
+
+                    b.Property<DateTime>("TransactionTime")
+                        .HasColumnName("transaction_time")
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("UpdateId");
 
                     b.HasIndex("UpdateId");
 
-                    b.HasIndex("CreatedOn", "Symbol");
+                    b.HasIndex("TransactionTime", "Symbol");
 
                     b.ToTable("book_ticks");
                 });
@@ -477,10 +477,6 @@ namespace trape.datalayer.Migrations
                         .HasColumnType("bigint")
                         .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
-                    b.Property<decimal>("AccumulatedQuantityOfFilledTrades")
-                        .HasColumnName("accumulated_quantity_of_filled_trades")
-                        .HasColumnType("numeric");
-
                     b.Property<bool>("BuyerIsMaker")
                         .HasColumnName("buyer_is_maker")
                         .HasColumnType("boolean");
@@ -497,9 +493,9 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("commission_asset")
                         .HasColumnType("text");
 
-                    b.Property<decimal>("CummulativeQuoteQuantity")
-                        .HasColumnName("cummulative_quote_quantity")
-                        .HasColumnType("numeric");
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnName("create_time")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("ExecutionType")
                         .HasColumnName("execution_type")
@@ -517,13 +513,17 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("is_working")
                         .HasColumnType("boolean");
 
-                    b.Property<decimal>("LastQuoteTransactedQuantity")
-                        .HasColumnName("last_quote_transacted_quantity")
+                    b.Property<decimal>("LastPriceFilled")
+                        .HasColumnName("last_price_filled")
                         .HasColumnType("numeric");
 
-                    b.Property<DateTime>("OrderCreationTime")
-                        .HasColumnName("order_creation_time")
-                        .HasColumnType("timestamp without time zone");
+                    b.Property<decimal>("LastQuantityFilled")
+                        .HasColumnName("last_quantity_filled")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("LastQuoteQuantity")
+                        .HasColumnName("last_quote_quantity")
+                        .HasColumnType("numeric");
 
                     b.Property<long>("OrderId")
                         .HasColumnName("order_id")
@@ -541,20 +541,24 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("price")
                         .HasColumnType("numeric");
 
-                    b.Property<decimal>("PriceLastFilledTrade")
-                        .HasColumnName("price_last_filled_trade")
-                        .HasColumnType("numeric");
-
                     b.Property<decimal>("Quantity")
                         .HasColumnName("quantity")
                         .HasColumnType("numeric");
 
-                    b.Property<decimal>("QuantityOfLastFilledTrade")
-                        .HasColumnName("quantity_of_last_filled_trade")
+                    b.Property<decimal>("QuantityFilled")
+                        .HasColumnName("quantity_filled")
                         .HasColumnType("numeric");
 
                     b.Property<decimal>("QuoteOrderQuantity")
                         .HasColumnName("quote_order_quantity")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("QuoteQuantity")
+                        .HasColumnName("quote_quantity")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("QuoteQuantityFilled")
+                        .HasColumnName("quote_quantity_filled")
                         .HasColumnType("numeric");
 
                     b.Property<int>("RejectReason")
@@ -589,6 +593,10 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("type")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime>("UpdateTime")
+                        .HasColumnName("update_time")
+                        .HasColumnType("timestamp without time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClientOrderId");
@@ -618,13 +626,9 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("client_order_id")
                         .HasColumnType("text");
 
-                    b.Property<decimal>("CummulativeQuoteQuantity")
-                        .HasColumnName("cummulative_quote_quantity")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("ExecutedQuantity")
-                        .HasColumnName("executed_quantity")
-                        .HasColumnType("numeric");
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnName("create_time")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<decimal?>("MarginBuyBorrowAmount")
                         .HasColumnName("margin_buy_borrow_amount")
@@ -642,16 +646,24 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("original_client_order_id")
                         .HasColumnType("text");
 
-                    b.Property<decimal>("OriginalQuantity")
-                        .HasColumnName("original_quantity")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("OriginalQuoteOrderQuantity")
-                        .HasColumnName("original_quote_order_quantity")
-                        .HasColumnType("numeric");
-
                     b.Property<decimal>("Price")
                         .HasColumnName("price")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnName("quantity")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("QuantityFilled")
+                        .HasColumnName("quantity_filled")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("QuoteQuantity")
+                        .HasColumnName("quote_quantity")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("QuoteQuantityFilled")
+                        .HasColumnName("quote_quantity_filled")
                         .HasColumnType("numeric");
 
                     b.Property<int>("Side")
@@ -1148,29 +1160,25 @@ namespace trape.datalayer.Migrations
                         .HasColumnType("bigint")
                         .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
-                    b.Property<decimal>("BestAskPrice")
-                        .HasColumnName("best_ask_price")
+                    b.Property<decimal>("AskPrice")
+                        .HasColumnName("ask_price")
                         .HasColumnType("numeric");
 
-                    b.Property<decimal>("BestAskQuantity")
-                        .HasColumnName("best_ask_quantity")
+                    b.Property<decimal>("AskQuantity")
+                        .HasColumnName("ask_quantity")
                         .HasColumnType("numeric");
 
-                    b.Property<decimal>("BestBidPrice")
-                        .HasColumnName("best_bid_price")
+                    b.Property<decimal>("BidPrice")
+                        .HasColumnName("bid_price")
                         .HasColumnType("numeric");
 
-                    b.Property<decimal>("BestBidQuantity")
-                        .HasColumnName("best_bid_quantity")
+                    b.Property<decimal>("BidQuantity")
+                        .HasColumnName("bid_quantity")
                         .HasColumnType("numeric");
 
-                    b.Property<decimal>("CloseTradesQuantity")
-                        .HasColumnName("close_trades_quantity")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("CurrentDayClosePrice")
-                        .HasColumnName("current_day_close_price")
-                        .HasColumnType("numeric");
+                    b.Property<DateTime>("CloseTime")
+                        .HasColumnName("close_time")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<long>("FirstTradeId")
                         .HasColumnName("first_trade_id")
@@ -1178,6 +1186,14 @@ namespace trape.datalayer.Migrations
 
                     b.Property<decimal>("HighPrice")
                         .HasColumnName("high_price")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("LastPrice")
+                        .HasColumnName("last_price")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("LastQuantity")
+                        .HasColumnName("last_quantity")
                         .HasColumnType("numeric");
 
                     b.Property<long>("LastTradeId")
@@ -1192,6 +1208,10 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("open_price")
                         .HasColumnType("numeric");
 
+                    b.Property<DateTime>("OpenTime")
+                        .HasColumnName("open_time")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<decimal>("PrevDayClosePrice")
                         .HasColumnName("prev_day_close_price")
                         .HasColumnType("numeric");
@@ -1200,17 +1220,9 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("price_change")
                         .HasColumnType("numeric");
 
-                    b.Property<decimal>("PriceChangePercentage")
-                        .HasColumnName("price_change_percentage")
+                    b.Property<decimal>("PriceChangePercent")
+                        .HasColumnName("price_change_percent")
                         .HasColumnType("numeric");
-
-                    b.Property<DateTime>("StatisticsCloseTime")
-                        .HasColumnName("statistics_close_time")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<DateTime>("StatisticsOpenTime")
-                        .HasColumnName("statistics_open_time")
-                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Symbol")
                         .HasColumnName("symbol")
@@ -1228,15 +1240,15 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("total_trades")
                         .HasColumnType("bigint");
 
-                    b.Property<decimal>("WeightedAverage")
-                        .HasColumnName("weighted_average")
+                    b.Property<decimal>("WeightedAveragePrice")
+                        .HasColumnName("weighted_average_price")
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Id");
 
-                    b.HasIndex("StatisticsOpenTime", "StatisticsCloseTime");
+                    b.HasIndex("OpenTime", "CloseTime");
 
                     b.ToTable("ticks");
                 });

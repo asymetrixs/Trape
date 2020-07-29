@@ -1,5 +1,7 @@
-﻿using Binance.Net.Interfaces;
-using Binance.Net.Objects;
+﻿using Binance.Net.Enums;
+using Binance.Net.Interfaces;
+using Binance.Net.Objects.Spot.MarketData;
+using Binance.Net.Objects.Spot.MarketStream;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -713,7 +715,7 @@ namespace trape.cli.trader.Cache
                 }
             }
 
-            if(!availableSymbols.Any())
+            if (!availableSymbols.Any())
             {
                 this._logger.Error("Cannot check subscriptions");
                 return;
@@ -730,7 +732,7 @@ namespace trape.cli.trader.Cache
                 try
                 {
                     // Subscribe to all symbols
-                    await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(availableSymbols, async (BinanceBookTick bbt) =>
+                    await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(availableSymbols, async (BinanceStreamBookPrice bsbp) =>
                     {
                         var askPriceAdded = false;
                         var bidPriceAdded = false;
@@ -738,37 +740,37 @@ namespace trape.cli.trader.Cache
                         // Update ask price
                         while (!askPriceAdded)
                         {
-                            if (this._bestAskPrices.ContainsKey(bbt.Symbol))
+                            if (this._bestAskPrices.ContainsKey(bsbp.Symbol))
                             {
-                                await this._bestAskPrices[bbt.Symbol].Add(bbt.BestAskPrice).ConfigureAwait(true);
+                                await this._bestAskPrices[bsbp.Symbol].Add(bsbp.BestAskPrice).ConfigureAwait(true);
                                 askPriceAdded = true;
                             }
                             else
                             {
-                                var bestAskPrice = new BestPrice(bbt.Symbol);
-                                askPriceAdded = this._bestAskPrices.TryAdd(bbt.Symbol, bestAskPrice);
-                                await bestAskPrice.Add(bbt.BestAskPrice).ConfigureAwait(true);
+                                var bestAskPrice = new BestPrice(bsbp.Symbol);
+                                askPriceAdded = this._bestAskPrices.TryAdd(bsbp.Symbol, bestAskPrice);
+                                await bestAskPrice.Add(bsbp.BestAskPrice).ConfigureAwait(true);
                             }
 
-                            this._logger.Verbose($"{bbt.Symbol}: Book tick update - asking is {bbt.BestAskPrice:0.00}");
+                            this._logger.Verbose($"{bsbp.Symbol}: Book tick update - asking is {bsbp.BestAskPrice:0.00}");
                         }
 
                         // Update bid price
                         while (!bidPriceAdded)
                         {
-                            if (this._bestBidPrices.ContainsKey(bbt.Symbol))
+                            if (this._bestBidPrices.ContainsKey(bsbp.Symbol))
                             {
-                                await this._bestBidPrices[bbt.Symbol].Add(bbt.BestBidPrice).ConfigureAwait(true);
+                                await this._bestBidPrices[bsbp.Symbol].Add(bsbp.BestBidPrice).ConfigureAwait(true);
                                 bidPriceAdded = true;
                             }
                             else
                             {
-                                var bestBidPrice = new BestPrice(bbt.Symbol);
-                                bidPriceAdded = this._bestBidPrices.TryAdd(bbt.Symbol, bestBidPrice);
-                                await bestBidPrice.Add(bbt.BestBidPrice).ConfigureAwait(true);
+                                var bestBidPrice = new BestPrice(bsbp.Symbol);
+                                bidPriceAdded = this._bestBidPrices.TryAdd(bsbp.Symbol, bestBidPrice);
+                                await bestBidPrice.Add(bsbp.BestBidPrice).ConfigureAwait(true);
                             }
 
-                            this._logger.Verbose($"{bbt.Symbol}: Book tick update - bidding is {bbt.BestBidPrice:0.00}");
+                            this._logger.Verbose($"{bsbp.Symbol}: Book tick update - bidding is {bsbp.BestBidPrice:0.00}");
                         }
                     }).ConfigureAwait(true);
 

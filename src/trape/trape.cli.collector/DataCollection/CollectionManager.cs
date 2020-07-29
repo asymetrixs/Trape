@@ -1,5 +1,7 @@
-﻿using Binance.Net.Interfaces;
+﻿using Binance.Net.Enums;
+using Binance.Net.Interfaces;
 using Binance.Net.Objects;
+using Binance.Net.Objects.Spot.MarketStream;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.Sockets;
 using Microsoft.EntityFrameworkCore;
@@ -47,9 +49,9 @@ namespace trape.cli.collector.DataCollection
         private readonly ActionBlock<BinanceStreamKlineData> _binanceStreamKlineDataBuffer;
 
         /// <summary>
-        /// Binance Book Tick Buffer
+        /// Binance Stream Book Price
         /// </summary>
-        private readonly ActionBlock<BinanceBookTick> _binanceBookTickBuffer;
+        private readonly ActionBlock<BinanceStreamBookPrice> _binanceBookTickBuffer;
 
         /// <summary>
         /// Disposed
@@ -139,7 +141,7 @@ namespace trape.cli.collector.DataCollection
                     SingleProducerConstrained = false
                 });
 
-            this._binanceBookTickBuffer = new ActionBlock<BinanceBookTick>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(true),
+            this._binanceBookTickBuffer = new ActionBlock<BinanceStreamBookPrice>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(true),
                 new ExecutionDataflowBlockOptions()
                 {
                     MaxDegreeOfParallelism = 4,
@@ -285,19 +287,19 @@ namespace trape.cli.collector.DataCollection
         }
 
         /// <summary>
-        /// Saves <c>BinanceBookTick</c> in the database
+        /// Saves <c>BinanceStreamBookPrice</c> in the database
         /// </summary>
-        /// <param name="bbt">Binance Book Tick</param>
+        /// <param name="bsbp">Binance Stream Book Price</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        public static async Task Save(BinanceBookTick bbt, CancellationToken cancellationToken = default)
+        public static async Task Save(BinanceStreamBookPrice bsbp, CancellationToken cancellationToken = default)
         {
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    database.BookTicks.Add(Translator.Translate(bbt));
+                    database.BookTicks.Add(Translator.Translate(bsbp));
                     await database.SaveChangesAsync(cancellationToken).ConfigureAwait(true);
                 }
                 catch (Exception e)
@@ -324,6 +326,8 @@ namespace trape.cli.collector.DataCollection
         {
             this._startStop.Wait();
 
+            this._logger.Debug($"Acquired startup lock");
+
             try
             {
                 this._logger.Information("Setting up Collection Manager");
@@ -338,6 +342,8 @@ namespace trape.cli.collector.DataCollection
             }
             finally
             {
+                this._logger.Debug($"Releasing startup lock");
+
                 this._startStop.Release();
             }
         }
@@ -483,9 +489,9 @@ namespace trape.cli.collector.DataCollection
                         this._binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(symbol, (BinanceBookTick bbt) =>
+                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(symbol, (BinanceStreamBookPrice bsbp) =>
                     {
-                        this._binanceBookTickBuffer.Post(bbt);
+                        this._binanceBookTickBuffer.Post(bsbp);
                     }));
 
                     await Task.WhenAll(subscribeTasks.ToArray()).ConfigureAwait(true);
