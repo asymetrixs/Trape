@@ -4,6 +4,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <Configurations>Debug;Release;Test</Configurations>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +14,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.6" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="3.1.6">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="3.1.6" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.6" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.1.6" />
@@ -32,9 +37,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Trape.BinanceNet.Logger\Trape.BinanceNet.Logger.csproj" />
-    <ProjectReference Include="..\trape.datalayer\trape.datalayer.csproj" />
-    <ProjectReference Include="..\trape.jobs\trape.Jobs.csproj" />
-    <ProjectReference Include="..\trape.mapper\trape.mapper.csproj" />
+    <ProjectReference Include="..\Trape.Datalayer\Trape.Datalayer.csproj" />
+    <ProjectReference Include="..\Trape.Jobs\Trape.Jobs.csproj" />
+    <ProjectReference Include="..\Trape.Mapper\Trape.Mapper.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -43,8 +48,6 @@
     </None>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Analyze\Models\" />
-  </ItemGroup>
+  <ProjectExtensions><VisualStudio><UserProperties settings_1json__JsonSchema="http://json.schemastore.org/band-manifest" /></VisualStudio></ProjectExtensions>
 
 </Project>

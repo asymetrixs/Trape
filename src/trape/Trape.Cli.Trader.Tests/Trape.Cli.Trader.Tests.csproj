@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\trape.cli.Trader\trape.cli.trader.csproj" />
+    <ProjectReference Include="..\Trape.Cli.Trader\Trape.Cli.Trader.csproj" />
   </ItemGroup>
 
 </Project>
