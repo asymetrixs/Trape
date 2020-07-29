@@ -3,3 +3,4 @@
 **/settings.json
 **/.vs
 **/*.user
+build/packaging/**
