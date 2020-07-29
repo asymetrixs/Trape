@@ -19,8 +19,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Trape.Mapper", "Trape.Mappe
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F66D124A-8E49-4C7E-B7CC-F1CB009B94DE}"
 	ProjectSection(SolutionItems) = preProject
-		..\..\build\build-trape-collector.bat = ..\build-trape-collector.bat
-		..\..\build\build-trape-trader.bat = ..\build-trape-trader.bat
+		..\..\build\build-trape-collector.bat = ..\..\build\build-trape-collector.bat
+		..\..\build\build-trape-collector.sh = ..\..\build\build-trape-collector.sh
+		..\..\build\build-trape-trader.bat = ..\..\build\build-trape-trader.bat
+		..\..\build\build-trape-trader.sh = ..\..\build\build-trape-trader.sh
+		..\..\build\build.sh = ..\..\build\build.sh
 	EndProjectSection
 EndProject
 Global
