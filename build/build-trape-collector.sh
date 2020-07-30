@@ -60,6 +60,10 @@ chmod 744 $TARGETDIR/Trape.Cli.Collector
 # Include service file
 cp -r $SOURCEDIR/package/collector/etc $PACKINGDIR
 
+# Generate md5 sums
+cd $PACKINGDIR
+md5sum $(find * -type f -not -path 'DEBIAN/*') > DEBIAN/md5sums
+
 # Prepare package meta information
 cp $DEBIANDIR/* $METADIR/
 sed -i 's/\$VERSION/'$VERSION'/' $METADIR/control
