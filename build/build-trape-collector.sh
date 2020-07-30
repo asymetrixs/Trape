@@ -58,7 +58,7 @@ chmod 644 $TARGETDIR/*
 chmod 744 $TARGETDIR/Trape.Cli.Collector
 
 # Include service file
-cp -r $SOURCEDIR/package/trader/etc $PACKINGDIR
+cp -r $SOURCEDIR/package/collector/etc $PACKINGDIR
 
 # Prepare package meta information
 cp $DEBIANDIR/* $METADIR/
