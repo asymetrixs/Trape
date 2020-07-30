@@ -2,7 +2,7 @@ Package: trape-trader
 Version: $VERSION
 Section: base
 Priority: optional
-Architecture: i386
+Architecture: amd64
 Depends: 
 Suggests: trape-trader
 Maintainer: Damian Wolgast <damian.wolgast@asymetrixs.net>
