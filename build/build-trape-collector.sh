@@ -2,7 +2,7 @@
 
 BASEDIR=$(readlink -f $(dirname $0))
 SOURCEDIR=$BASEDIR/../src
-DEBIANDIR=$BASEDIR/../src/package/trader/DEBIAN
+DEBIANDIR=$BASEDIR/../package/collector/DEBIAN
 CURRENTPROJECT=
 
 function error()
