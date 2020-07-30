@@ -30,9 +30,7 @@ fi
 echo "Building Profile: $PROFILE"
 
 echo "Building Trape Collector"
-$BASEDIR/build-trape-collector $PROFILE
+$BASEDIR/build-trape-collector.sh $PROFILE
 
 echo "Building Trape Trader"
-$BASEDIR/build-trape-trader $PROFILE
-
-
+$BASEDIR/build-trape-trader.sh $PROFILE
