@@ -25,5 +25,7 @@ if [ ! -f "$INSTALLPATH/settings.json" ]; then
     cp $INSTALLPATH/settings.template.json $INSTALLPATH/settings.json
 fi
 
+chmod 644 /etc/systemd/system/trape-collector.service
+
 # Reload systemd because of new trape-collector.service file
 systemctl daemon-reload

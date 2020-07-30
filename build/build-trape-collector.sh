@@ -57,6 +57,9 @@ cp -r $SOURCEDIR/trape/Trape.Cli.Collector/bin/Debug/netcoreapp3.1/ubuntu.18.04-
 chmod 644 $TARGETDIR/*
 chmod 744 $TARGETDIR/Trape.Cli.Collector
 
+# Include service file
+cp -r $SOURCEDIR/package/trader/etc $PACKINGDIR
+
 # Prepare package meta information
 cp $DEBIANDIR/* $METADIR/
 sed -i 's/\$VERSION/'$VERSION'/' $METADIR/control
