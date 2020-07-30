@@ -1,4 +1,4 @@
-Package: trape-trader
+Package: trape-collector
 Version: $VERSION
 Section: base
 Priority: optional
