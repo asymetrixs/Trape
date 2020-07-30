@@ -1,0 +1,17 @@
+Package: trape-trader
+Version: $VERSION
+Section: base
+Priority: optional
+Architecture: i386
+Depends: 
+Suggests: trape-collector
+Maintainer: Damian Wolgast <damian.wolgast@asymetrixs.net>
+Description: Trape Trader is an asset trading bot for Binance. It needs a
+ PostgreSQL database possibly in the vicity so that network latency is
+ reduced to a minimum in order to store information and the package
+ trape-collector to populate the database with realtime data.
+ Furthermore, you need an Binance account and an API key and API secret so
+ that the bot can connect to your Binance account.
+ Note that this bot does not have any legal affiliation with Binance.
+ It is a hobby product thus comes without any guarantee or liability for
+ loss or damages.

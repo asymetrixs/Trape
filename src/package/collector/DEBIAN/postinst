@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Check if user 'trape' exits
+USER=trape
+USEREXISTS=$(id -u $USER >/dev/null 2>&1; echo $?)
+EC=0
+BASEPATH=/opt/trape
+INSTALLPATH=$BASEPATH/collector
+
+# If user does not exist, create it
+if (( $USEREXISTS == 1 )); then
+	useradd -d $BASEPATH -m -r trape
+	EC=$(echo $?)
+
+	if (( $EC == 1 )); then
+		exit 1;
+	fi
+fi
+
+# Set permissions on files
+chown -R trape:trape $INSTALLPATH
+
+# Check if config does not exist and create it
+if [ ! -f "$INSTALLPATH/settings.json" ]; then
+    cp $INSTALLPATH/settings.template.json $INSTALLPATH/settings.json
+fi
+
+# Reload systemd because of new trape-collector.service file
+systemctl daemon-reload

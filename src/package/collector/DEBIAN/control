@@ -1,0 +1,15 @@
+Package: trape-trader
+Version: $VERSION
+Section: base
+Priority: optional
+Architecture: i386
+Depends: 
+Suggests: trape-trader
+Maintainer: Damian Wolgast <damian.wolgast@asymetrixs.net>
+Description: Trape Collector is an information collection service for the
+ Trape Trader. It collectes information in realtime from Binance and stores
+ them in a PostgreSQL database, thus it requires a PostgreSQL database hosted
+ somewhere, possible with low network latency.
+ Note that this bot does not have any legal affiliation with Binance.
+ It is a hobby product thus comes without any guarantee or liability for
+ loss or damages.

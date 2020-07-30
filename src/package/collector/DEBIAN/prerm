@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Reload systemd because of absent trape-collector.service file
+systemctl daemon-reload

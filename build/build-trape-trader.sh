@@ -2,6 +2,7 @@
 
 BASEDIR=$(readlink -f $(dirname $0))
 SOURCEDIR=$BASEDIR/../src
+DEBIANDIR=$BASEDIR/../src/package/trader/DEBIAN
 CURRENTPROJECT=
 
 function error()
@@ -38,33 +39,27 @@ dotnet-sdk.dotnet build --configuration:${PROFILE} --runtime:ubuntu.18.04-x64
 
 cd $BASEDIR
 
-echo "Packing Trape Collector"
+echo "Packing Trape Trader"
 cd $BASEDIR
 
 # Creating directory structure
 
 VERSION=0.1-1
 PACKINGDIR=$BASEDIR/packaging/trape-trader_$VERSION
+TARGETDIR=$PACKINGDIR/opt/trape/trader/
+METADIR=$PACKINGDIR/DEBIAN
+
 rm -rf $PACKINGDIR
 rm -rf trape-trader_$VERSION.deb
-mkdir -p $PACKINGDIR/opt/trape/trape-trader/
-mkdir -p $PACKINGDIR/DEBIAN
-cp -r $SOURCEDIR/trape/Trape.Cli.Trader/bin/Debug/netcoreapp3.1/ubuntu.18.04-x64/* $PACKINGDIR/opt/trape/trape-trader/
-chmod 664 $PACKINGDIR/opt/trape/trape-trader/*
-chmod 744 $PACKINGDIR/opt/trape/trape-trader/Trape.Cli.Trader
+mkdir -p $TARGETDIR
+mkdir -p $METADIR
+cp -r $SOURCEDIR/trape/Trape.Cli.Trader/bin/Debug/netcoreapp3.1/ubuntu.18.04-x64/* $TARGETDIR
+chmod 644 $TARGETDIR/*
+chmod 744 $TARGETDIR/Trape.Cli.Trader
 
-
-cat << EOF > $PACKINGDIR/DEBIAN/control
-Package: trape-trader
-Version: $VERSION
-Section: base
-Priority: optional
-Architecture: x86-64
-Depends: 
-Maintainer: Damian Wolgast <damian.wolgast@asymetrixs.net>
-Description: Trape Trader is the trading bot that consumes data from Trape Collector..
- It connects to binance and reads/writes trading information into the database..
-EOF
+# Prepare package meta information
+cp $DEBIANDIR/* $METADIR/
+sed -i 's/\$VERSION/"$VERSION"/' $METADIR/control
 
 cd $BASEDIR/packaging
 dpkg-deb -v --build trape-trader_$VERSION

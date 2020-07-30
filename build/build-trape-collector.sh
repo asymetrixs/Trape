@@ -2,6 +2,7 @@
 
 BASEDIR=$(readlink -f $(dirname $0))
 SOURCEDIR=$BASEDIR/../src
+DEBIANDIR=$BASEDIR/../src/package/trader/DEBIAN
 CURRENTPROJECT=
 
 function error()
@@ -45,26 +46,20 @@ cd $BASEDIR
 
 VERSION=0.1-1
 PACKINGDIR=$BASEDIR/packaging/trape-collector_$VERSION
+TARGETDIR=$PACKINGDIR/opt/trape/collector/
+METADIR=$PACKINGDIR/DEBIAN
+
 rm -rf $PACKINGDIR
-rm -rf trape-collector_$VERSION.deb
-mkdir -p $PACKINGDIR/opt/trape/trape-collector/
-mkdir -p $PACKINGDIR/DEBIAN
-cp -r $SOURCEDIR/trape/Trape.Cli.Collector/bin/Debug/netcoreapp3.1/ubuntu.18.04-x64/* $PACKINGDIR/opt/trape/trape-collector/
-chmod 664 $PACKINGDIR/opt/trape/trape-collector/*
-chmod 744 $PACKINGDIR/opt/trape/trape-collector/Trape.Cli.Collector
+rm -rf trape-trader_$VERSION.deb
+mkdir -p $TARGETDIR
+mkdir -p $METADIR
+cp -r $SOURCEDIR/trape/Trape.Cli.Collector/bin/Debug/netcoreapp3.1/ubuntu.18.04-x64/* $TARGETDIR
+chmod 644 $TARGETDIR/*
+chmod 744 $TARGETDIR/Trape.Cli.Collector
 
-
-cat << EOF > $PACKINGDIR/DEBIAN/control
-Package: trape-collector
-Version: $VERSION
-Section: base
-Priority: optional
-Architecture: x86-64
-Depends: 
-Maintainer: Damian Wolgast <damian.wolgast@asymetrixs.net>
-Description: Trape Collector is the data collector for the Trape Trader.
- It connects to binance and write the realtime data into the database.
-EOF
+# Prepare package meta information
+cp $DEBIANDIR/* $METADIR/
+sed -i 's/\$VERSION/"$VERSION"/' $METADIR/control
 
 cd $BASEDIR/packaging
 dpkg-deb -v --build trape-collector_$VERSION
