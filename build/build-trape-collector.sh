@@ -2,7 +2,7 @@
 
 BASEDIR=$(readlink -f $(dirname $0))
 SOURCEDIR=$BASEDIR/../src
-DEBIANDIR=$BASEDIR/../package/collector/DEBIAN
+DEBIANDIR=$BASEDIR/../src/package/collector/DEBIAN
 CURRENTPROJECT=
 
 function error()
@@ -59,7 +59,7 @@ chmod 744 $TARGETDIR/Trape.Cli.Collector
 
 # Prepare package meta information
 cp $DEBIANDIR/* $METADIR/
-sed -i 's/\$VERSION/"$VERSION"/' $METADIR/control
+sed -i 's/\$VERSION/'$VERSION'/' $METADIR/control
 
 cd $BASEDIR/packaging
 dpkg-deb -v --build trape-collector_$VERSION

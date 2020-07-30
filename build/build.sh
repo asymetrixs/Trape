@@ -12,8 +12,6 @@ function error()
 
 trap error ERR
 
-echo "Building Trape Collector"
-CURRENTPROJEFT="Trape Collector"
 PROFILE=$1
 
 if [ -z $PROFILE ]; then
@@ -29,8 +27,6 @@ fi
 
 echo "Building Profile: $PROFILE"
 
-echo "Building Trape Collector"
 $BASEDIR/build-trape-collector.sh $PROFILE
 
-echo "Building Trape Trader"
 $BASEDIR/build-trape-trader.sh $PROFILE
