@@ -150,6 +150,12 @@ namespace trape.jobs
         }
 
         /// <summary>
+        /// Returns whether the timer is running or not
+        /// </summary>
+        /// <returns></returns>
+        public bool IsRunning() => this._timer.Enabled;
+
+        /// <summary>
         /// Stop job
         /// </summary>
         public void Terminate()

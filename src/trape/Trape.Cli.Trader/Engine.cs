@@ -83,11 +83,11 @@ namespace trape.cli.trader
         #region Start / Stop
 
         /// <summary>
-        /// Starts all processes to begin trading
+        /// Starts the Collection Manager
         /// </summary>
         /// <param name="stoppingToken"></param>
         /// <returns></returns>
-        protected async override Task ExecuteAsync(CancellationToken stoppingToken)
+        public override async Task StartAsync(CancellationToken cancellationToken)
         {
             this._logger.Information("Engine is starting");
 

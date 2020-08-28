@@ -317,12 +317,17 @@ namespace trape.cli.collector.DataCollection
 
         #region Methods
 
+        /// <summary>
+        /// Starts the Collection Manager
+        /// </summary>
+        /// <param name="stoppingToken"></param>
+        /// <returns></returns>
         public override async Task StartAsync(CancellationToken cancellationToken)
         {
             this._startStop.Wait();
 
             this._logger.Debug($"Acquired startup lock");
-
+            
             try
             {
                 this._logger.Information("Setting up Collection Manager");
@@ -344,13 +349,18 @@ namespace trape.cli.collector.DataCollection
         }
 
         /// <summary>
-        /// Starts the Collection Manager
+        /// Doing nothing
         /// </summary>
         /// <param name="stoppingToken"></param>
         /// <returns></returns>
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            
+            this._jobSubscriptionManager.Start();
+
+            while(!this._jobSubscriptionManager.IsRunning())
+            {
+                await Task.Delay(1000).ConfigureAwait(true);
+            }
         }
 
         /// <summary>
