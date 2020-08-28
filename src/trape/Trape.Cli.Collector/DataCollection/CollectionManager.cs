@@ -357,10 +357,16 @@ namespace trape.cli.collector.DataCollection
         {
             this._jobSubscriptionManager.Start();
 
+            this._logger.Verbose("Job Subscription Manager started");
+
             while(!this._jobSubscriptionManager.IsRunning())
             {
                 await Task.Delay(1000).ConfigureAwait(true);
+
+                this._logger.Verbose("Waiting for Job Subscription Manager to terminate");
             }
+
+            this._logger.Verbose("Job Subscription Manager terminated");
         }
 
         /// <summary>
