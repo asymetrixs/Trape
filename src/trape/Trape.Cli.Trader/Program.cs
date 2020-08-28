@@ -76,8 +76,6 @@ namespace trape.cli.trader
                     logger.Warning("Check previous errors. Exiting with 254.");
                     Environment.Exit(254);
                 }
-
-                await app.WaitForShutdownAsync().ConfigureAwait(true);
             }
 
             logger.Information("Shut down complete");
@@ -98,7 +96,11 @@ namespace trape.cli.trader
                 .Destructure.ToMaximumStringLength(100)
                 .Destructure.ToMaximumCollectionCount(10)
                 .WriteTo.Console(
-                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning,
+#if DEBUG
+                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
+#else
+                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
+#endif
                     outputTemplate: Config.GetValue("Serilog:OutputTemplateConsole")
                 )
                 .WriteTo.File(

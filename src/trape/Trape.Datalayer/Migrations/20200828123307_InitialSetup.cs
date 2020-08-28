@@ -2,9 +2,9 @@
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
-namespace trape.datalayer.Migrations
+namespace Trape.Datalayer.Migrations
 {
-    public partial class InitialLayout : Migration
+    public partial class InitialSetup : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -165,9 +165,7 @@ namespace trape.datalayer.Migrations
                 name: "recommendations",
                 columns: table => new
                 {
-                    id = table.Column<long>(nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    symbol = table.Column<string>(nullable: true),
+                    symbol = table.Column<string>(nullable: false),
                     created_on = table.Column<DateTime>(nullable: false),
                     action = table.Column<int>(nullable: false),
                     price = table.Column<decimal>(nullable: false),
@@ -214,7 +212,7 @@ namespace trape.datalayer.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_recommendations", x => x.id);
+                    table.PrimaryKey("PK_recommendations", x => new { x.created_on, x.symbol });
                 });
 
             migrationBuilder.CreateTable(
@@ -689,16 +687,6 @@ namespace trape.datalayer.Migrations
                 name: "IX_placed_orders_transaction_time_symbol",
                 table: "placed_orders",
                 columns: new[] { "transaction_time", "symbol" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_recommendations_id",
-                table: "recommendations",
-                column: "id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_recommendations_created_on_symbol",
-                table: "recommendations",
-                columns: new[] { "created_on", "symbol" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_ticks_id",

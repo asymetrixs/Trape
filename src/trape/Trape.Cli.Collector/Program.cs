@@ -71,8 +71,6 @@ namespace trape.cli.collector
                     logger.Warning("Check previous errors. Exiting with 254.");
                     Environment.Exit(254);
                 }
-
-                await app.WaitForShutdownAsync().ConfigureAwait(true);
             }
 
             logger.Information("Shut down complete");
@@ -96,7 +94,11 @@ namespace trape.cli.collector
                 .Destructure.ToMaximumStringLength(100)
                 .Destructure.ToMaximumCollectionCount(10)
                 .WriteTo.Console(
+#if DEBUG
+                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
+#else
                     restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
+#endif
                     outputTemplate: Config.GetValue("Serilog:OutputTemplateConsole")
                 )
                 .WriteTo.File(

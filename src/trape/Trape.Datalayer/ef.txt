@@ -10,3 +10,10 @@
 
  Apply migration
  # dotnet ef database update --project .\trape.datalayer\ --startup-project .\trape.cli.collector\
+
+
+ -- TimescaleDB Hypertable
+ALTER TABLE recommendations RENAME TO recommandations_old;
+CREATE TABLE recommendations (LIKE recommandations_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+SELECT * FROM create_hypertable('recommendations', 'created_on');

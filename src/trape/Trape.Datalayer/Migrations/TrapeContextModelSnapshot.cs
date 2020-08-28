@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using trape.datalayer;
 
-namespace trape.datalayer.Migrations
+namespace Trape.Datalayer.Migrations
 {
     [DbContext(typeof(TrapeContext))]
     partial class TrapeContextModelSnapshot : ModelSnapshot
@@ -16,7 +16,7 @@ namespace trape.datalayer.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
-                .HasAnnotation("ProductVersion", "3.1.6")
+                .HasAnnotation("ProductVersion", "3.1.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             modelBuilder.Entity("trape.datalayer.Models.AccountInfo", b =>
@@ -711,19 +711,17 @@ namespace trape.datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Recommendation", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnName("created_on")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Symbol")
+                        .HasColumnName("symbol")
+                        .HasColumnType("text");
 
                     b.Property<int>("Action")
                         .HasColumnName("action")
                         .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedOn")
-                        .HasColumnName("created_on")
-                        .HasColumnType("timestamp without time zone");
 
                     b.Property<decimal>("MovingAverage10m")
                         .HasColumnName("moving_average10m")
@@ -889,15 +887,7 @@ namespace trape.datalayer.Migrations
                         .HasColumnName("slope7m")
                         .HasColumnType("numeric");
 
-                    b.Property<string>("Symbol")
-                        .HasColumnName("symbol")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Id");
-
-                    b.HasIndex("CreatedOn", "Symbol");
+                    b.HasKey("CreatedOn", "Symbol");
 
                     b.ToTable("recommendations");
                 });
