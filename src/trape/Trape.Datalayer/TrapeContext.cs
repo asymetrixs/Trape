@@ -248,11 +248,7 @@ namespace trape.datalayer
 
             // Recommendation
             modelBuilder.Entity<Recommendation>()
-                .HasKey(o => o.Id);
-            modelBuilder.Entity<Recommendation>()
-                .HasIndex(o => o.Id);
-            modelBuilder.Entity<Recommendation>()
-                .HasIndex(o => new { o.CreatedOn, o.Symbol });
+                .HasKey(o => new { o.CreatedOn, o.Symbol });
 
             // Detailed Order
             modelBuilder.Entity<ClientOrder>()

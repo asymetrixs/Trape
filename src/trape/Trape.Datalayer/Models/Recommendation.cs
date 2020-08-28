@@ -2,7 +2,7 @@
 
 namespace trape.datalayer.Models
 {
-    public class Recommendation : AbstractKey
+    public class Recommendation
     {
         #region Properties
 
