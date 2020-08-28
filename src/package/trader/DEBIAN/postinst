@@ -30,5 +30,9 @@ chmod 644 /etc/systemd/system/trape-trader.service
 # Create handy link
 ln -s $INSTALLPATH/Trape.Cli.Trader $INSTALLPATH/service
 
+# Create logging dir
+mkdir -p /var/log/trape
+chown trape:trape /var/log/trape
+
 # Reload systemd because of new trape-collector.service file
 systemctl daemon-reload

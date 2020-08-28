@@ -8,7 +8,7 @@
   },
   "Serilog": {
     "MinimumLevel": "Information",
-    "LogFileLocation": "trader-.log",
+    "LogFileLocation": "/var/log/trape/trader-.log",
     "OutputTemplateConsole": "[{Level:u3}] {Message:j}{NewLine}",
     "OutputTemplateFile": "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] {Message:lj} {Properties}{NewLine}{Exception}"
   }
