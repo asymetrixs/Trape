@@ -37,6 +37,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DEBIAN", "DEBIAN", "{717BDB
 		..\package\collector\DEBIAN\control = ..\package\collector\DEBIAN\control
 		..\package\collector\DEBIAN\copyright = ..\package\collector\DEBIAN\copyright
 		..\package\collector\DEBIAN\postinst = ..\package\collector\DEBIAN\postinst
+		..\package\collector\DEBIAN\postrm = ..\package\collector\DEBIAN\postrm
 		..\package\collector\DEBIAN\prerm = ..\package\collector\DEBIAN\prerm
 	EndProjectSection
 EndProject
@@ -45,6 +46,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DEBIAN", "DEBIAN", "{45B3F0
 		..\package\trader\DEBIAN\control = ..\package\trader\DEBIAN\control
 		..\package\trader\DEBIAN\copyright = ..\package\trader\DEBIAN\copyright
 		..\package\trader\DEBIAN\postinst = ..\package\trader\DEBIAN\postinst
+		..\package\trader\DEBIAN\postrm = ..\package\trader\DEBIAN\postrm
 		..\package\trader\DEBIAN\prerm = ..\package\trader\DEBIAN\prerm
 	EndProjectSection
 EndProject

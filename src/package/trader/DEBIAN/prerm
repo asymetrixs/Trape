@@ -1,4 +1,7 @@
 #!/bin/bash
 
-# Reload systemd because of absent trape-trader.service file
-systemctl daemon-reload
+BASEPATH=/opt/trape
+INSTALLPATH=$BASEPATH/collector
+
+# Remove link
+rm -rf $INSTALLPATH/service

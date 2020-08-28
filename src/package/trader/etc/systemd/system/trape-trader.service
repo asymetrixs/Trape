@@ -10,7 +10,7 @@ Type=notify
 WorkingDirectory=/opt/trape/trader
 
 # systemd will run this executable to start the service
-ExecStart=/opt/trape/trader/trape.cli.trader
+ExecStart=/opt/trape/trader/service
 
 # to query logs using journalctl, set a logical name here
 SyslogIdentifier=Trape.Trader
