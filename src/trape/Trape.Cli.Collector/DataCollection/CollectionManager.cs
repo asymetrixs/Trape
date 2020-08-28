@@ -317,12 +317,7 @@ namespace trape.cli.collector.DataCollection
 
         #region Methods
 
-        /// <summary>
-        /// Starts the Collection Manager
-        /// </summary>
-        /// <param name="stoppingToken"></param>
-        /// <returns></returns>
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        public override async Task StartAsync(CancellationToken cancellationToken)
         {
             this._startStop.Wait();
 
@@ -346,6 +341,16 @@ namespace trape.cli.collector.DataCollection
 
                 this._startStop.Release();
             }
+        }
+
+        /// <summary>
+        /// Starts the Collection Manager
+        /// </summary>
+        /// <param name="stoppingToken"></param>
+        /// <returns></returns>
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            
         }
 
         /// <summary>
