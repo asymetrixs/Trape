@@ -357,6 +357,8 @@ namespace trape.cli.collector.DataCollection
         /// <returns></returns>
         protected async override Task ExecuteAsync(CancellationToken stoppingToken = default)
         {
+            this._logger.Information("Starting main execution...");
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 this._logger.Information("Executing...");
