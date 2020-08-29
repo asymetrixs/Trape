@@ -80,7 +80,7 @@ namespace trape.cli.collector.DataCollection
         /// <summary>
         /// Checks periodically if symbols have to be added or dropped
         /// </summary>
-        //private Job _jobSubscriptionManager;
+        private Job _jobSubscriptionManager;
 
         /// <summary>
         /// Holds list of active subscriptions
@@ -117,7 +117,7 @@ namespace trape.cli.collector.DataCollection
             #region Timer Setup
 
             // Check every five seconds
-            //this._jobSubscriptionManager = new Job(new TimeSpan(0, 0, 5), async () => await _manage().ConfigureAwait(true));
+            this._jobSubscriptionManager = new Job(new TimeSpan(0, 0, 5), async () => await _manage().ConfigureAwait(true));
 
             #endregion
 
@@ -343,7 +343,7 @@ namespace trape.cli.collector.DataCollection
                 this._startStop.Release();
             }
 
-            //this._jobSubscriptionManager.Start();
+            this._jobSubscriptionManager.Start();
 
             this._logger.Verbose("Job Subscription Manager started");
 
@@ -355,27 +355,9 @@ namespace trape.cli.collector.DataCollection
         /// </summary>
         /// <param name="stoppingToken"></param>
         /// <returns></returns>
-        protected async override Task ExecuteAsync(CancellationToken stoppingToken = default)
+        protected override Task ExecuteAsync(CancellationToken stoppingToken = default)
         {
-            this._logger.Information("Starting main execution...");
-
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                this._logger.Information("Executing...");
-
-                try
-                {
-                    await _manage().ConfigureAwait(true);
-                }
-                finally
-                {
-                    await Task.Delay(1000 * 5, stoppingToken).ConfigureAwait(true);
-                }
-            }
-
-            this._logger.Information("Done executing");
-
-            //return this._jobSubscriptionManager.WaitFor();
+            return this._jobSubscriptionManager.WaitFor();
         }
 
         /// <summary>
@@ -391,7 +373,7 @@ namespace trape.cli.collector.DataCollection
             await this._startStop.WaitAsync().ConfigureAwait(true);
 
             // Check if timer is enabled.
-            //this._jobSubscriptionManager.Terminate();
+            this._jobSubscriptionManager.Terminate();
                         
             try
             {
