@@ -47,6 +47,11 @@ namespace trape.cli.trader
         /// </summary>
         private bool _disposed;
 
+        /// <summary>
+        /// Running waitfor
+        /// </summary>
+        private SemaphoreSlim _running;
+
         #endregion
 
         #region Constructor
@@ -76,20 +81,25 @@ namespace trape.cli.trader
             #endregion
 
             this._logger = logger.ForContext<Engine>();
+            this._running = new SemaphoreSlim(1, 1);
         }
 
         #endregion
 
         #region Start / Stop
 
+
+
         /// <summary>
-        /// Starts the Collection Manager
+        /// Starts all processes to begin trading
         /// </summary>
         /// <param name="stoppingToken"></param>
         /// <returns></returns>
-        public override async Task StartAsync(CancellationToken cancellationToken)
+        public async override Task StartAsync(CancellationToken stoppingToken)
         {
             this._logger.Information("Engine is starting");
+
+            this._running.Wait();
 
             await this._buffer.Start().ConfigureAwait(true);
 
@@ -100,6 +110,19 @@ namespace trape.cli.trader
             this._feeWatchdog.Start();
 
             this._logger.Information("Engine is started");
+        }
+
+        /// <summary>
+        /// Waits for process
+        /// </summary>
+        /// <param name="stoppingToken"></param>
+        /// <returns></returns>
+        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            this._logger.Verbose("Waiting...");
+
+            // Return state
+            return this._running.WaitAsync();
         }
 
         /// <summary>
@@ -116,6 +139,9 @@ namespace trape.cli.trader
             await this._tradingTeam.Terminate().ConfigureAwait(true);
 
             await this._accountant.Terminate().ConfigureAwait(true);
+
+            // End running state
+            this._running.Release();
 
             this._buffer.Terminate();
 

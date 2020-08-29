@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace trape.jobs
 {
@@ -34,6 +35,11 @@ namespace trape.jobs
         /// Dispose
         /// </summary>
         private bool _disposed;
+
+        /// <summary>
+        /// Token to wait for job to finish
+        /// </summary>
+        private SemaphoreSlim _running;
 
         #endregion
 
@@ -79,6 +85,7 @@ namespace trape.jobs
             this.ExecutionInterval = executionInterval;
             this._cancellationToken = cancellationToken;
             this._synchronizer = new SemaphoreSlim(1, 1);
+            this._running = new SemaphoreSlim(1, 1);
 
             this._timer = new System.Timers.Timer()
             {
@@ -146,7 +153,11 @@ namespace trape.jobs
         /// </summary>
         public void Start()
         {
+            // Start timer
             this._timer.Start();
+
+            // Enter running state
+            this._running.Wait();
         }
 
         /// <summary>
@@ -160,10 +171,24 @@ namespace trape.jobs
         /// </summary>
         public void Terminate()
         {
-            // block synchronizer
+            // Block synchronizer
             this._synchronizer.Wait();
 
+            // Stop timer
             this._timer.Stop();
+
+            // Release
+            this._running.Release();
+        }
+
+        /// <summary>
+        /// Returns a Task to wait for until job has finished
+        /// </summary>
+        /// <returns></returns>
+        public Task WaitFor()
+        {
+            // Wait for next time to enter, happens when task terminates
+            return this._running.WaitAsync();
         }
 
         #endregion

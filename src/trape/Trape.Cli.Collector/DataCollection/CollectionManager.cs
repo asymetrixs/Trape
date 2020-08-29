@@ -346,27 +346,22 @@ namespace trape.cli.collector.DataCollection
 
                 this._startStop.Release();
             }
-        }
 
-        /// <summary>
-        /// Doing nothing
-        /// </summary>
-        /// <param name="stoppingToken"></param>
-        /// <returns></returns>
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
             this._jobSubscriptionManager.Start();
 
             this._logger.Verbose("Job Subscription Manager started");
+        }
 
-            while(!this._jobSubscriptionManager.IsRunning())
-            {
-                await Task.Delay(1000).ConfigureAwait(true);
+        /// <summary>
+        /// Waits for process
+        /// </summary>
+        /// <param name="stoppingToken"></param>
+        /// <returns></returns>
+        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            this._logger.Verbose("Waiting...");
 
-                this._logger.Verbose("Waiting for Job Subscription Manager to terminate");
-            }
-
-            this._logger.Verbose("Job Subscription Manager terminated");
+            return this._jobSubscriptionManager.WaitFor();
         }
 
         /// <summary>
