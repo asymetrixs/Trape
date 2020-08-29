@@ -34,8 +34,8 @@ echo "Building Profile: $PROFILE"
 cd $SOURCEDIR/trape/Trape.Cli.Trader
 
 # Building
-dotnet-sdk.dotnet clean
-dotnet-sdk.dotnet build --configuration:${PROFILE} --runtime:ubuntu.18.04-x64
+dotnet clean
+dotnet build --configuration:${PROFILE} --runtime:ubuntu.18.04-x64
 
 cd $BASEDIR
 
