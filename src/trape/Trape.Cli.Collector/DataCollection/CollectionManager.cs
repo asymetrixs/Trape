@@ -321,17 +321,7 @@ namespace trape.cli.collector.DataCollection
         /// </summary>
         /// <param name="stoppingToken"></param>
         /// <returns></returns>
-        //public override async Task StartAsync(CancellationToken cancellationToken = default)
-        //{
-            
-        //}
-
-        /// <summary>
-        /// Waits for process
-        /// </summary>
-        /// <param name="stoppingToken"></param>
-        /// <returns></returns>
-        protected async override Task ExecuteAsync(CancellationToken stoppingToken = default)
+        public async override Task StartAsync(CancellationToken cancellationToken = default)
         {
             this._startStop.Wait();
 
@@ -359,7 +349,15 @@ namespace trape.cli.collector.DataCollection
             //this._jobSubscriptionManager.Start();
 
             this._logger.Verbose("Job Subscription Manager started");
+        }
 
+        /// <summary>
+        /// Waits for process
+        /// </summary>
+        /// <param name="stoppingToken"></param>
+        /// <returns></returns>
+        protected async override Task ExecuteAsync(CancellationToken stoppingToken = default)
+        {
             while (!stoppingToken.IsCancellationRequested)
             {
                 this._logger.Information("Executing...");
