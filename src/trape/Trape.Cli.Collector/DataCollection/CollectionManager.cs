@@ -321,7 +321,7 @@ namespace trape.cli.collector.DataCollection
         /// </summary>
         /// <param name="stoppingToken"></param>
         /// <returns></returns>
-        public async override Task StartAsync(CancellationToken cancellationToken = default)
+        public override Task StartAsync(CancellationToken cancellationToken = default)
         {
             this._startStop.Wait();
 
@@ -332,7 +332,7 @@ namespace trape.cli.collector.DataCollection
                 this._logger.Information("Setting up Collection Manager");
 
                 // Set up subscription
-                await _manage().ConfigureAwait(true);
+                _manage().Wait();
 
                 // Register cleanup job and start
                 Program.Container.GetService<IJobManager>().Start(new CleanUp());
@@ -349,6 +349,8 @@ namespace trape.cli.collector.DataCollection
             //this._jobSubscriptionManager.Start();
 
             this._logger.Verbose("Job Subscription Manager started");
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
