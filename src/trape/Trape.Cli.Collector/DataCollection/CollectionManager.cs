@@ -331,9 +331,6 @@ namespace trape.cli.collector.DataCollection
             {
                 this._logger.Information("Setting up Collection Manager");
 
-                // Set up subscription
-                _manage().Wait();
-
                 // Register cleanup job and start
                 Program.Container.GetService<IJobManager>().Start(new CleanUp());
 
