@@ -122,7 +122,7 @@ namespace trape.cli.trader
             this._logger.Verbose("Waiting...");
 
             // Return state
-            return this._running.WaitAsync();
+            return this._running.WaitAsync(stoppingToken);
         }
 
         /// <summary>

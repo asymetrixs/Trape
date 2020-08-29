@@ -185,10 +185,10 @@ namespace trape.jobs
         /// Returns a Task to wait for until job has finished
         /// </summary>
         /// <returns></returns>
-        public Task WaitFor()
+        public Task WaitFor(CancellationToken stoppingToken)
         {
             // Wait for next time to enter, happens when task terminates
-            return this._running.WaitAsync();
+            return this._running.WaitAsync(stoppingToken);
         }
 
         #endregion

@@ -321,33 +321,22 @@ namespace trape.cli.collector.DataCollection
         /// </summary>
         /// <param name="stoppingToken"></param>
         /// <returns></returns>
-        public override Task StartAsync(CancellationToken cancellationToken = default)
+        public async override Task StartAsync(CancellationToken cancellationToken = default)
         {
-            this._startStop.Wait();
+            await this._startStop.WaitAsync().ConfigureAwait(true);
 
             this._logger.Debug($"Acquired startup lock");
 
-            try
-            {
-                this._logger.Information("Setting up Collection Manager");
+            // Setup cleanup
+            Program.Container.GetService<IJobManager>().Start(new CleanUp());
 
-                // Register cleanup job and start
-                Program.Container.GetService<IJobManager>().Start(new CleanUp());
-
-                this._logger.Information($"Collection Mangager is online");
-            }
-            finally
-            {
-                this._logger.Debug($"Releasing startup lock");
-
-                this._startStop.Release();
-            }
-
+            // Starting Subscription Manager
             this._jobSubscriptionManager.Start();
 
+            this._logger.Debug($"Releasing startup lock");
+            this._startStop.Release();
+    
             this._logger.Verbose("Job Subscription Manager started");
-
-            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -357,7 +346,9 @@ namespace trape.cli.collector.DataCollection
         /// <returns></returns>
         protected override Task ExecuteAsync(CancellationToken stoppingToken = default)
         {
-            return this._jobSubscriptionManager.WaitFor();
+            this._logger.Verbose("Waiting...");
+
+            return this._jobSubscriptionManager.WaitFor(stoppingToken);
         }
 
         /// <summary>
