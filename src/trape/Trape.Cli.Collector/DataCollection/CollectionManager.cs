@@ -1,6 +1,5 @@
 ﻿using Binance.Net.Enums;
 using Binance.Net.Interfaces;
-using Binance.Net.Objects;
 using Binance.Net.Objects.Spot.MarketStream;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.Sockets;
@@ -322,12 +321,22 @@ namespace trape.cli.collector.DataCollection
         /// </summary>
         /// <param name="stoppingToken"></param>
         /// <returns></returns>
-        public override async Task StartAsync(CancellationToken cancellationToken = default)
+        //public override async Task StartAsync(CancellationToken cancellationToken = default)
+        //{
+            
+        //}
+
+        /// <summary>
+        /// Waits for process
+        /// </summary>
+        /// <param name="stoppingToken"></param>
+        /// <returns></returns>
+        protected async override Task ExecuteAsync(CancellationToken stoppingToken = default)
         {
             this._startStop.Wait();
 
             this._logger.Debug($"Acquired startup lock");
-            
+
             try
             {
                 this._logger.Information("Setting up Collection Manager");
@@ -337,7 +346,7 @@ namespace trape.cli.collector.DataCollection
 
                 // Register cleanup job and start
                 Program.Container.GetService<IJobManager>().Start(new CleanUp());
-                
+
                 this._logger.Information($"Collection Mangager is online");
             }
             finally
@@ -350,16 +359,8 @@ namespace trape.cli.collector.DataCollection
             //this._jobSubscriptionManager.Start();
 
             this._logger.Verbose("Job Subscription Manager started");
-        }
 
-        /// <summary>
-        /// Waits for process
-        /// </summary>
-        /// <param name="stoppingToken"></param>
-        /// <returns></returns>
-        protected async override Task ExecuteAsync(CancellationToken stoppingToken = default)
-        {
-            while(!stoppingToken.IsCancellationRequested)
+            while (!stoppingToken.IsCancellationRequested)
             {
                 this._logger.Information("Executing...");
 
