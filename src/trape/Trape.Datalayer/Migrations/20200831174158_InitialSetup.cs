@@ -88,6 +88,9 @@ namespace Trape.Datalayer.Migrations
                 name: "klines",
                 columns: table => new
                 {
+                    first_trade_id = table.Column<long>(nullable: false),
+                    symbol = table.Column<string>(nullable: false),
+                    open_time = table.Column<DateTime>(nullable: false),
                     open = table.Column<decimal>(nullable: false),
                     quote_asset_volume = table.Column<decimal>(nullable: false),
                     final = table.Column<bool>(nullable: false),
@@ -97,16 +100,14 @@ namespace Trape.Datalayer.Migrations
                     high = table.Column<decimal>(nullable: false),
                     close = table.Column<decimal>(nullable: false),
                     taker_buy_quote_asset_volume = table.Column<decimal>(nullable: false),
-                    last_trade = table.Column<long>(nullable: false),
-                    first_trade = table.Column<long>(nullable: false),
+                    last_trade_id = table.Column<long>(nullable: false),
                     interval = table.Column<int>(nullable: false),
-                    symbol = table.Column<string>(nullable: true),
                     close_time = table.Column<DateTime>(nullable: false),
-                    open_time = table.Column<DateTime>(nullable: false),
                     taker_buy_base_asset_volume = table.Column<decimal>(nullable: false)
                 },
                 constraints: table =>
                 {
+                    table.PrimaryKey("PK_klines", x => new { x.open_time, x.symbol, x.first_trade_id });
                 });
 
             migrationBuilder.CreateTable(
@@ -231,11 +232,12 @@ namespace Trape.Datalayer.Migrations
                 name: "ticks",
                 columns: table => new
                 {
+                    open_time = table.Column<DateTime>(nullable: false),
+                    first_trade_id = table.Column<long>(nullable: false),
+                    symbol = table.Column<string>(nullable: false),
                     total_trades = table.Column<long>(nullable: false),
                     close_time = table.Column<DateTime>(nullable: false),
-                    open_time = table.Column<DateTime>(nullable: false),
                     last_trade_id = table.Column<long>(nullable: false),
-                    first_trade_id = table.Column<long>(nullable: false),
                     total_traded_quote_asset_volume = table.Column<decimal>(nullable: false),
                     total_traded_base_asset_volume = table.Column<decimal>(nullable: false),
                     low_price = table.Column<decimal>(nullable: false),
@@ -250,11 +252,11 @@ namespace Trape.Datalayer.Migrations
                     prev_day_close_price = table.Column<decimal>(nullable: false),
                     weighted_average_price = table.Column<decimal>(nullable: false),
                     price_change_percent = table.Column<decimal>(nullable: false),
-                    price_change = table.Column<decimal>(nullable: false),
-                    symbol = table.Column<string>(nullable: true)
+                    price_change = table.Column<decimal>(nullable: false)
                 },
                 constraints: table =>
                 {
+                    table.PrimaryKey("PK_ticks", x => new { x.open_time, x.symbol, x.first_trade_id });
                 });
 
             migrationBuilder.CreateTable(

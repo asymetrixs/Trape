@@ -224,13 +224,13 @@ namespace trape.datalayer
 
             // Tick
             modelBuilder.Entity<Tick>()
-                .HasNoKey();
+                .HasKey(o => new { o.OpenTime, o.Symbol, o.FirstTradeId });
             modelBuilder.Entity<Tick>()
                 .HasIndex(o => new { o.OpenTime, o.CloseTime });
 
             // Kline
             modelBuilder.Entity<Kline>()
-                .HasNoKey();
+                .HasKey(o => new { o.OpenTime, o.Symbol, o.FirstTradeId });
             modelBuilder.Entity<Kline>()
                 .HasIndex(o => new { o.OpenTime, o.Interval, o.Symbol });            
 

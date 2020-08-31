@@ -10,7 +10,7 @@ using trape.datalayer;
 namespace Trape.Datalayer.Migrations
 {
     [DbContext(typeof(TrapeContext))]
-    [Migration("20200829163024_InitialSetup")]
+    [Migration("20200831174158_InitialSetup")]
     partial class InitialSetup
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -232,6 +232,18 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Kline", b =>
                 {
+                    b.Property<DateTime>("OpenTime")
+                        .HasColumnName("open_time")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Symbol")
+                        .HasColumnName("symbol")
+                        .HasColumnType("text");
+
+                    b.Property<long>("FirstTradeId")
+                        .HasColumnName("first_trade_id")
+                        .HasColumnType("bigint");
+
                     b.Property<decimal>("Close")
                         .HasColumnName("close")
                         .HasColumnType("numeric");
@@ -244,10 +256,6 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("final")
                         .HasColumnType("boolean");
 
-                    b.Property<long>("FirstTrade")
-                        .HasColumnName("first_trade")
-                        .HasColumnType("bigint");
-
                     b.Property<decimal>("High")
                         .HasColumnName("high")
                         .HasColumnType("numeric");
@@ -256,8 +264,8 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("interval")
                         .HasColumnType("integer");
 
-                    b.Property<long>("LastTrade")
-                        .HasColumnName("last_trade")
+                    b.Property<long>("LastTradeId")
+                        .HasColumnName("last_trade_id")
                         .HasColumnType("bigint");
 
                     b.Property<decimal>("Low")
@@ -268,17 +276,9 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("open")
                         .HasColumnType("numeric");
 
-                    b.Property<DateTime>("OpenTime")
-                        .HasColumnName("open_time")
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<decimal>("QuoteAssetVolume")
                         .HasColumnName("quote_asset_volume")
                         .HasColumnType("numeric");
-
-                    b.Property<string>("Symbol")
-                        .HasColumnName("symbol")
-                        .HasColumnType("text");
 
                     b.Property<decimal>("TakerBuyBaseAssetVolume")
                         .HasColumnName("taker_buy_base_asset_volume")
@@ -295,6 +295,8 @@ namespace Trape.Datalayer.Migrations
                     b.Property<decimal>("Volume")
                         .HasColumnName("volume")
                         .HasColumnType("numeric");
+
+                    b.HasKey("OpenTime", "Symbol", "FirstTradeId");
 
                     b.HasIndex("OpenTime", "Interval", "Symbol");
 
@@ -1136,6 +1138,18 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Tick", b =>
                 {
+                    b.Property<DateTime>("OpenTime")
+                        .HasColumnName("open_time")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Symbol")
+                        .HasColumnName("symbol")
+                        .HasColumnType("text");
+
+                    b.Property<long>("FirstTradeId")
+                        .HasColumnName("first_trade_id")
+                        .HasColumnType("bigint");
+
                     b.Property<decimal>("AskPrice")
                         .HasColumnName("ask_price")
                         .HasColumnType("numeric");
@@ -1155,10 +1169,6 @@ namespace Trape.Datalayer.Migrations
                     b.Property<DateTime>("CloseTime")
                         .HasColumnName("close_time")
                         .HasColumnType("timestamp without time zone");
-
-                    b.Property<long>("FirstTradeId")
-                        .HasColumnName("first_trade_id")
-                        .HasColumnType("bigint");
 
                     b.Property<decimal>("HighPrice")
                         .HasColumnName("high_price")
@@ -1184,10 +1194,6 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("open_price")
                         .HasColumnType("numeric");
 
-                    b.Property<DateTime>("OpenTime")
-                        .HasColumnName("open_time")
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<decimal>("PrevDayClosePrice")
                         .HasColumnName("prev_day_close_price")
                         .HasColumnType("numeric");
@@ -1199,10 +1205,6 @@ namespace Trape.Datalayer.Migrations
                     b.Property<decimal>("PriceChangePercent")
                         .HasColumnName("price_change_percent")
                         .HasColumnType("numeric");
-
-                    b.Property<string>("Symbol")
-                        .HasColumnName("symbol")
-                        .HasColumnType("text");
 
                     b.Property<decimal>("TotalTradedBaseAssetVolume")
                         .HasColumnName("total_traded_base_asset_volume")
@@ -1219,6 +1221,8 @@ namespace Trape.Datalayer.Migrations
                     b.Property<decimal>("WeightedAveragePrice")
                         .HasColumnName("weighted_average_price")
                         .HasColumnType("numeric");
+
+                    b.HasKey("OpenTime", "Symbol", "FirstTradeId");
 
                     b.HasIndex("OpenTime", "CloseTime");
 

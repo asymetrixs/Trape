@@ -1,32 +1,38 @@
 ﻿ 
- Install dotnet ef:
- dotnet tool install --global dotnet-ef
+Install dotnet ef:
+dotnet tool install --global dotnet-ef
  
- Steps to produce migration strategies. Add a proper name for <...>
+Steps to produce migration strategies. Add a proper name for <...>
 
- Create migration strategy:
- # cd ..
- # dotnet ef migrations add <...> --project .\trape.datalayer\ --startup-project .\trape.cli.collector\
+Create migration strategy:
+# cd ..
+# dotnet ef migrations add <...> --project .\trape.datalayer\ --startup-project .\trape.cli.collector\
 
- Apply migration
- # dotnet ef database update --project .\trape.datalayer\ --startup-project .\trape.cli.collector\
+Apply migration
+# dotnet ef database update --project .\trape.datalayer\ --startup-project .\trape.cli.collector\
 
 
- -- TimescaleDB Hypertable
+-- TimescaleDB Hypertable
+
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+
 ALTER TABLE recommendations RENAME TO recommandations_old;
 CREATE TABLE recommendations (LIKE recommandations_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
-CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 SELECT * FROM create_hypertable('recommendations', 'created_on');
+DROP TABLE recommandations_old;
 
 ALTER TABLE klines RENAME TO klines_old;
 CREATE TABLE klines (LIKE klines_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
-CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 SELECT * FROM create_hypertable('klines', 'open_time');
+DROP TABLE klines_old;
 
 ALTER TABLE ticks RENAME TO ticks_old;
 CREATE TABLE ticks (LIKE ticks_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
-CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 -- 3h chunks
 SELECT * FROM create_hypertable('ticks', 'open_time', chunk_time_interval => interval '3 hours');
+DROP TABLE ticks_old;
 
 
+INSERT INTO symbols (name, is_collection_active, is_trading_active) VALUES ('BTCUSDT', true, false);
+INSERT INTO symbols (name, is_collection_active, is_trading_active) VALUES ('ETHUSDT', true, false);
+INSERT INTO symbols (name, is_collection_active, is_trading_active) VALUES ('LINKUSDT', true, false);

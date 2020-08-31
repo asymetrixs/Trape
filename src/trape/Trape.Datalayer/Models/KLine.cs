@@ -53,12 +53,12 @@ namespace trape.datalayer.Models
         /// <summary>
         /// The last trade id in this candlestick
         /// </summary>
-        public long LastTrade { get; set; }
+        public long LastTradeId { get; set; }
 
         /// <summary>
         /// The first trade id in this candlestick
         /// </summary>
-        public long FirstTrade { get; set; }
+        public long FirstTradeId { get; set; }
 
         /// <summary>
         /// The interval of this candlestick
