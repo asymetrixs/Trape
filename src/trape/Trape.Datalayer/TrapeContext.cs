@@ -224,15 +224,19 @@ namespace trape.datalayer
 
             // Tick
             modelBuilder.Entity<Tick>()
-                .HasKey(o => new { o.OpenTime, o.Symbol, o.FirstTradeId });
+                .HasKey(o => o.Id);
             modelBuilder.Entity<Tick>()
                 .HasIndex(o => new { o.OpenTime, o.CloseTime });
+            modelBuilder.Entity<Tick>()
+                .HasIndex(o => o.Id);
 
             // Kline
             modelBuilder.Entity<Kline>()
-                .HasKey(o => new { o.OpenTime, o.Symbol, o.FirstTradeId });
+                .HasKey(o => o.Id);
             modelBuilder.Entity<Kline>()
-                .HasIndex(o => new { o.OpenTime, o.Interval, o.Symbol });            
+                .HasIndex(o => new { o.OpenTime, o.Interval, o.Symbol });
+            modelBuilder.Entity<Kline>()
+                .HasIndex(o => o.Id);
 
             // Book Tick
             modelBuilder.Entity<BookPrice>()
@@ -244,7 +248,9 @@ namespace trape.datalayer
 
             // Recommendation
             modelBuilder.Entity<Recommendation>()
-                .HasKey(o => new { o.CreatedOn, o.Symbol });
+                .HasKey(o => o.Id);
+            modelBuilder.Entity<Recommendation>()
+                .HasIndex(o => o.Id);
 
             // Detailed Order
             modelBuilder.Entity<ClientOrder>()

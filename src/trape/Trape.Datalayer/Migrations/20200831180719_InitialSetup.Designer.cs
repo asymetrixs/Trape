@@ -10,7 +10,7 @@ using trape.datalayer;
 namespace Trape.Datalayer.Migrations
 {
     [DbContext(typeof(TrapeContext))]
-    [Migration("20200831174158_InitialSetup")]
+    [Migration("20200831180719_InitialSetup")]
     partial class InitialSetup
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -232,17 +232,11 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Kline", b =>
                 {
-                    b.Property<DateTime>("OpenTime")
-                        .HasColumnName("open_time")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("Symbol")
-                        .HasColumnName("symbol")
-                        .HasColumnType("text");
-
-                    b.Property<long>("FirstTradeId")
-                        .HasColumnName("first_trade_id")
-                        .HasColumnType("bigint");
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnName("id")
+                        .HasColumnType("bigint")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
                     b.Property<decimal>("Close")
                         .HasColumnName("close")
@@ -255,6 +249,10 @@ namespace Trape.Datalayer.Migrations
                     b.Property<bool>("Final")
                         .HasColumnName("final")
                         .HasColumnType("boolean");
+
+                    b.Property<long>("FirstTradeId")
+                        .HasColumnName("first_trade_id")
+                        .HasColumnType("bigint");
 
                     b.Property<decimal>("High")
                         .HasColumnName("high")
@@ -276,9 +274,17 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("open")
                         .HasColumnType("numeric");
 
+                    b.Property<DateTime>("OpenTime")
+                        .HasColumnName("open_time")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<decimal>("QuoteAssetVolume")
                         .HasColumnName("quote_asset_volume")
                         .HasColumnType("numeric");
+
+                    b.Property<string>("Symbol")
+                        .HasColumnName("symbol")
+                        .HasColumnType("text");
 
                     b.Property<decimal>("TakerBuyBaseAssetVolume")
                         .HasColumnName("taker_buy_base_asset_volume")
@@ -296,7 +302,9 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("volume")
                         .HasColumnType("numeric");
 
-                    b.HasKey("OpenTime", "Symbol", "FirstTradeId");
+                    b.HasKey("Id");
+
+                    b.HasIndex("Id");
 
                     b.HasIndex("OpenTime", "Interval", "Symbol");
 
@@ -705,17 +713,19 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Recommendation", b =>
                 {
-                    b.Property<DateTime>("CreatedOn")
-                        .HasColumnName("created_on")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("Symbol")
-                        .HasColumnName("symbol")
-                        .HasColumnType("text");
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnName("id")
+                        .HasColumnType("bigint")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
                     b.Property<int>("Action")
                         .HasColumnName("action")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnName("created_on")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<decimal>("MovingAverage10m")
                         .HasColumnName("moving_average10m")
@@ -881,7 +891,13 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("slope7m")
                         .HasColumnType("numeric");
 
-                    b.HasKey("CreatedOn", "Symbol");
+                    b.Property<string>("Symbol")
+                        .HasColumnName("symbol")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Id");
 
                     b.ToTable("recommendations");
                 });
@@ -1138,17 +1154,11 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Tick", b =>
                 {
-                    b.Property<DateTime>("OpenTime")
-                        .HasColumnName("open_time")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("Symbol")
-                        .HasColumnName("symbol")
-                        .HasColumnType("text");
-
-                    b.Property<long>("FirstTradeId")
-                        .HasColumnName("first_trade_id")
-                        .HasColumnType("bigint");
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnName("id")
+                        .HasColumnType("bigint")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
                     b.Property<decimal>("AskPrice")
                         .HasColumnName("ask_price")
@@ -1169,6 +1179,10 @@ namespace Trape.Datalayer.Migrations
                     b.Property<DateTime>("CloseTime")
                         .HasColumnName("close_time")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<long>("FirstTradeId")
+                        .HasColumnName("first_trade_id")
+                        .HasColumnType("bigint");
 
                     b.Property<decimal>("HighPrice")
                         .HasColumnName("high_price")
@@ -1194,6 +1208,10 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("open_price")
                         .HasColumnType("numeric");
 
+                    b.Property<DateTime>("OpenTime")
+                        .HasColumnName("open_time")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<decimal>("PrevDayClosePrice")
                         .HasColumnName("prev_day_close_price")
                         .HasColumnType("numeric");
@@ -1205,6 +1223,10 @@ namespace Trape.Datalayer.Migrations
                     b.Property<decimal>("PriceChangePercent")
                         .HasColumnName("price_change_percent")
                         .HasColumnType("numeric");
+
+                    b.Property<string>("Symbol")
+                        .HasColumnName("symbol")
+                        .HasColumnType("text");
 
                     b.Property<decimal>("TotalTradedBaseAssetVolume")
                         .HasColumnName("total_traded_base_asset_volume")
@@ -1222,7 +1244,9 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("weighted_average_price")
                         .HasColumnType("numeric");
 
-                    b.HasKey("OpenTime", "Symbol", "FirstTradeId");
+                    b.HasKey("Id");
+
+                    b.HasIndex("Id");
 
                     b.HasIndex("OpenTime", "CloseTime");
 

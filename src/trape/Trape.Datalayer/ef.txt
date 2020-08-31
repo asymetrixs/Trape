@@ -16,22 +16,27 @@ Apply migration
 
 CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 
+ALTER TABLE recommendations DROP CONSTRAINT "PK_recommendations";
 ALTER TABLE recommendations RENAME TO recommandations_old;
 CREATE TABLE recommendations (LIKE recommandations_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
 SELECT * FROM create_hypertable('recommendations', 'created_on');
 DROP TABLE recommandations_old;
 
+ALTER TABLE klines DROP CONSTRAINT "PK_klines";
 ALTER TABLE klines RENAME TO klines_old;
 CREATE TABLE klines (LIKE klines_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
 SELECT * FROM create_hypertable('klines', 'open_time');
 DROP TABLE klines_old;
 
+ALTER TABLE ticks DROP CONSTRAINT "PK_ticks";
 ALTER TABLE ticks RENAME TO ticks_old;
 CREATE TABLE ticks (LIKE ticks_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
 -- 3h chunks
 SELECT * FROM create_hypertable('ticks', 'open_time', chunk_time_interval => interval '3 hours');
 DROP TABLE ticks_old;
 
+
+--- >> Do not forget to change the owner of the new tables recommendations, ticks, and klines accordingly!
 
 INSERT INTO symbols (name, is_collection_active, is_trading_active) VALUES ('BTCUSDT', true, false);
 INSERT INTO symbols (name, is_collection_active, is_trading_active) VALUES ('ETHUSDT', true, false);

@@ -88,9 +88,8 @@ namespace Trape.Datalayer.Migrations
                 name: "klines",
                 columns: table => new
                 {
-                    first_trade_id = table.Column<long>(nullable: false),
-                    symbol = table.Column<string>(nullable: false),
-                    open_time = table.Column<DateTime>(nullable: false),
+                    id = table.Column<long>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     open = table.Column<decimal>(nullable: false),
                     quote_asset_volume = table.Column<decimal>(nullable: false),
                     final = table.Column<bool>(nullable: false),
@@ -101,13 +100,16 @@ namespace Trape.Datalayer.Migrations
                     close = table.Column<decimal>(nullable: false),
                     taker_buy_quote_asset_volume = table.Column<decimal>(nullable: false),
                     last_trade_id = table.Column<long>(nullable: false),
+                    first_trade_id = table.Column<long>(nullable: false),
                     interval = table.Column<int>(nullable: false),
+                    symbol = table.Column<string>(nullable: true),
                     close_time = table.Column<DateTime>(nullable: false),
+                    open_time = table.Column<DateTime>(nullable: false),
                     taker_buy_base_asset_volume = table.Column<decimal>(nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_klines", x => new { x.open_time, x.symbol, x.first_trade_id });
+                    table.PrimaryKey("PK_klines", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -163,7 +165,9 @@ namespace Trape.Datalayer.Migrations
                 name: "recommendations",
                 columns: table => new
                 {
-                    symbol = table.Column<string>(nullable: false),
+                    id = table.Column<long>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    symbol = table.Column<string>(nullable: true),
                     created_on = table.Column<DateTime>(nullable: false),
                     action = table.Column<int>(nullable: false),
                     price = table.Column<decimal>(nullable: false),
@@ -210,7 +214,7 @@ namespace Trape.Datalayer.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_recommendations", x => new { x.created_on, x.symbol });
+                    table.PrimaryKey("PK_recommendations", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -232,12 +236,13 @@ namespace Trape.Datalayer.Migrations
                 name: "ticks",
                 columns: table => new
                 {
-                    open_time = table.Column<DateTime>(nullable: false),
-                    first_trade_id = table.Column<long>(nullable: false),
-                    symbol = table.Column<string>(nullable: false),
+                    id = table.Column<long>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     total_trades = table.Column<long>(nullable: false),
                     close_time = table.Column<DateTime>(nullable: false),
+                    open_time = table.Column<DateTime>(nullable: false),
                     last_trade_id = table.Column<long>(nullable: false),
+                    first_trade_id = table.Column<long>(nullable: false),
                     total_traded_quote_asset_volume = table.Column<decimal>(nullable: false),
                     total_traded_base_asset_volume = table.Column<decimal>(nullable: false),
                     low_price = table.Column<decimal>(nullable: false),
@@ -252,11 +257,12 @@ namespace Trape.Datalayer.Migrations
                     prev_day_close_price = table.Column<decimal>(nullable: false),
                     weighted_average_price = table.Column<decimal>(nullable: false),
                     price_change_percent = table.Column<decimal>(nullable: false),
-                    price_change = table.Column<decimal>(nullable: false)
+                    price_change = table.Column<decimal>(nullable: false),
+                    symbol = table.Column<string>(nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ticks", x => new { x.open_time, x.symbol, x.first_trade_id });
+                    table.PrimaryKey("PK_ticks", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -579,6 +585,11 @@ namespace Trape.Datalayer.Migrations
                 column: "symbol");
 
             migrationBuilder.CreateIndex(
+                name: "IX_klines_id",
+                table: "klines",
+                column: "id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_klines_open_time_interval_symbol",
                 table: "klines",
                 columns: new[] { "open_time", "interval", "symbol" });
@@ -678,6 +689,16 @@ namespace Trape.Datalayer.Migrations
                 name: "IX_placed_orders_transaction_time_symbol",
                 table: "placed_orders",
                 columns: new[] { "transaction_time", "symbol" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_recommendations_id",
+                table: "recommendations",
+                column: "id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ticks_id",
+                table: "ticks",
+                column: "id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ticks_open_time_close_time",
