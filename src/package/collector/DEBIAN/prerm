@@ -4,4 +4,4 @@ BASEPATH=/opt/trape
 INSTALLPATH=$BASEPATH/trape-collector
 
 # Remove link
-rm -rf $INSTALLPATH/service
+rm -rf $INSTALLPATH/trape-collector

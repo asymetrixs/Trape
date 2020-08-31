@@ -4,4 +4,4 @@ BASEPATH=/opt/trape
 INSTALLPATH=$BASEPATH/trape-trader
 
 # Remove link
-rm -rf $INSTALLPATH/service
+rm -rf $INSTALLPATH/trape-trader
