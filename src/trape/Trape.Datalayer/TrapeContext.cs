@@ -224,19 +224,15 @@ namespace trape.datalayer
 
             // Tick
             modelBuilder.Entity<Tick>()
-                .HasKey(o => o.Id);
+                .HasNoKey();
             modelBuilder.Entity<Tick>()
-                .HasIndex(o => o.Id);
-            modelBuilder.Entity<Tick>()
-                .HasIndex(o => new { o.OpenTime, o.CloseTime});
+                .HasIndex(o => new { o.OpenTime, o.CloseTime });
 
             // Kline
             modelBuilder.Entity<Kline>()
-                .HasKey(o => o.Id);
+                .HasNoKey();
             modelBuilder.Entity<Kline>()
-                .HasIndex(o => o.Id);
-            modelBuilder.Entity<Kline>()
-                .HasIndex(o => new { o.OpenTime, o.Interval, o.Symbol });
+                .HasIndex(o => new { o.OpenTime, o.Interval, o.Symbol });            
 
             // Book Tick
             modelBuilder.Entity<BookPrice>()
@@ -354,7 +350,7 @@ namespace trape.datalayer
                 return this.Set<Stats15s>().FromSqlRaw("SELECT * FROM stats_15s();").AsNoTracking().ToList();
             }
             catch { }
-            
+
             return new List<Stats15s>();
         }
 

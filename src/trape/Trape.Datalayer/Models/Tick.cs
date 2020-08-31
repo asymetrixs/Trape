@@ -2,7 +2,7 @@
 
 namespace trape.datalayer.Models
 {
-    public class Tick : AbstractKey
+    public class Tick
     {
         /// <summary>
         /// The total trades of id

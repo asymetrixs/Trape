@@ -3,7 +3,7 @@ using trape.datalayer.Enums;
 
 namespace trape.datalayer.Models
 {
-    public class Kline : AbstractKey
+    public class Kline
     {
         /// <summary>
         /// The open price of this candlestick

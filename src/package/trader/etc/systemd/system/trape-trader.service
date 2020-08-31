@@ -3,14 +3,13 @@ Description=Trape Trader
 
 
 [Service]
-
 Type=simple
 
 # will set the Current Working Directory (CWD). Worker service will have issues without this setting
 WorkingDirectory=/opt/trape/trader
 
 # systemd will run this executable to start the service
-ExecStart=/opt/trape/trader/service
+ExecStart=/opt/trape/trader/trape-trader
 
 # to query logs using journalctl, set a logical name here
 SyslogIdentifier=Trape.Trader

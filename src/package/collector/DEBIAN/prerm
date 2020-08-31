@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BASEPATH=/opt/trape
-INSTALLPATH=$BASEPATH/collector
+INSTALLPATH=$BASEPATH/trape-collector
 
 # Remove link
 rm -rf $INSTALLPATH/service

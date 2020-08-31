@@ -230,12 +230,6 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Kline", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
-
                     b.Property<decimal>("Close")
                         .HasColumnName("close")
                         .HasColumnType("numeric");
@@ -299,10 +293,6 @@ namespace Trape.Datalayer.Migrations
                     b.Property<decimal>("Volume")
                         .HasColumnName("volume")
                         .HasColumnType("numeric");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Id");
 
                     b.HasIndex("OpenTime", "Interval", "Symbol");
 
@@ -1144,12 +1134,6 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Tick", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
-
                     b.Property<decimal>("AskPrice")
                         .HasColumnName("ask_price")
                         .HasColumnType("numeric");
@@ -1233,10 +1217,6 @@ namespace Trape.Datalayer.Migrations
                     b.Property<decimal>("WeightedAveragePrice")
                         .HasColumnName("weighted_average_price")
                         .HasColumnType("numeric");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Id");
 
                     b.HasIndex("OpenTime", "CloseTime");
 

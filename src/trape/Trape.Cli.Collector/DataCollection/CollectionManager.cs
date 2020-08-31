@@ -245,7 +245,7 @@ namespace trape.cli.collector.DataCollection
                 try
                 {
                     database.Ticks.Add(Translator.Translate(bst));
-                    database.SaveChanges();
+                    await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -272,7 +272,7 @@ namespace trape.cli.collector.DataCollection
                 try
                 {
                     database.Klines.Add(Translator.Translate(bskd));
-                    database.SaveChanges();
+                    await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {

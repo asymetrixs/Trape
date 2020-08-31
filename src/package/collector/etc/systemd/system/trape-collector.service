@@ -3,14 +3,13 @@ Description=Trape Collector
 
 
 [Service]
-
 Type=simple
 
 # will set the Current Working Directory (CWD). Worker service will have issues without this setting
 WorkingDirectory=/opt/trape/collector
 
 # systemd will run this executable to start the service
-ExecStart=/opt/trape/collector/service
+ExecStart=/opt/trape/collector/trape-collector
 
 # to query logs using journalctl, set a logical name here
 SyslogIdentifier=Trape.Collector

@@ -28,7 +28,7 @@ fi
 chmod 644 /etc/systemd/system/trape-collector.service
 
 # Create handy link
-ln -s $INSTALLPATH/Trape.Cli.Collector $INSTALLPATH/service
+ln -s $INSTALLPATH/Trape.Cli.Collector $INSTALLPATH/trape-collector
 
 # Create logging dir
 mkdir -p /var/log/trape

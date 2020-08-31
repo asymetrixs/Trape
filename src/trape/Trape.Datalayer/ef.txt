@@ -17,3 +17,16 @@ ALTER TABLE recommendations RENAME TO recommandations_old;
 CREATE TABLE recommendations (LIKE recommandations_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
 CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 SELECT * FROM create_hypertable('recommendations', 'created_on');
+
+ALTER TABLE klines RENAME TO klines_old;
+CREATE TABLE klines (LIKE klines_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+SELECT * FROM create_hypertable('klines', 'open_time');
+
+ALTER TABLE ticks RENAME TO ticks_old;
+CREATE TABLE ticks (LIKE ticks_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+-- 3h chunks
+SELECT * FROM create_hypertable('ticks', 'open_time', chunk_time_interval => interval '3 hours');
+
+

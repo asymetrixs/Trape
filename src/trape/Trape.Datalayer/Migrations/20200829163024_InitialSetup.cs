@@ -88,8 +88,6 @@ namespace Trape.Datalayer.Migrations
                 name: "klines",
                 columns: table => new
                 {
-                    id = table.Column<long>(nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     open = table.Column<decimal>(nullable: false),
                     quote_asset_volume = table.Column<decimal>(nullable: false),
                     final = table.Column<bool>(nullable: false),
@@ -109,7 +107,6 @@ namespace Trape.Datalayer.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_klines", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -234,8 +231,6 @@ namespace Trape.Datalayer.Migrations
                 name: "ticks",
                 columns: table => new
                 {
-                    id = table.Column<long>(nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     total_trades = table.Column<long>(nullable: false),
                     close_time = table.Column<DateTime>(nullable: false),
                     open_time = table.Column<DateTime>(nullable: false),
@@ -260,7 +255,6 @@ namespace Trape.Datalayer.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ticks", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -583,11 +577,6 @@ namespace Trape.Datalayer.Migrations
                 column: "symbol");
 
             migrationBuilder.CreateIndex(
-                name: "IX_klines_id",
-                table: "klines",
-                column: "id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_klines_open_time_interval_symbol",
                 table: "klines",
                 columns: new[] { "open_time", "interval", "symbol" });
@@ -687,11 +676,6 @@ namespace Trape.Datalayer.Migrations
                 name: "IX_placed_orders_transaction_time_symbol",
                 table: "placed_orders",
                 columns: new[] { "transaction_time", "symbol" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ticks_id",
-                table: "ticks",
-                column: "id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ticks_open_time_close_time",

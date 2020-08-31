@@ -28,7 +28,7 @@ fi
 chmod 644 /etc/systemd/system/trape-trader.service
 
 # Create handy link
-ln -s $INSTALLPATH/Trape.Cli.Trader $INSTALLPATH/service
+ln -s $INSTALLPATH/Trape.Cli.Trader $INSTALLPATH/trape-trader
 
 # Create logging dir
 mkdir -p /var/log/trape
