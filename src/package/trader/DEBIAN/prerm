@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BASEPATH=/opt/trape
-INSTALLPATH=$BASEPATH/trape-trader
+INSTALLPATH=$BASEPATH/trader
 
 # Remove link
 rm -rf $INSTALLPATH/trape-trader
