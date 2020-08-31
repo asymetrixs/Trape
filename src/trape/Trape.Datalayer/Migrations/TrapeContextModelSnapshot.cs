@@ -230,11 +230,9 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Kline", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<string>("Id")
                         .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
+                        .HasColumnType("text");
 
                     b.Property<decimal>("Close")
                         .HasColumnName("close")
@@ -711,11 +709,9 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Recommendation", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<string>("Id")
                         .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
+                        .HasColumnType("text");
 
                     b.Property<int>("Action")
                         .HasColumnName("action")
@@ -1152,11 +1148,9 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Tick", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<string>("Id")
                         .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
+                        .HasColumnType("text");
 
                     b.Property<decimal>("AskPrice")
                         .HasColumnName("ask_price")

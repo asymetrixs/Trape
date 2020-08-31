@@ -2,8 +2,27 @@
 
 namespace trape.datalayer.Models
 {
-    public class Tick : AbstractKey
+    public class Tick
     {
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the <c>Tick</c> class.
+        /// </summary>
+        public Tick()
+        {
+            this.Id = Guid.NewGuid().ToString("N");
+        }
+
+        #endregion
+
+        #region Properties
+
+        /// <summary>
+        /// Key
+        /// </summary>
+        public string Id { get; set; }
+
         /// <summary>
         /// The total trades of id
         /// </summary>
@@ -108,5 +127,7 @@ namespace trape.datalayer.Models
         /// The symbol this data is for
         /// </summary>
         public string Symbol { get; set; }
+
+        #endregion
     }
 }

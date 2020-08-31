@@ -10,7 +10,7 @@ using trape.datalayer;
 namespace Trape.Datalayer.Migrations
 {
     [DbContext(typeof(TrapeContext))]
-    [Migration("20200831180719_InitialSetup")]
+    [Migration("20200831193957_InitialSetup")]
     partial class InitialSetup
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -232,11 +232,9 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Kline", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<string>("Id")
                         .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
+                        .HasColumnType("text");
 
                     b.Property<decimal>("Close")
                         .HasColumnName("close")
@@ -713,11 +711,9 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Recommendation", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<string>("Id")
                         .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
+                        .HasColumnType("text");
 
                     b.Property<int>("Action")
                         .HasColumnName("action")
@@ -1154,11 +1150,9 @@ namespace Trape.Datalayer.Migrations
 
             modelBuilder.Entity("trape.datalayer.Models.Tick", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<string>("Id")
                         .HasColumnName("id")
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
+                        .HasColumnType("text");
 
                     b.Property<decimal>("AskPrice")
                         .HasColumnName("ask_price")

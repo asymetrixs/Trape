@@ -3,8 +3,27 @@ using trape.datalayer.Enums;
 
 namespace trape.datalayer.Models
 {
-    public class Kline : AbstractKey
+    public class Kline
     {
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the <c>Kline</c> class.
+        /// </summary>
+        public Kline()
+        {
+            this.Id = Guid.NewGuid().ToString("N");
+        }
+
+        #endregion
+
+        #region Properties
+
+        /// <summary>
+        /// Key
+        /// </summary>
+        public string Id { get; set; }
+
         /// <summary>
         /// The open price of this candlestick
         /// </summary>
@@ -84,5 +103,7 @@ namespace trape.datalayer.Models
         /// The volume of active buy
         /// </summary>
         public decimal TakerBuyBaseAssetVolume { get; set; }
+
+        #endregion
     }
 }

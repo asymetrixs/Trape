@@ -2,9 +2,26 @@
 
 namespace trape.datalayer.Models
 {
-    public class Recommendation : AbstractKey
+    public class Recommendation
     {
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the <c>Recommendation</c> class.
+        /// </summary>
+        public Recommendation()
+        {
+            this.Id = Guid.NewGuid().ToString("N");
+        }
+
+        #endregion
+
         #region Properties
+
+        /// <summary>
+        /// Key
+        /// </summary>
+        public string Id { get; set; }
 
         /// <summary>
         /// Symbol

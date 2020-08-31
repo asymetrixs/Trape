@@ -88,8 +88,7 @@ namespace Trape.Datalayer.Migrations
                 name: "klines",
                 columns: table => new
                 {
-                    id = table.Column<long>(nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    id = table.Column<string>(nullable: false),
                     open = table.Column<decimal>(nullable: false),
                     quote_asset_volume = table.Column<decimal>(nullable: false),
                     final = table.Column<bool>(nullable: false),
@@ -165,8 +164,7 @@ namespace Trape.Datalayer.Migrations
                 name: "recommendations",
                 columns: table => new
                 {
-                    id = table.Column<long>(nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    id = table.Column<string>(nullable: false),
                     symbol = table.Column<string>(nullable: true),
                     created_on = table.Column<DateTime>(nullable: false),
                     action = table.Column<int>(nullable: false),
@@ -236,8 +234,7 @@ namespace Trape.Datalayer.Migrations
                 name: "ticks",
                 columns: table => new
                 {
-                    id = table.Column<long>(nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    id = table.Column<string>(nullable: false),
                     total_trades = table.Column<long>(nullable: false),
                     close_time = table.Column<DateTime>(nullable: false),
                     open_time = table.Column<DateTime>(nullable: false),
