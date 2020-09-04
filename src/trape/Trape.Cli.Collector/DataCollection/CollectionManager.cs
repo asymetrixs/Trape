@@ -229,7 +229,7 @@ namespace trape.cli.collector.DataCollection
 
         #endregion
 
-        #region Timer Elapsed
+        #region Stream
 
         /// <summary>
         /// Saves <c>BinanceStreamTick</c> in the database.
@@ -333,8 +333,8 @@ namespace trape.cli.collector.DataCollection
             // Starting Subscription Manager
             this._jobSubscriptionManager.Start();
 
-            this._logger.Debug($"Releasing startup lock");
             this._startStop.Release();
+            this._logger.Debug($"Released startup lock");            
     
             this._logger.Verbose("Job Subscription Manager started");
         }

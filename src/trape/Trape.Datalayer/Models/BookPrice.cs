@@ -4,6 +4,8 @@ namespace trape.datalayer.Models
 {
     public class BookPrice
     {
+        #region Properties
+
         /// <summary>
         /// Update id
         /// </summary>
@@ -38,5 +40,7 @@ namespace trape.datalayer.Models
         /// Timestamp
         /// </summary>
         public DateTime TransactionTime { get; set; }
+
+        #endregion
     }
 }

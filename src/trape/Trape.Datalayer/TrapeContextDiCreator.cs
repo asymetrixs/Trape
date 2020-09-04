@@ -17,7 +17,7 @@ namespace trape.datalayer
 
         public TrapeContext CreateDbContext()
         {
-            return new TrapeContext(this._dbContextOptionsBuilder.Options/*, this._logger*/);
+            return new TrapeContext(this._dbContextOptionsBuilder.Options);
         }
 
         public DbContextOptionsBuilder<TrapeContext> Options(DbContextOptionsBuilder optionsBuilder)

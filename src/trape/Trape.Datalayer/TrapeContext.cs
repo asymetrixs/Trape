@@ -25,6 +25,7 @@ namespace trape.datalayer
         public TrapeContext(DbContextOptions<TrapeContext> options)
             : base(options)
         {
+            
         }
 
         #endregion
@@ -110,7 +111,7 @@ namespace trape.datalayer
         /// </summary>
         /// <param name="optionsBuilder"></param>
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) => base.OnConfiguring(optionsBuilder);
-
+        
         /// <summary>
         /// Override of <see cref="OnModelCreating(ModelBuilder)"/>
         /// </summary>

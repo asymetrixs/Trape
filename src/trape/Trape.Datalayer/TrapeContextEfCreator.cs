@@ -21,14 +21,14 @@
         {
             var optionsBuilder = this.Options(new DbContextOptionsBuilder<TrapeContext>());
 
-            return new TrapeContext(optionsBuilder.Options/*, Log.Logger*/);
+            return new TrapeContext(optionsBuilder.Options);
         }
 
         public TrapeContext CreateDbContext(string[] args)
         {
             var optionsBuilder = this.Options(new DbContextOptionsBuilder<TrapeContext>());
 
-            return new TrapeContext(optionsBuilder.Options/*, Log.Logger*/);
+            return new TrapeContext(optionsBuilder.Options);
         }
 
         public DbContextOptionsBuilder<TrapeContext> Options(DbContextOptionsBuilder optionsBuilder)

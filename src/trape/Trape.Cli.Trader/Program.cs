@@ -1,7 +1,6 @@
 ﻿using Binance.Net;
 using Binance.Net.Enums;
 using Binance.Net.Interfaces;
-using Binance.Net.Objects;
 using Binance.Net.Objects.Spot;
 using CryptoExchange.Net.Authentication;
 using Microsoft.EntityFrameworkCore;
@@ -113,6 +112,7 @@ namespace trape.cli.trader
             dbContextOptionsBuilder.UseNpgsql(Config.GetConnectionString("trape-db"));
             dbContextOptionsBuilder.EnableDetailedErrors(false);
             dbContextOptionsBuilder.EnableSensitiveDataLogging(false);
+            
 
             // Setup container and register defauld scope as first thing
             Container = new Container();
@@ -137,7 +137,7 @@ namespace trape.cli.trader
                 .UseSimpleInjector(Container);
 
             // Registration
-
+            
             Container.Register<TrapeContext, TrapeContext>(Lifestyle.Scoped);
 
             Container.Register<IStockExchange, StockExchange>(Lifestyle.Transient);

@@ -1,6 +1,5 @@
 ﻿using Binance.Net;
 using Binance.Net.Interfaces;
-using Binance.Net.Objects;
 using Binance.Net.Objects.Spot;
 using CryptoExchange.Net.Authentication;
 using Microsoft.EntityFrameworkCore;

@@ -88,8 +88,6 @@ namespace trape.cli.trader
 
         #region Start / Stop
 
-
-
         /// <summary>
         /// Starts all processes to begin trading
         /// </summary>
