@@ -2,6 +2,7 @@
 using Binance.Net.Interfaces;
 using Binance.Net.Objects.Spot.MarketData;
 using Binance.Net.Objects.Spot.MarketStream;
+using CryptoExchange.Net.Sockets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -10,6 +11,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.cli.trader.Cache.Models;
@@ -59,7 +61,12 @@ namespace trape.cli.trader.Cache
         /// <summary>
         /// Binance Socket Client
         /// </summary>
-        private readonly IBinanceSocketClient _binanceSocketClient;
+        private readonly IBinanceSocketClient _binanceSocketClients;
+
+        /// <summary>
+        /// Holds information about the binance socket subscriptions
+        /// </summary>
+        private readonly Dictionary<string, UpdateSubscription> _updateSubscriptions;
 
         /// <summary>
         /// Exchange Information
@@ -112,6 +119,8 @@ namespace trape.cli.trader.Cache
 
         private readonly Job _jobExchangeInfo;
 
+        private readonly Job _jobSymbolChecker;
+
         #endregion
 
         #region Stats
@@ -146,7 +155,7 @@ namespace trape.cli.trader.Cache
 
             this._binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
 
-            this._binanceSocketClient = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
+            this._binanceSocketClients = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
 
             #endregion
 
@@ -162,6 +171,7 @@ namespace trape.cli.trader.Cache
             this._fallingPrices = new Dictionary<string, FallingPrice>();
             this._openOrders = new Dictionary<string, OpenOrder>();
             this._recommendations = new ConcurrentDictionary<string, Recommendation>();
+            this._updateSubscriptions = new Dictionary<string, UpdateSubscription>();
 
             #region Job setup
 
@@ -174,6 +184,7 @@ namespace trape.cli.trader.Cache
             this._jobStats2h = new Job(new TimeSpan(0, 0, 3), _trend2Hours, this._cancellationTokenSource.Token);
             this._jobForCrossings = new Job(new TimeSpan(0, 0, 2), _forCrossing, this._cancellationTokenSource.Token);
             this._jobExchangeInfo = new Job(new TimeSpan(0, 1, 0), _exchangeInfo, this._cancellationTokenSource.Token);
+            this._jobSymbolChecker = new Job(new TimeSpan(0, 0, 10), _checkSubscriptions, this._cancellationTokenSource.Token);
 
             #endregion
         }
@@ -377,6 +388,134 @@ namespace trape.cli.trader.Cache
             {
                 this._binanceExchangeInfo = result.Data;
             }
+        }
+
+        /// <summary>
+        /// Checks symbols
+        /// </summary>
+        /// <returns></returns>
+        private async void _checkSubscriptions()
+        {
+            // Initial loading
+            this._logger.Debug("Checking subscriptions");
+
+            var availableSymbols = new List<string>();
+            using (AsyncScopedLifestyle.BeginScope(Program.Container))
+            {
+                var database = Program.Container.GetService<TrapeContext>();
+                try
+                {
+                    availableSymbols = database.Symbols.Where(s => s.IsTradingActive).Select(s => s.Name).AsNoTracking().ToList();
+                }
+                catch (Exception e)
+                {
+                    this._logger.Error(e, e.Message);
+                }
+            }
+
+            if (!availableSymbols.Any())
+            {
+                this._logger.Error("Cannot check subscriptions");
+                return;
+            }
+
+            this._logger.Debug($"Symbols subscribed to are {string.Join(',', this._updateSubscriptions.Keys)}");
+            var unsubscribeFrom = this._updateSubscriptions.Keys.Where(s => !availableSymbols.Contains(s));
+            var subscribeTo = availableSymbols.Where(s => !this._updateSubscriptions.ContainsKey(s));
+
+            // Unsubscribe
+            if (unsubscribeFrom.Any())
+            {
+                this._logger.Information($"Symbols to unsubscribe from are {string.Join(',', unsubscribeFrom)}");
+
+                foreach (var symbol in unsubscribeFrom)
+                {
+                    if (this._updateSubscriptions.TryGetValue(symbol, out UpdateSubscription value))
+                    {
+                        try
+                        {
+                            await this._binanceSocketClients.Unsubscribe(value).ConfigureAwait(true);
+                            this._updateSubscriptions.Remove(symbol);
+
+                            this._logger.Information($"Unsubscribed from {symbol}");
+                        }
+                        catch
+                        {
+                            // Nothing
+                        }
+                    }
+                }
+            }
+
+            // Subscribe
+            if (subscribeTo.Any())
+            {
+                this._logger.Information($"Symbols to subscribe to are {string.Join(',', subscribeTo)}");
+
+                foreach (var symbol in subscribeTo)
+                {
+                    try
+                    {
+                        // Subscribe to all symbols
+                        var updateSubscription = await this._binanceSocketClients.SubscribeToBookTickerUpdatesAsync(symbol, async (BinanceStreamBookPrice bsbp) =>
+                        {
+                            var askPriceAdded = false;
+                            var bidPriceAdded = false;
+
+                            // Update ask price
+                            while (!askPriceAdded)
+                            {
+                                if (this._bestAskPrices.ContainsKey(bsbp.Symbol))
+                                {
+                                    await this._bestAskPrices[bsbp.Symbol].Add(bsbp.BestAskPrice).ConfigureAwait(true);
+                                    askPriceAdded = true;
+                                }
+                                else
+                                {
+                                    var bestAskPrice = new BestPrice(bsbp.Symbol);
+                                    askPriceAdded = this._bestAskPrices.TryAdd(bsbp.Symbol, bestAskPrice);
+                                    await bestAskPrice.Add(bsbp.BestAskPrice).ConfigureAwait(true);
+                                }
+
+                                this._logger.Verbose($"{bsbp.Symbol}: Book tick update - asking is {bsbp.BestAskPrice:0.00}");
+                            }
+
+                            // Update bid price
+                            while (!bidPriceAdded)
+                            {
+                                if (this._bestBidPrices.ContainsKey(bsbp.Symbol))
+                                {
+                                    await this._bestBidPrices[bsbp.Symbol].Add(bsbp.BestBidPrice).ConfigureAwait(true);
+                                    bidPriceAdded = true;
+                                }
+                                else
+                                {
+                                    var bestBidPrice = new BestPrice(bsbp.Symbol);
+                                    bidPriceAdded = this._bestBidPrices.TryAdd(bsbp.Symbol, bestBidPrice);
+                                    await bestBidPrice.Add(bsbp.BestBidPrice).ConfigureAwait(true);
+                                }
+
+                                this._logger.Verbose($"{bsbp.Symbol}: Book tick update - bidding is {bsbp.BestBidPrice:0.00}");
+                            }
+                        }).ConfigureAwait(true);
+
+                        if (!updateSubscription.Success)
+                        {
+                            throw new Exception($"Subscribing to {symbol} failed");
+                        }
+
+                        this._updateSubscriptions.Add(symbol, updateSubscription.Data);
+                        this._logger.Information($"Subscribed to {symbol}");
+                    }
+                    catch (Exception e)
+                    {
+                        this._logger.Fatal($"Connecting to Binance failed, retrying...");
+                        this._logger.Fatal(e, e.Message);
+                    }
+                }
+            }
+
+            this._logger.Debug($"Subscriptions checked");
         }
 
         #endregion
@@ -678,7 +817,7 @@ namespace trape.cli.trader.Cache
         /// Starts a buffer
         /// </summary>
         /// <returns></returns>
-        public async Task Start()
+        public Task Start()
         {
             this._logger.Information("Starting Buffer");
 
@@ -697,17 +836,6 @@ namespace trape.cli.trader.Cache
                     this._stats10m = database.Get10MinutesTrendAsync();
                     this._stats2h = database.Get2HoursTrendAsync();
                     this._latestMA10mAnd30mCrossing = database.GetLatestMA10mAndMA30mCrossing();
-
-                    while (!availableSymbols.Any())
-                    {
-                        availableSymbols = database.Symbols.Where(s => s.IsTradingActive).Select(s => s.Name).AsNoTracking().ToList();
-
-                        if (!availableSymbols.Any())
-                        {
-                            this._logger.Information("No active symbols. Sleeping...");
-                            await Task.Delay(5000).ConfigureAwait(true);
-                        }
-                    }
                 }
                 catch (Exception e)
                 {
@@ -715,99 +843,27 @@ namespace trape.cli.trader.Cache
                 }
             }
 
-            if (!availableSymbols.Any())
-            {
-                this._logger.Error("Cannot check subscriptions");
-                return;
-            }
-
             this._logger.Debug("Buffer preloaded");
 
-            this._logger.Information($"Symbols to subscribe to are {string.Join(',', availableSymbols)}, starting the subscription process");
-
-            // Tries 30 times to subscribe to the ticker
-            var countTillHardExit = 30;
-            while (countTillHardExit > 0)
-            {
-                try
-                {
-                    // Subscribe to all symbols
-                    await this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(availableSymbols, async (BinanceStreamBookPrice bsbp) =>
-                    {
-                        var askPriceAdded = false;
-                        var bidPriceAdded = false;
-
-                        // Update ask price
-                        while (!askPriceAdded)
-                        {
-                            if (this._bestAskPrices.ContainsKey(bsbp.Symbol))
-                            {
-                                await this._bestAskPrices[bsbp.Symbol].Add(bsbp.BestAskPrice).ConfigureAwait(true);
-                                askPriceAdded = true;
-                            }
-                            else
-                            {
-                                var bestAskPrice = new BestPrice(bsbp.Symbol);
-                                askPriceAdded = this._bestAskPrices.TryAdd(bsbp.Symbol, bestAskPrice);
-                                await bestAskPrice.Add(bsbp.BestAskPrice).ConfigureAwait(true);
-                            }
-
-                            this._logger.Verbose($"{bsbp.Symbol}: Book tick update - asking is {bsbp.BestAskPrice:0.00}");
-                        }
-
-                        // Update bid price
-                        while (!bidPriceAdded)
-                        {
-                            if (this._bestBidPrices.ContainsKey(bsbp.Symbol))
-                            {
-                                await this._bestBidPrices[bsbp.Symbol].Add(bsbp.BestBidPrice).ConfigureAwait(true);
-                                bidPriceAdded = true;
-                            }
-                            else
-                            {
-                                var bestBidPrice = new BestPrice(bsbp.Symbol);
-                                bidPriceAdded = this._bestBidPrices.TryAdd(bsbp.Symbol, bestBidPrice);
-                                await bestBidPrice.Add(bsbp.BestBidPrice).ConfigureAwait(true);
-                            }
-
-                            this._logger.Verbose($"{bsbp.Symbol}: Book tick update - bidding is {bsbp.BestBidPrice:0.00}");
-                        }
-                    }).ConfigureAwait(true);
-
-                    countTillHardExit = -1;
-                }
-                catch (Exception e)
-                {
-                    this._logger.Fatal($"Connecting to Binance failed, retrying, {31 - countTillHardExit}/30");
-                    this._logger.Fatal(e, e.Message);
-
-                    countTillHardExit--;
-
-                    // Fails hard and relies on service manager (e.g. systemd) to restart the service
-                    if (countTillHardExit == 0)
-                    {
-                        this._logger.Fatal("Shutting down, relying on systemd to restart");
-                        Environment.Exit(1);
-                    }
-
-                    await Task.Delay(2000).ConfigureAwait(true);
-                }
-            }
-
-            this._logger.Debug($"Subscribed to Book Ticker");
+            // Precheck
+            this._checkSubscriptions();
 
             // Starting of timers
+            this._jobSymbolChecker.Start();
             this._jobStats3s.Start();
             this._jobStats15s.Start();
             this._jobStats2m.Start();
             this._jobStats10m.Start();
             this._jobStats2h.Start();
             this._jobForCrossings.Start();
+            this._jobExchangeInfo.Start();
 
             // Loading exchange information
-            this._exchangeInfo();
+            this._exchangeInfo();            
 
             this._logger.Information("Buffer started");
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -817,8 +873,6 @@ namespace trape.cli.trader.Cache
         {
             this._logger.Information("Stopping buffer");
 
-            this._cancellationTokenSource.Cancel();
-
             // Shutdown of timers
             this._jobStats3s.Terminate();
             this._jobStats15s.Terminate();
@@ -826,7 +880,14 @@ namespace trape.cli.trader.Cache
             this._jobStats10m.Terminate();
             this._jobStats2h.Terminate();
             this._jobForCrossings.Terminate();
+            this._jobExchangeInfo.Terminate();
+            this._jobSymbolChecker.Terminate();
 
+            // Signal cancellation for what ever remains
+            this._cancellationTokenSource.Cancel();
+
+            // Close connections
+            this._binanceSocketClients.UnsubscribeAll();
             this._logger.Information("Buffer stopped");
         }
 

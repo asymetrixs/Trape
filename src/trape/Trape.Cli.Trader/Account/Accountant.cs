@@ -670,7 +670,7 @@ namespace trape.cli.trader.Account
         /// Starts the <c>Accountant</c>
         /// </summary>
         /// <returns></returns>
-        public async System.Threading.Tasks.Task Start()
+        public async Task Start()
         {
             this._logger.Verbose("Starting Accountant");
 
@@ -718,9 +718,12 @@ namespace trape.cli.trader.Account
             this._jobSynchronizeAccountInfo.Terminate();
             this._jobConnectionKeepAlive.Terminate();
 
-            // Wait until timer elapsed event finishes
+            await this._binanceClient.StopUserStreamAsync(this._binanceListenKey).ConfigureAwait(true);
+
+            // Wait until delay elapsed event finishes to give background tasks some time and buffers time to flush
             await Task.Delay(1000).ConfigureAwait(true);
 
+            // Signal cancellation for what ever remains
             this._cancellationTokenSource.Cancel();
 
             this._logger.Debug("Accountant stopped");

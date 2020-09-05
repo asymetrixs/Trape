@@ -106,13 +106,13 @@ namespace trape.cli.trader.Market
                     // Market does not require parameter 'timeInForce' and 'price'
                     if (binanceType == OrderType.Market)
                     {
-                        placedOrder = await this._binanceClient.PlaceOrderAsync(clientOrder.Symbol, binanceSide, binanceType,
+                        placedOrder = await this._binanceClient.PlaceTestOrderAsync(clientOrder.Symbol, binanceSide, binanceType,
                           quantity: clientOrder.Quantity, newClientOrderId: clientOrder.Id, orderResponseType: binanceResponseType,
                           ct: cancellationToken).ConfigureAwait(true);
                     }
                     else
                     {
-                        placedOrder = await this._binanceClient.PlaceOrderAsync(clientOrder.Symbol, binanceSide, binanceType, price: clientOrder.Price,
+                        placedOrder = await this._binanceClient.PlaceTestOrderAsync(clientOrder.Symbol, binanceSide, binanceType, price: clientOrder.Price,
                           quantity: clientOrder.Quantity, newClientOrderId: clientOrder.Id, orderResponseType: binanceResponseType, timeInForce: timeInForce,
                           ct: cancellationToken).ConfigureAwait(true);
                     }
