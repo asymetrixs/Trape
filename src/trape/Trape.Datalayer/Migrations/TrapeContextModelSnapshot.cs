@@ -16,7 +16,7 @@ namespace Trape.Datalayer.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
-                .HasAnnotation("ProductVersion", "3.1.7")
+                .HasAnnotation("ProductVersion", "3.1.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             modelBuilder.Entity("trape.datalayer.Models.AccountInfo", b =>
@@ -234,6 +234,10 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("id")
                         .HasColumnType("text");
 
+                    b.Property<decimal>("BaseVolume")
+                        .HasColumnName("base_volume")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("Close")
                         .HasColumnName("close")
                         .HasColumnType("numeric");
@@ -274,29 +278,25 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("open_time")
                         .HasColumnType("timestamp without time zone");
 
-                    b.Property<decimal>("QuoteAssetVolume")
-                        .HasColumnName("quote_asset_volume")
+                    b.Property<decimal>("QuoteVolume")
+                        .HasColumnName("quote_volume")
                         .HasColumnType("numeric");
 
                     b.Property<string>("Symbol")
                         .HasColumnName("symbol")
                         .HasColumnType("text");
 
-                    b.Property<decimal>("TakerBuyBaseAssetVolume")
-                        .HasColumnName("taker_buy_base_asset_volume")
+                    b.Property<decimal>("TakerBuyBaseVolume")
+                        .HasColumnName("taker_buy_base_volume")
                         .HasColumnType("numeric");
 
-                    b.Property<decimal>("TakerBuyQuoteAssetVolume")
-                        .HasColumnName("taker_buy_quote_asset_volume")
+                    b.Property<decimal>("TakerBuyQuoteVolume")
+                        .HasColumnName("taker_buy_quote_volume")
                         .HasColumnType("numeric");
 
                     b.Property<int>("TradeCount")
                         .HasColumnName("trade_count")
                         .HasColumnType("integer");
-
-                    b.Property<decimal>("Volume")
-                        .HasColumnName("volume")
-                        .HasColumnType("numeric");
 
                     b.HasKey("Id");
 
@@ -1160,6 +1160,10 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("ask_quantity")
                         .HasColumnType("numeric");
 
+                    b.Property<decimal>("BaseVolume")
+                        .HasColumnName("base_volume")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("BidPrice")
                         .HasColumnName("bid_price")
                         .HasColumnType("numeric");
@@ -1216,13 +1220,13 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("price_change_percent")
                         .HasColumnType("numeric");
 
+                    b.Property<decimal>("QuoteVolume")
+                        .HasColumnName("quote_volume")
+                        .HasColumnType("numeric");
+
                     b.Property<string>("Symbol")
                         .HasColumnName("symbol")
                         .HasColumnType("text");
-
-                    b.Property<decimal>("TotalTradedBaseAssetVolume")
-                        .HasColumnName("total_traded_base_asset_volume")
-                        .HasColumnType("numeric");
 
                     b.Property<decimal>("TotalTradedQuoteAssetVolume")
                         .HasColumnName("total_traded_quote_asset_volume")

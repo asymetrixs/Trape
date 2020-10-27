@@ -1,6 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using System;
 
 namespace Trape.Datalayer.Migrations
 {
@@ -90,21 +90,21 @@ namespace Trape.Datalayer.Migrations
                 {
                     id = table.Column<string>(nullable: false),
                     open = table.Column<decimal>(nullable: false),
-                    quote_asset_volume = table.Column<decimal>(nullable: false),
+                    quote_volume = table.Column<decimal>(nullable: false),
                     final = table.Column<bool>(nullable: false),
                     trade_count = table.Column<int>(nullable: false),
-                    volume = table.Column<decimal>(nullable: false),
                     low = table.Column<decimal>(nullable: false),
                     high = table.Column<decimal>(nullable: false),
                     close = table.Column<decimal>(nullable: false),
-                    taker_buy_quote_asset_volume = table.Column<decimal>(nullable: false),
+                    taker_buy_quote_volume = table.Column<decimal>(nullable: false),
                     last_trade_id = table.Column<long>(nullable: false),
                     first_trade_id = table.Column<long>(nullable: false),
                     interval = table.Column<int>(nullable: false),
                     symbol = table.Column<string>(nullable: true),
                     close_time = table.Column<DateTime>(nullable: false),
                     open_time = table.Column<DateTime>(nullable: false),
-                    taker_buy_base_asset_volume = table.Column<decimal>(nullable: false)
+                    taker_buy_base_volume = table.Column<decimal>(nullable: false),
+                    base_volume = table.Column<decimal>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -241,7 +241,7 @@ namespace Trape.Datalayer.Migrations
                     last_trade_id = table.Column<long>(nullable: false),
                     first_trade_id = table.Column<long>(nullable: false),
                     total_traded_quote_asset_volume = table.Column<decimal>(nullable: false),
-                    total_traded_base_asset_volume = table.Column<decimal>(nullable: false),
+                    base_volume = table.Column<decimal>(nullable: false),
                     low_price = table.Column<decimal>(nullable: false),
                     high_price = table.Column<decimal>(nullable: false),
                     open_price = table.Column<decimal>(nullable: false),
@@ -255,7 +255,8 @@ namespace Trape.Datalayer.Migrations
                     weighted_average_price = table.Column<decimal>(nullable: false),
                     price_change_percent = table.Column<decimal>(nullable: false),
                     price_change = table.Column<decimal>(nullable: false),
-                    symbol = table.Column<string>(nullable: true)
+                    symbol = table.Column<string>(nullable: true),
+                    quote_volume = table.Column<decimal>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -701,6 +702,36 @@ namespace Trape.Datalayer.Migrations
                 name: "IX_ticks_open_time_close_time",
                 table: "ticks",
                 columns: new[] { "open_time", "close_time" });
+
+
+            // EXTENSION timescaledb MUST BE INSTALLED ALREADY!
+
+            migrationBuilder.Sql(@"
+                ALTER TABLE recommendations DROP CONSTRAINT ""PK_recommendations"";
+                ALTER TABLE recommendations RENAME TO recommandations_old;
+                CREATE TABLE recommendations(LIKE recommandations_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+                SELECT * FROM create_hypertable('recommendations', 'created_on');
+                DROP TABLE recommandations_old;
+
+                ALTER TABLE klines DROP CONSTRAINT ""PK_klines"";
+                ALTER TABLE klines RENAME TO klines_old;
+                CREATE TABLE klines(LIKE klines_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+                SELECT * FROM create_hypertable('klines', 'open_time');
+                DROP TABLE klines_old;
+
+                ALTER TABLE ticks DROP CONSTRAINT ""PK_ticks"";
+                ALTER TABLE ticks RENAME TO ticks_old;
+                CREATE TABLE ticks(LIKE ticks_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+                --3h chunks
+                SELECT * FROM create_hypertable('ticks', 'open_time', chunk_time_interval => interval '3 hours');
+                DROP TABLE ticks_old;
+            ");
+
+            migrationBuilder.Sql(@"
+                INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('BTCUSDT', true, false);
+                INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('ETHUSDT', false, false);
+                INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('LINKUSDT', false, false);
+            ");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
