@@ -5,7 +5,7 @@ namespace trape.datalayer.Models
     /// <summary>
     /// Class for stats of based on 2 minute refresh
     /// </summary>
-    [Table("stats2m", Schema = "stubs")]
+    [NotMapped]
     public sealed class Stats2m
     {
         #region Constructor

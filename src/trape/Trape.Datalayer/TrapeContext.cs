@@ -124,16 +124,16 @@ namespace trape.datalayer
 
             #region Stats
 
-            modelBuilder.Entity<Stats3s>()
-                .HasNoKey();
-            modelBuilder.Entity<Stats15s>()
-                .HasNoKey();
-            modelBuilder.Entity<Stats2m>()
-                .HasNoKey();
-            modelBuilder.Entity<Stats10m>()
-                .HasNoKey();
-            modelBuilder.Entity<Stats2h>()
-                .HasNoKey();
+            //modelBuilder.Entity<Stats3s>()
+            //    .HasNoKey();
+            //modelBuilder.Entity<Stats15s>()
+            //    .HasNoKey();
+            //modelBuilder.Entity<Stats2m>()
+            //    .HasNoKey();
+            //modelBuilder.Entity<Stats10m>()
+            //    .HasNoKey();
+            //modelBuilder.Entity<Stats2h>()
+            //    .HasNoKey();
             modelBuilder.Entity<LatestMA10mAndMA30mCrossing>()
                 .HasNoKey();
             modelBuilder.Entity<LatestMA30mAndMA1hCrossing>()

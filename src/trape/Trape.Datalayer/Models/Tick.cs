@@ -49,11 +49,6 @@ namespace trape.datalayer.Models
         public long FirstTradeId { get; set; }
 
         /// <summary>
-        /// Total traded volume in the quote asset
-        /// </summary>
-        public decimal TotalTradedQuoteAssetVolume { get; set; }
-
-        /// <summary>
         /// Total traded volume in the base asset
         /// </summary>
         public decimal BaseVolume { get; set; }
