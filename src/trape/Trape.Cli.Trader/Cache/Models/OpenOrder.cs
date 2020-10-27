@@ -12,15 +12,15 @@ namespace trape.cli.trader.Cache.Models
         /// <summary>
         /// Initializes a new instance of the <c>OpenOrder</c> class.
         /// </summary>
-        /// <param name="guid">GUID</param>
+        /// <param name="id">GUID</param>
         /// <param name="symbol">Symbol</param>
         /// <param name="estimatedQuoteOrderQuantity">Estimated quote order quantity</param>
-        public OpenOrder(string guid, string symbol, decimal estimatedQuoteOrderQuantity)
+        public OpenOrder(string id, string symbol, decimal estimatedQuoteOrderQuantity)
         {
-            this.GUID = guid;
-            this.Symbol = symbol;
-            this.Quantity = estimatedQuoteOrderQuantity;
-            this.CreatedOn = DateTime.UtcNow;
+            Id = id ?? throw new ArgumentNullException(nameof(id));
+            Symbol = symbol ?? throw new ArgumentNullException(nameof(symbol));
+            Quantity = estimatedQuoteOrderQuantity;
+            CreatedOn = DateTime.UtcNow;
         }
 
         #endregion
@@ -30,7 +30,7 @@ namespace trape.cli.trader.Cache.Models
         /// <summary>
         /// GUID
         /// </summary>
-        public string GUID { get; }
+        public string Id { get; }
 
         /// <summary>
         /// Symbol

@@ -13,8 +13,8 @@ namespace trape.datalayer.Models
         /// </summary>
         public OrderList()
         {
-            this.Orders = new List<Order>();
-            this.OrderUpdates = new List<OrderUpdate>();
+            Orders = new List<Order>();
+            OrderUpdates = new List<OrderUpdate>();
         }
 
         #endregion

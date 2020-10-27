@@ -1,6 +1,4 @@
-﻿using trape.datalayer.Models;
-
-namespace trape.datalayer.Models
+﻿namespace trape.datalayer.Models
 {
     /// <summary>
     /// Database class for symbol

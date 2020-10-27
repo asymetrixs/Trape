@@ -1,7 +1,4 @@
-﻿using Bogus;
-using System;
-using trape.cli.trader.Market;
-using Xunit;
+﻿using Xunit;
 
 namespace Trape.Cli.Trader.Tests.Market
 {
@@ -11,8 +8,8 @@ namespace Trape.Cli.Trader.Tests.Market
         public void Test1()
         {
             // Arrange
-            
-            
+
+
         }
     }
 }

@@ -13,7 +13,7 @@ namespace trape.jobs
         /// <summary>
         /// Schedulers
         /// </summary>
-        private List<JobScheduler> _schedulers;
+        private readonly List<JobScheduler> _schedulers;
 
         #endregion
 
@@ -44,7 +44,7 @@ namespace trape.jobs
             #endregion
 
             var scheduler = new JobScheduler(job);
-            this._schedulers.Add(scheduler);
+            _schedulers.Add(scheduler);
             scheduler.Start();
         }
 
@@ -84,7 +84,7 @@ namespace trape.jobs
                 job.Terminate();
             }
 
-            this._schedulers.Clear();
+            _schedulers.Clear();
         }
 
         #endregion

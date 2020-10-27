@@ -40,12 +40,12 @@ namespace trape.cli.collector.DataCollection
         /// <summary>
         /// Binance Stream Tick Buffer
         /// </summary>
-        private readonly ActionBlock<BinanceStreamTick> _binanceStreamTickBuffer;
+        private readonly ActionBlock<IBinanceTick> _binanceStreamTickBuffer;
 
         /// <summary>
         /// Binance Stream Kline Data Buffer
         /// </summary>
-        private readonly ActionBlock<BinanceStreamKlineData> _binanceStreamKlineDataBuffer;
+        private readonly ActionBlock<IBinanceStreamKlineData> _binanceStreamKlineDataBuffer;
 
         /// <summary>
         /// Binance Stream Book Price
@@ -60,7 +60,7 @@ namespace trape.cli.collector.DataCollection
         /// <summary>
         /// Cancellation Token Source
         /// </summary>
-        private CancellationTokenSource _cancellationTokenSource;
+        private readonly CancellationTokenSource _cancellationTokenSource;
 
         /// <summary>
         /// Start/Stop synchronizer
@@ -80,7 +80,7 @@ namespace trape.cli.collector.DataCollection
         /// <summary>
         /// Checks periodically if symbols have to be added or dropped
         /// </summary>
-        private Job _jobSubscriptionManager;
+        private readonly Job _jobSubscriptionManager;
 
         /// <summary>
         /// Holds list of active subscriptions
@@ -102,49 +102,49 @@ namespace trape.cli.collector.DataCollection
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            this._binanceSocketClient = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
+            _binanceSocketClient = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
 
             #endregion
 
-            this._logger = logger.ForContext<CollectionManager>();
-            this._disposed = false;
-            this._cancellationTokenSource = new CancellationTokenSource();
-            this._startStop = new SemaphoreSlim(1, 1);
-            this._managing = new SemaphoreSlim(1, 1);
-            this._shutdown = false;
-            this._activeSubscriptions = new Dictionary<string, List<UpdateSubscription>>();
+            _logger = logger.ForContext<CollectionManager>();
+            _disposed = false;
+            _cancellationTokenSource = new CancellationTokenSource();
+            _startStop = new SemaphoreSlim(1, 1);
+            _managing = new SemaphoreSlim(1, 1);
+            _shutdown = false;
+            _activeSubscriptions = new Dictionary<string, List<UpdateSubscription>>();
 
             #region Timer Setup
 
             // Check every five seconds
-            this._jobSubscriptionManager = new Job(new TimeSpan(0, 0, 5), async () => await _manage().ConfigureAwait(true));
+            _jobSubscriptionManager = new Job(new TimeSpan(0, 0, 5), async () => await Manage().ConfigureAwait(true));
 
             #endregion
 
             #region Buffer setup
 
-            this._binanceStreamTickBuffer = new ActionBlock<BinanceStreamTick>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(true),
+            _binanceStreamTickBuffer = new ActionBlock<IBinanceTick>(async message => await Save(message, _cancellationTokenSource.Token).ConfigureAwait(true),
                 new ExecutionDataflowBlockOptions()
                 {
                     MaxDegreeOfParallelism = 2,
-                    CancellationToken = this._cancellationTokenSource.Token,
+                    CancellationToken = _cancellationTokenSource.Token,
                     SingleProducerConstrained = false
                 }
             );
 
-            this._binanceStreamKlineDataBuffer = new ActionBlock<BinanceStreamKlineData>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(true),
+            _binanceStreamKlineDataBuffer = new ActionBlock<IBinanceStreamKlineData>(async message => await Save(message, _cancellationTokenSource.Token).ConfigureAwait(true),
                 new ExecutionDataflowBlockOptions()
                 {
                     MaxDegreeOfParallelism = 4,
-                    CancellationToken = this._cancellationTokenSource.Token,
+                    CancellationToken = _cancellationTokenSource.Token,
                     SingleProducerConstrained = false
                 });
 
-            this._binanceBookTickBuffer = new ActionBlock<BinanceStreamBookPrice>(async message => await Save(message, this._cancellationTokenSource.Token).ConfigureAwait(true),
+            _binanceBookTickBuffer = new ActionBlock<BinanceStreamBookPrice>(async message => await Save(message, _cancellationTokenSource.Token).ConfigureAwait(true),
                 new ExecutionDataflowBlockOptions()
                 {
                     MaxDegreeOfParallelism = 4,
-                    CancellationToken = this._cancellationTokenSource.Token,
+                    CancellationToken = _cancellationTokenSource.Token,
                     SingleProducerConstrained = false
                 });
 
@@ -155,17 +155,17 @@ namespace trape.cli.collector.DataCollection
         /// Manages subscribing and unsubscribing
         /// </summary>
         /// <returns></returns>
-        private async Task _manage()
+        private async Task Manage()
         {
             // Stop timer, because it may take a while
-            if (this._managing.CurrentCount == 0)
+            if (_managing.CurrentCount == 0)
             {
                 return;
             }
 
-            this._managing.Wait();
+            _managing.Wait();
 
-            this._logger.Verbose("Checking subscriptions");
+            _logger.Verbose("Checking subscriptions");
 
             // Get symbols from database
             string[] requiredSymbols = default;
@@ -179,8 +179,8 @@ namespace trape.cli.collector.DataCollection
                 }
                 catch (Exception e)
                 {
-                    this._logger.ForContext(typeof(CollectionManager));
-                    this._logger.Error(e, e.Message);
+                    _logger.ForContext(typeof(CollectionManager));
+                    _logger.Error(e, e.Message);
                     throw;
                 }
             }
@@ -189,42 +189,42 @@ namespace trape.cli.collector.DataCollection
             {
                 if (requiredSymbols == null)
                 {
-                    this._logger.Error("Cannot check subscriptions");
+                    _logger.Error("Cannot check subscriptions");
                     return;
                 }
 
                 // TODO: Sanity check if symbol exists on Binance
-                this._logger.Debug($"Holding {this._activeSubscriptions.Count()} symbols with a total of {this._activeSubscriptions.Sum(s => s.Value.Count)} subscriptions");
+                _logger.Debug($"Holding {_activeSubscriptions.Count()} symbols with a total of {_activeSubscriptions.Sum(s => s.Value.Count)} subscriptions");
 
                 // Subscribe to missing symbols
                 foreach (var requiredSymbol in requiredSymbols)
                 {
-                    if (!this._activeSubscriptions.ContainsKey(requiredSymbol))
+                    if (!_activeSubscriptions.ContainsKey(requiredSymbol))
                     {
-                        await this._subscribeTo(requiredSymbol).ConfigureAwait(true);
+                        await SubscribeTo(requiredSymbol).ConfigureAwait(true);
                     }
                 }
 
                 // Unsubscribe from non-required symbols
-                foreach (var subscribedSymbol in this._activeSubscriptions.Select(s => s.Key))
+                foreach (var subscribedSymbol in _activeSubscriptions.Select(s => s.Key))
                 {
                     if (!requiredSymbols.Contains(subscribedSymbol))
                     {
-                        await this._unsubscribeFrom(subscribedSymbol).ConfigureAwait(true);
+                        await UnsubscribeFrom(subscribedSymbol).ConfigureAwait(true);
                     }
                 }
             }
             catch (Exception ex)
             {
-                this._logger.Warning(ex.Message, ex);
+                _logger.Warning(ex.Message, ex);
             }
             finally
             {
                 // Start timer again when done
-                this._managing.Release();
+                _managing.Release();
             }
 
-            this._logger.Verbose("Subscriptions checked");
+            _logger.Verbose("Subscriptions checked");
         }
 
         #endregion
@@ -234,17 +234,17 @@ namespace trape.cli.collector.DataCollection
         /// <summary>
         /// Saves <c>BinanceStreamTick</c> in the database.
         /// </summary>
-        /// <param name="bst">Binance Stream Tick</param>
+        /// <param name="bt">Binance Stream Tick</param>
         /// <param name="cancellationToken">Canellation Token</param>
         /// <returns></returns>
-        public static async Task Save(BinanceStreamTick bst, CancellationToken cancellationToken = default)
+        public static async Task Save(IBinanceTick bt, CancellationToken cancellationToken = default)
         {
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    database.Ticks.Add(Translator.Translate(bst));
+                    database.Ticks.Add(Translator.Translate(bt));
                     await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception e)
@@ -264,7 +264,7 @@ namespace trape.cli.collector.DataCollection
         /// <param name="bskd">Binance Stream Kline Data</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         /// <returns></returns>
-        public static async Task Save(BinanceStreamKlineData bskd, CancellationToken cancellationToken = default)
+        public static async Task Save(IBinanceStreamKlineData bskd, CancellationToken cancellationToken = default)
         {
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
@@ -321,22 +321,22 @@ namespace trape.cli.collector.DataCollection
         /// </summary>
         /// <param name="stoppingToken"></param>
         /// <returns></returns>
-        public async override Task StartAsync(CancellationToken cancellationToken = default)
+        public override async Task StartAsync(CancellationToken cancellationToken = default)
         {
-            await this._startStop.WaitAsync().ConfigureAwait(true);
+            await _startStop.WaitAsync().ConfigureAwait(true);
 
-            this._logger.Debug($"Acquired startup lock");
+            _logger.Debug($"Acquired startup lock");
 
             // Setup cleanup
             Program.Container.GetService<IJobManager>().Start(new CleanUp());
 
             // Starting Subscription Manager
-            this._jobSubscriptionManager.Start();
+            _jobSubscriptionManager.Start();
 
-            this._startStop.Release();
-            this._logger.Debug($"Released startup lock");            
-    
-            this._logger.Verbose("Job Subscription Manager started");
+            _startStop.Release();
+            _logger.Debug($"Released startup lock");
+
+            _logger.Verbose("Job Subscription Manager started");
         }
 
         /// <summary>
@@ -346,9 +346,9 @@ namespace trape.cli.collector.DataCollection
         /// <returns></returns>
         protected override Task ExecuteAsync(CancellationToken stoppingToken = default)
         {
-            this._logger.Verbose("Waiting...");
+            _logger.Verbose("Waiting...");
 
-            return this._jobSubscriptionManager.WaitFor(stoppingToken);
+            return _jobSubscriptionManager.WaitFor(stoppingToken);
         }
 
         /// <summary>
@@ -358,50 +358,50 @@ namespace trape.cli.collector.DataCollection
         /// <returns></returns>
         public override async Task StopAsync(CancellationToken cancellationToken = default)
         {
-            this._shutdown = true;
+            _shutdown = true;
 
             // Check that start has finished/cancelled in case service is stopped while still starting
-            await this._startStop.WaitAsync().ConfigureAwait(true);
+            await _startStop.WaitAsync().ConfigureAwait(true);
 
             // Check if timer is enabled.
-            this._jobSubscriptionManager.Terminate();
-                        
+            _jobSubscriptionManager.Terminate();
+
             try
             {
-                this._logger.Information($"Shutting down CollectionManager.");
+                _logger.Information($"Shutting down CollectionManager.");
 
-                this._logger.Debug($"Waiting for subscribers to terminate.");
+                _logger.Debug($"Waiting for subscribers to terminate.");
 
                 // Termintate subscriptions
-                await this._binanceSocketClient.UnsubscribeAll().ConfigureAwait(true);
+                await _binanceSocketClient.UnsubscribeAll().ConfigureAwait(true);
 
-                this._logger.Debug($"Subscribers terminated.");
+                _logger.Debug($"Subscribers terminated.");
 
                 // Signal buffer completion
-                this._binanceStreamTickBuffer.Complete();
-                this._binanceStreamKlineDataBuffer.Complete();
-                this._binanceBookTickBuffer.Complete();
+                _binanceStreamTickBuffer.Complete();
+                _binanceStreamKlineDataBuffer.Complete();
+                _binanceBookTickBuffer.Complete();
 
                 // Terminate jobs managed by job manager
                 Program.Container.GetInstance<IJobManager>().TerminateAll();
 
                 // Cancel all outstanding and running tasks
-                this._cancellationTokenSource.Cancel();
+                _cancellationTokenSource.Cancel();
 
                 // Signal stop to base
                 await base.StopAsync(cancellationToken).ConfigureAwait(true);
 
-                this._logger.Information($"CollectionManager is down.");
+                _logger.Information($"CollectionManager is down.");
             }
             catch
             {
-                this._logger.Error($"Ungraceful shutdown detected.");
+                _logger.Error($"Ungraceful shutdown detected.");
                 // nothing
             }
             finally
             {
                 // Release lock
-                this._startStop.Release();
+                _startStop.Release();
             }
         }
 
@@ -410,7 +410,7 @@ namespace trape.cli.collector.DataCollection
         /// </summary>
         /// <param name="symbol">Symbol</param>
         /// <returns></returns>
-        private async Task _subscribeTo(string symbol)
+        private async Task SubscribeTo(string symbol)
         {
             // Retry 30 times (e.g. network error, disconnect, etc.)
             int countTillHardExit = 30;
@@ -421,80 +421,80 @@ namespace trape.cli.collector.DataCollection
 
             while (countTillHardExit > 0)
             {
-                this._logger.Debug($"{symbol}: Starting collector");
+                _logger.Debug($"{symbol}: Starting collector");
 
                 try
                 {
                     // Subscribe to available streams
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToSymbolTickerUpdatesAsync(symbol, (BinanceStreamTick bst) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToSymbolTickerUpdatesAsync(symbol, (IBinanceTick bt) =>
                     {
-                        this._binanceStreamTickBuffer.Post(bst);
+                        _binanceStreamTickBuffer.Post(bt);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneMinute, (BinanceStreamKlineData bskd) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneMinute, (IBinanceStreamKlineData bskd) =>
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                        _binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeMinutes, (BinanceStreamKlineData bskd) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeMinutes, (IBinanceStreamKlineData bskd) =>
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                        _binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FiveMinutes, (BinanceStreamKlineData bskd) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FiveMinutes, (IBinanceStreamKlineData bskd) =>
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                        _binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FifteenMinutes, (BinanceStreamKlineData bskd) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.FifteenMinutes, (IBinanceStreamKlineData bskd) =>
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                        _binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThirtyMinutes, (BinanceStreamKlineData bskd) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThirtyMinutes, (IBinanceStreamKlineData bskd) =>
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                        _binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneHour, (BinanceStreamKlineData bskd) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneHour, (IBinanceStreamKlineData bskd) =>
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                        _binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwoHour, (BinanceStreamKlineData bskd) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwoHour, (IBinanceStreamKlineData bskd) =>
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                        _binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.SixHour, (BinanceStreamKlineData bskd) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.SixHour, (IBinanceStreamKlineData bskd) =>
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                        _binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.EightHour, (BinanceStreamKlineData bskd) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.EightHour, (IBinanceStreamKlineData bskd) =>
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                        _binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwelveHour, (BinanceStreamKlineData bskd) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.TwelveHour, (IBinanceStreamKlineData bskd) =>
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                        _binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneDay, (BinanceStreamKlineData bskd) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.OneDay, (IBinanceStreamKlineData bskd) =>
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                        _binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeDay, (BinanceStreamKlineData bskd) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(symbol, KlineInterval.ThreeDay, (IBinanceStreamKlineData bskd) =>
                     {
-                        this._binanceStreamKlineDataBuffer.Post(bskd);
+                        _binanceStreamKlineDataBuffer.Post(bskd);
                     }));
 
-                    subscribeTasks.Add(this._binanceSocketClient.SubscribeToBookTickerUpdatesAsync(symbol, (BinanceStreamBookPrice bsbp) =>
+                    subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToBookTickerUpdatesAsync(symbol, (BinanceStreamBookPrice bsbp) =>
                     {
-                        this._binanceBookTickBuffer.Post(bsbp);
+                        _binanceBookTickBuffer.Post(bsbp);
                     }));
 
                     await Task.WhenAll(subscribeTasks.ToArray()).ConfigureAwait(true);
@@ -515,23 +515,23 @@ namespace trape.cli.collector.DataCollection
                 }
                 catch (Exception e)
                 {
-                    this._logger.Fatal($"{symbol}: Connecting to Binance failed, retrying, {31 - countTillHardExit}/30");
-                    this._logger.Fatal(e, e.Message);
+                    _logger.Fatal($"{symbol}: Connecting to Binance failed, retrying, {31 - countTillHardExit}/30");
+                    _logger.Fatal(e, e.Message);
 
                     countTillHardExit--;
 
                     if (countTillHardExit == 0)
                     {
                         // Fail hard after 30 times and rely on service manager (e.g. systemd) to restart the service
-                        this._logger.Fatal("Shutting down, relying on systemd to restart");
+                        _logger.Fatal("Shutting down, relying on systemd to restart");
                         Environment.Exit(1);
                     }
                 }
 
-                this._logger.Debug($"{symbol}: Collector is started");
+                _logger.Debug($"{symbol}: Collector is started");
 
                 // Register
-                this._activeSubscriptions.Add(symbol, subscriptions);
+                _activeSubscriptions.Add(symbol, subscriptions);
             }
         }
 
@@ -540,21 +540,21 @@ namespace trape.cli.collector.DataCollection
         /// </summary>
         /// <param name="symbol">Symbol</param>
         /// <returns></returns>
-        private async Task _unsubscribeFrom(string symbol)
+        private async Task UnsubscribeFrom(string symbol)
         {
-            this._logger.Debug($"{symbol}: Stopping collector");
+            _logger.Debug($"{symbol}: Stopping collector");
 
             var removedSubscriptions = new List<UpdateSubscription>();
             try
             {
                 var unsubscribeTasks = new List<Task>();
                 // Unsubscribe
-                foreach (var subscription in this._activeSubscriptions[symbol])
+                foreach (var subscription in _activeSubscriptions[symbol])
                 {
                     // Return if in shutdown mode, everything will be unsubscribed than anyway
-                    if (this._shutdown) return;
+                    if (_shutdown) return;
 
-                    unsubscribeTasks.Add(this._binanceSocketClient.Unsubscribe(subscription));
+                    unsubscribeTasks.Add(_binanceSocketClient.Unsubscribe(subscription));
                     removedSubscriptions.Add(subscription);
                 }
 
@@ -562,19 +562,19 @@ namespace trape.cli.collector.DataCollection
             }
             catch (Exception e)
             {
-                this._logger.Debug($"{symbol}: Unsubscribing failed");
-                this._logger.Fatal(e, e.Message);
+                _logger.Debug($"{symbol}: Unsubscribing failed");
+                _logger.Fatal(e, e.Message);
                 return;
             }
             finally
             {
-                this._activeSubscriptions[symbol].RemoveAll(s => removedSubscriptions.Contains(s));
+                _activeSubscriptions[symbol].RemoveAll(s => removedSubscriptions.Contains(s));
             }
 
-            this._logger.Debug($"{symbol}: Collector is stopped");
+            _logger.Debug($"{symbol}: Collector is stopped");
 
             // Remove
-            this._activeSubscriptions.Remove(symbol);
+            _activeSubscriptions.Remove(symbol);
         }
 
         #endregion
@@ -584,7 +584,7 @@ namespace trape.cli.collector.DataCollection
         /// <summary>
         /// Public implementation of Dispose pattern callable by consumers.
         /// </summary>
-        public override sealed void Dispose()
+        public sealed override void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
@@ -596,17 +596,17 @@ namespace trape.cli.collector.DataCollection
         /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
-            if (this._disposed)
+            if (_disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                this._cancellationTokenSource.Dispose();
+                _cancellationTokenSource.Dispose();
             }
 
-            this._disposed = true;
+            _disposed = true;
         }
 
         #endregion

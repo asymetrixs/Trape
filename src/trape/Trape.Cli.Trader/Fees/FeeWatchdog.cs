@@ -28,7 +28,7 @@ namespace trape.cli.trader.Fees
         /// <summary>
         /// Logger
         /// </summary>
-        private ILogger _logger;
+        private readonly ILogger _logger;
 
         /// <summary>
         /// Accountant
@@ -43,12 +43,12 @@ namespace trape.cli.trader.Fees
         /// <summary>
         /// Job to check available BNB fees
         /// </summary>
-        private Job _jobFeeFundsChecker;
+        private readonly Job _jobFeeFundsChecker;
 
         /// <summary>
         /// Cancellation Token Source
         /// </summary>
-        private CancellationTokenSource _cancellationTokenSource;
+        private readonly CancellationTokenSource _cancellationTokenSource;
 
         /// <summary>
         /// Symbol for fees
@@ -71,17 +71,17 @@ namespace trape.cli.trader.Fees
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            this._accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
+            _accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             #endregion
 
-            this._logger = logger.ForContext(typeof(FeeWatchdog));
-            this._cancellationTokenSource = new CancellationTokenSource();
-            this._feeSymbol = "BNBUSDT";
+            _logger = logger.ForContext(typeof(FeeWatchdog));
+            _cancellationTokenSource = new CancellationTokenSource();
+            _feeSymbol = "BNBUSDT";
 
-            this._jobFeeFundsChecker = new Job(new TimeSpan(0, 5, 0), _feesChecker);
+            _jobFeeFundsChecker = new Job(new TimeSpan(0, 5, 0), _feesChecker);
         }
 
         #endregion
@@ -91,20 +91,20 @@ namespace trape.cli.trader.Fees
         private async void _feesChecker()
         {
             // Get remaining BNB balance for trading
-            var bnb = await this._accountant.GetBalance(this._feeSymbol.Replace("USDT", string.Empty)).ConfigureAwait(true);
+            var bnb = await _accountant.GetBalance(_feeSymbol.Replace("USDT", string.Empty)).ConfigureAwait(true);
             if (bnb == null)
             {
                 // Something is oddly wrong, wait a bit
-                this._logger.Debug("Cannot retrieve account info");
+                _logger.Debug("Cannot retrieve account info");
                 return;
             }
 
-            var currentPrice = this._buffer.GetAskPrice(this._feeSymbol);
+            var currentPrice = _buffer.GetAskPrice(_feeSymbol);
 
             // Threshold for buy is 53
             if (bnb.Free < 53)
             {
-                this._logger.Information($"Fees NOT OK at {bnb.Free} - issuing buy");
+                _logger.Information($"Fees NOT OK at {bnb.Free} - issuing buy");
 
                 // Fixed for now, buy for 55 USDT
                 var buy = 3;
@@ -113,20 +113,20 @@ namespace trape.cli.trader.Fees
                 var merchant = Program.Container.GetInstance<IStockExchange>();
                 await merchant.PlaceOrder(new ClientOrder()
                 {
-                    Symbol = this._feeSymbol,
+                    Symbol = _feeSymbol,
                     Side = OrderSide.Buy,
                     Type = OrderType.Limit,
                     OrderResponseType = OrderResponseType.Full,
                     Quantity = buy,
                     Price = currentPrice,
                     TimeInForce = TimeInForce.ImmediateOrCancel
-                }, this._cancellationTokenSource.Token).ConfigureAwait(true);
+                }, _cancellationTokenSource.Token).ConfigureAwait(true);
 
-                this._logger.Information($"Issued buy of {buy} for {currentPrice} USDT each");
+                _logger.Information($"Issued buy of {buy} for {currentPrice} USDT each");
             }
             else
             {
-                this._logger.Debug($"Fees OK at {bnb.Free}");
+                _logger.Debug($"Fees OK at {bnb.Free}");
             }
 
         }
@@ -140,11 +140,11 @@ namespace trape.cli.trader.Fees
         /// </summary>
         public void Start()
         {
-            this._logger.Information("Starting Fee Watchdog");
+            _logger.Information("Starting Fee Watchdog");
 
-            this._jobFeeFundsChecker.Start();
+            _jobFeeFundsChecker.Start();
 
-            this._logger.Information("Fee Watchdog started");
+            _logger.Information("Fee Watchdog started");
         }
 
         /// <summary>
@@ -152,13 +152,13 @@ namespace trape.cli.trader.Fees
         /// </summary>
         public void Terminate()
         {
-            this._logger.Information("Fee Watchdog stopping");
+            _logger.Information("Fee Watchdog stopping");
 
-            this._jobFeeFundsChecker.Terminate();
+            _jobFeeFundsChecker.Terminate();
 
-            this._cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Cancel();
 
-            this._logger.Information("Fee Watchdog stopped");
+            _logger.Information("Fee Watchdog stopped");
         }
 
         #endregion
@@ -180,19 +180,19 @@ namespace trape.cli.trader.Fees
         /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
-            if (this._disposed)
+            if (_disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                this._accountant = null;
-                this._buffer = null;
-                this._cancellationTokenSource.Dispose();
+                _accountant = null;
+                _buffer = null;
+                _cancellationTokenSource.Dispose();
             }
 
-            this._disposed = true;
+            _disposed = true;
         }
 
         #endregion

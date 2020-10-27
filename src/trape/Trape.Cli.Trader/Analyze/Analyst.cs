@@ -82,19 +82,19 @@ namespace trape.cli.trader.Analyze
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
-            this._accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
+            _accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
             #endregion
 
-            this._logger = logger.ForContext<Analyst>();
-            this._cancellationTokenSource = new System.Threading.CancellationTokenSource();
-            this._disposed = false;
-            this._logTrendLimiter = 61;
+            _logger = logger.ForContext<Analyst>();
+            _cancellationTokenSource = new System.Threading.CancellationTokenSource();
+            _disposed = false;
+            _logTrendLimiter = 61;
 
             // Set up timer that makes decisions, every second
-            this._jobRecommendationMaker = new Job(new TimeSpan(0, 0, 0, 0, 250), _recommending, this._cancellationTokenSource.Token);
+            _jobRecommendationMaker = new Job(new TimeSpan(0, 0, 0, 0, 250), Recommending, _cancellationTokenSource.Token);
         }
 
         #endregion
@@ -128,24 +128,24 @@ namespace trape.cli.trader.Analyze
         /// <summary>
         /// Create a new decision for this symbol
         /// </summary>
-        private async void _recommending()
+        private async void Recommending()
         {
-            this.LastActive = DateTime.UtcNow;
+            LastActive = DateTime.UtcNow;
 
-            if (string.IsNullOrEmpty(this.Symbol))
+            if (string.IsNullOrEmpty(Symbol))
             {
-                this._logger.Warning($"{nameof(this.Symbol)} is empty, cancelling.");
+                _logger.Warning($"{nameof(Symbol)} is empty, cancelling.");
                 return;
             }
 
-            this._lastAnalysis.PrepareForUpdate();
+            _lastAnalysis.PrepareForUpdate();
 
             // Get stats
-            var stat3s = this._buffer.Stats3sFor(this.Symbol);
-            var stat15s = this._buffer.Stats15sFor(this.Symbol);
-            var stat2m = this._buffer.Stats2mFor(this.Symbol);
-            var stat10m = this._buffer.Stats10mFor(this.Symbol);
-            var stat2h = this._buffer.Stats2hFor(this.Symbol);
+            var stat3s = _buffer.Stats3sFor(Symbol);
+            var stat15s = _buffer.Stats15sFor(Symbol);
+            var stat2m = _buffer.Stats2mFor(Symbol);
+            var stat10m = _buffer.Stats10mFor(Symbol);
+            var stat2h = _buffer.Stats2hFor(Symbol);
 
             // Check that data is valid
             if (stat3s == null
@@ -153,25 +153,25 @@ namespace trape.cli.trader.Analyze
                 || stat2m == null
                 || stat10m == null)
             {
-                this._logger.Verbose($"Skipped {this.Symbol} due to old or incomplete data: 3s:{(stat3s == null)} " +
+                _logger.Verbose($"Skipped {Symbol} due to old or incomplete data: 3s:{(stat3s == null)} " +
                     $"15s:{(stat15s == null)} " +
                     $"2m:{(stat2m == null)} " +
                     $"10m:{(stat10m == null)}" +
                     $"2h:{(stat2h == null)}");
 
-                this._buffer.UpdateRecommendation(new Recommendation() { Symbol = this.Symbol, Action = Action.Hold });
+                _buffer.UpdateRecommendation(new Recommendation() { Symbol = Symbol, Action = Action.Hold });
                 return;
             }
 
             // Use regular approach
             // Get current symbol price
-            var currentPrice = new Point(time: default, price: this._buffer.GetBidPrice(this.Symbol), slope: 0);
+            var currentPrice = new Point(time: default, price: _buffer.GetBidPrice(Symbol), slope: 0);
 
             if (currentPrice.Value < 0)
             {
-                this._logger.Verbose($"Skipped {this.Symbol} due to old or incomplete data: {currentPrice.Value:0.00}");
+                _logger.Verbose($"Skipped {Symbol} due to old or incomplete data: {currentPrice.Value:0.00}");
 
-                this._buffer.UpdateRecommendation(new Recommendation() { Symbol = this.Symbol, Action = Action.Hold });
+                _buffer.UpdateRecommendation(new Recommendation() { Symbol = Symbol, Action = Action.Hold });
                 return;
             }
 
@@ -183,19 +183,19 @@ namespace trape.cli.trader.Analyze
 
             if (movav1hInterceptingPrice != null)
             {
-                this._logger.Verbose($"{this.Symbol}: movav1hInterceptingPrice: {movav1hInterceptingPrice.Value:0.00} {movav1hInterceptingPrice.Time.TotalMinutes:#0.00}m");
+                _logger.Verbose($"{Symbol}: movav1hInterceptingPrice: {movav1hInterceptingPrice.Value:0.00} {movav1hInterceptingPrice.Time.TotalMinutes:#0.00}m");
             }
             if (priceInterceptingMovAv1h != null)
             {
-                this._logger.Verbose($"{this.Symbol}: priceInterceptingMovAv1h: {priceInterceptingMovAv1h.Value:0.00} {priceInterceptingMovAv1h.Time.TotalMinutes:#0.00}m");
+                _logger.Verbose($"{Symbol}: priceInterceptingMovAv1h: {priceInterceptingMovAv1h.Value:0.00} {priceInterceptingMovAv1h.Time.TotalMinutes:#0.00}m");
             }
 
             // Make the decision
             var action = Action.Hold;
-            var lastFallingPrice = this._buffer.GetLastFallingPrice(this.Symbol);
+            var lastFallingPrice = _buffer.GetLastFallingPrice(Symbol);
             if (lastFallingPrice != null)
             {
-                this._logger.Verbose($"{this.Symbol}: Last Falling Price Original: {lastFallingPrice.OriginalPrice:0.00} | Since: {lastFallingPrice.Since.ToShortTimeString()}");
+                _logger.Verbose($"{Symbol}: Last Falling Price Original: {lastFallingPrice.OriginalPrice:0.00} | Since: {lastFallingPrice.Since.ToShortTimeString()}");
             }
 
             var path = new StringBuilder();
@@ -219,9 +219,9 @@ namespace trape.cli.trader.Analyze
                 // Panic sell
                 action = Action.PanicSell;
 
-                this._lastAnalysis.PanicDetected();
+                _lastAnalysis.PanicDetected();
 
-                this._logger.Warning($"{this.Symbol}: {currentPrice.Value:0.00} - Panic Mode");
+                _logger.Warning($"{Symbol}: {currentPrice.Value:0.00} - Panic Mode");
                 path.Append("|panic");
             }
             // Jump increase
@@ -240,23 +240,23 @@ namespace trape.cli.trader.Analyze
                     {
                         var recordedStockQuantity = database.PlacedOrders
                                                 .Where(p => p.Side == OrderSide.Buy
-                                                    && p.Symbol == this.Symbol
+                                                    && p.Symbol == Symbol
                                                     && p.QuantityFilled > 0)
                                                 .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity))
                                                 .Sum(f => f.Quantity - f.ConsumedQuantity);
 
-                        var binanceBalance = await this._accountant.GetBalance(this.Asset).ConfigureAwait(true);
+                        var binanceBalance = await _accountant.GetBalance(Asset).ConfigureAwait(true);
                         decimal actualStockQuantity = binanceBalance?.Free ?? 0;
 
                         stockQuantity = Math.Max(recordedStockQuantity, actualStockQuantity);
                     }
                     catch (Exception ex)
                     {
-                        this._logger.Error(ex.Message, ex);
+                        _logger.Error(ex.Message, ex);
                     }
                 }
 
-                var usdt = await this._accountant.GetBalance("USDT").ConfigureAwait(false);
+                var usdt = await _accountant.GetBalance("USDT").ConfigureAwait(false);
 
                 // Calculate value
                 var stockValue = stockQuantity * currentPrice.Value;
@@ -276,9 +276,9 @@ namespace trape.cli.trader.Analyze
                         // 15 minutes
                         if (intercept15min?.Time < TimeSpan.FromMinutes(15))
                         {
-                            this._logger.Verbose("[jump]");
+                            _logger.Verbose("[jump]");
                             action = Action.JumpBuy;
-                            this._lastAnalysis.JumpDetected();
+                            _lastAnalysis.JumpDetected();
                             path.Append("|b");
                         }
                     }
@@ -286,9 +286,9 @@ namespace trape.cli.trader.Analyze
                     else
                     {
                         path.Append("|b");
-                        this._logger.Verbose("[jump]");
+                        _logger.Verbose("[jump]");
                         action = Action.JumpBuy;
-                        this._lastAnalysis.JumpDetected();
+                        _lastAnalysis.JumpDetected();
                     }
                 }
             }
@@ -323,28 +323,28 @@ namespace trape.cli.trader.Analyze
 
             // If a race is ongoing or after it has stopped wait for 5 minutes for market to cool down
             // before another buy is made
-            if (this._lastAnalysis.LastRaceEnded.AddMinutes(5) > DateTime.UtcNow
+            if (_lastAnalysis.LastRaceEnded.AddMinutes(5) > DateTime.UtcNow
                 && (action == Action.Buy || action == Action.JumpBuy || action == Action.StrongBuy))
             {
-                this._logger.Verbose($"{this.Symbol}: Race ended less than 9 minutes ago, don't buy.");
+                _logger.Verbose($"{Symbol}: Race ended less than 9 minutes ago, don't buy.");
                 action = Action.Hold;
                 path.Append("_|race");
             }
 
 
             // If Panic mode ended, wait for 5 minutes before start buying again, except if jump
-            if (this._lastAnalysis.LastPanicModeEnded.AddMinutes(5) > DateTime.UtcNow)
+            if (_lastAnalysis.LastPanicModeEnded.AddMinutes(5) > DateTime.UtcNow)
             {
                 path.Append("_panicend");
                 if (action == Action.Buy || action == Action.StrongBuy)
                 {
-                    this._logger.Verbose($"{this.Symbol}: Panic mode ended less than 5 minutes ago, don't buy.");
+                    _logger.Verbose($"{Symbol}: Panic mode ended less than 5 minutes ago, don't buy.");
                     action = Action.Hold;
                     path.Append("|a");
                 }
             }
             // If Panic mode ended and action is not buy but trend is strongly upwards
-            else if (this._lastAnalysis.LastPanicModeEnded.AddMinutes(7) > DateTime.UtcNow
+            else if (_lastAnalysis.LastPanicModeEnded.AddMinutes(7) > DateTime.UtcNow
                 && action != Action.Buy
                 && stat3s.Slope5s > currentPrice.Value.XPartOf(10)
                 && stat3s.Slope10s > currentPrice.Value.XPartOf(10)
@@ -354,17 +354,17 @@ namespace trape.cli.trader.Analyze
                 && stat10m.Slope3h > -currentPrice.Value.XPartOf(64.8M)
                 && currentPrice < movingAverage1h)
             {
-                this._logger.Verbose($"{this.Symbol}: Panic mode ended more than 7 minutes ago and trend is strongly upwards, buy.");
+                _logger.Verbose($"{Symbol}: Panic mode ended more than 7 minutes ago and trend is strongly upwards, buy.");
                 action = Action.Buy;
                 path.Append("_|panicend");
             }
 
 
             // If strong sell happened or slope is too negative, do not buy immediately
-            if ((this._lastAnalysis.GetLastDateOf(Action.StrongSell).AddMinutes(2) > DateTime.UtcNow || stat10m.Slope30m < -currentPrice.Value.XPartOf(20))
+            if ((_lastAnalysis.GetLastDateOf(Action.StrongSell).AddMinutes(2) > DateTime.UtcNow || stat10m.Slope30m < -currentPrice.Value.XPartOf(20))
                 && (action == Action.Buy || action == Action.JumpBuy || action == Action.StrongBuy))
             {
-                this._logger.Verbose($"{this.Symbol}: Last strong sell was less than 1 minutes ago, don't buy.");
+                _logger.Verbose($"{Symbol}: Last strong sell was less than 1 minutes ago, don't buy.");
                 action = Action.Hold;
                 path.Append("_|wait");
             }
@@ -378,12 +378,12 @@ namespace trape.cli.trader.Analyze
                     // Check if price has gained a lot over the last 30 minutes
                     // Get Price from 30 minutes ago
                     raceStartingPrice = new Point(time: TimeSpan.FromMinutes(-1),
-                                                    price: await database.GetLowestPrice(this.Symbol, DateTime.UtcNow.AddMinutes(-30), this._cancellationTokenSource.Token).ConfigureAwait(false),
+                                                    price: await database.GetLowestPrice(Symbol, DateTime.UtcNow.AddMinutes(-30), _cancellationTokenSource.Token).ConfigureAwait(false),
                                                     slope: 0);
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e, e.Message);
+                    _logger.Error(e, e.Message);
                     raceStartingPrice = new Point();
                 }
             }
@@ -397,25 +397,25 @@ namespace trape.cli.trader.Analyze
 
             if (raceStartingPrice.Value != default && raceStartingPrice < (currentPrice * raceIdentifier))
             {
-                this._logger.Verbose($"{this.Symbol}: Race detected at {currentPrice.Value:0.00}.");
-                this._lastAnalysis.RaceDetected();
+                _logger.Verbose($"{Symbol}: Race detected at {currentPrice.Value:0.00}.");
+                _lastAnalysis.RaceDetected();
                 path.Append("_racestart");
 
                 // Check market movement, if a huge sell is detected advice to take profits
                 if (stat3s.Slope10s < -currentPrice.Value.XPartOf(10))
                 {
                     action = Action.TakeProfitsSell;
-                    this._logger.Verbose($"{this.Symbol}: Race ended at {currentPrice.Value:0.00}.");
+                    _logger.Verbose($"{Symbol}: Race ended at {currentPrice.Value:0.00}.");
                     path.Append("|raceend");
-                    this._lastAnalysis.RaceEnded();
+                    _lastAnalysis.RaceEnded();
                 }
             }
 
             // Buy after PanicSell
-            if (this._lastAnalysis.PanicSellHasEnded
+            if (_lastAnalysis.PanicSellHasEnded
                 && (action != Action.StrongSell && action != Action.PanicSell)
                 && currentPrice < movingAverage1h
-                && this._lastAnalysis.BuyAfterPanicSell())
+                && _lastAnalysis.BuyAfterPanicSell())
             {
                 action = Action.Buy;
                 path.Append("_|panicbuy");
@@ -423,25 +423,25 @@ namespace trape.cli.trader.Analyze
 
 
             // Print strategy changes
-            if (this._lastAnalysis.Action != action)
+            if (_lastAnalysis.Action != action)
             {
-                this._logger.Information($"{this.Symbol}: {currentPrice.Value:0.00} - Switching stategy: {this._lastAnalysis.Action} -> {action}");
-                this._lastAnalysis.UpdateAction(action);
+                _logger.Information($"{Symbol}: {currentPrice.Value:0.00} - Switching stategy: {_lastAnalysis.Action} -> {action}");
+                _lastAnalysis.UpdateAction(action);
             }
             // Print strategy every hour in log
-            else if (this._lastAnalysis.Now.Minute == 0 && this._lastAnalysis.Now.Second == 0 && this._lastAnalysis.Now.Millisecond < 100)
+            else if (_lastAnalysis.Now.Minute == 0 && _lastAnalysis.Now.Second == 0 && _lastAnalysis.Now.Millisecond < 100)
             {
-                this._logger.Information($"{this.Symbol}: Stategy: {action}");
+                _logger.Information($"{Symbol}: Stategy: {action}");
             }
 
-            this._logger.Debug($"{this.Symbol}: {currentPrice.Value:0.00} Decision - Calculated / Final: {calcAction} / {action} - {path}");
+            _logger.Debug($"{Symbol}: {currentPrice.Value:0.00} Decision - Calculated / Final: {calcAction} / {action} - {path}");
 
             // Instantiate new recommendation
             var newRecommendation = new Recommendation()
             {
                 Action = action,
                 Price = currentPrice.Value,
-                Symbol = this.Symbol,
+                Symbol = Symbol,
                 CreatedOn = DateTime.UtcNow,
                 Slope5s = stat3s.Slope5s,
                 Slope10s = stat3s.Slope10s,
@@ -486,14 +486,14 @@ namespace trape.cli.trader.Analyze
             };
 
 
-            var oldRecommendation = this._buffer.GetRecommendation(this.Symbol);
-            this._buffer.UpdateRecommendation(newRecommendation);
+            var oldRecommendation = _buffer.GetRecommendation(Symbol);
+            _buffer.UpdateRecommendation(newRecommendation);
 
-            this._logger.Verbose($"{this.Symbol}: Recommending: {action}");
+            _logger.Verbose($"{Symbol}: Recommending: {action}");
 
             if (oldRecommendation.Action != newRecommendation.Action)
             {
-                this._logger.Information($"{this.Symbol}: Recommendation changed: {oldRecommendation.Action} -> {newRecommendation.Action}");
+                _logger.Information($"{Symbol}: Recommendation changed: {oldRecommendation.Action} -> {newRecommendation.Action}");
             }
 
             // Store recommendation in database
@@ -507,11 +507,11 @@ namespace trape.cli.trader.Analyze
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e, e.Message);
+                    _logger.Error(e, e.Message);
                 }
             }
 
-            _logTrend(newRecommendation, stat10m, stat2h);
+            LogTrend(newRecommendation, stat10m, stat2h);
         }
 
         /// <summary>
@@ -521,16 +521,16 @@ namespace trape.cli.trader.Analyze
         /// <param name="stat10m">10 minutes stats</param>
         /// <param name="stat2Hours">2 hours stats</param>
         /// <returns>String that returns current trends</returns>
-        private void _logTrend(Recommendation recommendation, Stats10m stat10m, Stats2h stat2Hours)
+        private void LogTrend(Recommendation recommendation, Stats10m stat10m, Stats2h stat2Hours)
         {
             // Announce the trend every second for reduced log spamming
-            if (DateTime.UtcNow.Second != this._logTrendLimiter)
+            if (DateTime.UtcNow.Second != _logTrendLimiter)
             {
-                this._logTrendLimiter = DateTime.UtcNow.Second;
+                _logTrendLimiter = DateTime.UtcNow.Second;
 
                 var reco = recommendation.Action == datalayer.Enums.Action.Buy ? "Buy :" : recommendation.Action.ToString();
 
-                this._logger.Verbose($"{recommendation.Symbol}: {reco} | S1h: {stat10m.Slope1h:0.0000} | S2h: {stat10m.Slope2h:0.0000} | MA1h: {stat10m.MovingAverage1h:0.0000} | MA2h: {stat10m.MovingAverage2h:0.0000} | MA6h: {stat2Hours.MovingAverage6h:0.0000}");
+                _logger.Verbose($"{recommendation.Symbol}: {reco} | S1h: {stat10m.Slope1h:0.0000} | S2h: {stat10m.Slope2h:0.0000} | MA1h: {stat10m.MovingAverage1h:0.0000} | MA2h: {stat10m.MovingAverage2h:0.0000} | MA6h: {stat2Hours.MovingAverage6h:0.0000}");
             }
         }
 
@@ -545,36 +545,36 @@ namespace trape.cli.trader.Analyze
         {
             _ = symbol ?? throw new ArgumentNullException(paramName: nameof(symbol));
 
-            if (this._jobRecommendationMaker.Enabled)
+            if (_jobRecommendationMaker.Enabled)
             {
-                this._logger.Warning($"{symbol}: Analyst is already active");
+                _logger.Warning($"{symbol}: Analyst is already active");
                 return;
             }
 
-            this._logger.Information($"{this.Symbol}: Starting Analyst");
+            _logger.Information($"{Symbol}: Starting Analyst");
 
-            this.Symbol = symbol;
-            this.Asset = symbol.Replace("USDT", string.Empty);
+            Symbol = symbol;
+            Asset = symbol.Replace("USDT", string.Empty);
 
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    var decisions = database.GetLastDecisions().Where(d => d.Symbol == this.Symbol);
+                    var decisions = (database.GetLastDecisions().Result).Where(d => d.Symbol == Symbol);
 
-                    this._lastAnalysis = new Analysis(this.Symbol, decisions);
+                    _lastAnalysis = new Analysis(Symbol, decisions);
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e, e.Message);
+                    _logger.Error(e, e.Message);
                     throw;
                 }
             }
 
-            this._jobRecommendationMaker.Start();
+            _jobRecommendationMaker.Start();
 
-            this._logger.Information($"{this.Symbol}: Analyst started");
+            _logger.Information($"{Symbol}: Analyst started");
         }
 
         /// <summary>
@@ -583,12 +583,12 @@ namespace trape.cli.trader.Analyze
         public async Task Terminate()
         {
             // Stop recommendation maker
-            this._jobRecommendationMaker.Terminate();
+            _jobRecommendationMaker.Terminate();
 
             // Terminate possible running tasks
-            this._cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Cancel();
 
-            this._logger.Information("Analyst stopped");
+            _logger.Information("Analyst stopped");
 
             await Task.CompletedTask;
         }
@@ -612,17 +612,17 @@ namespace trape.cli.trader.Analyze
         /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
-            if (this._disposed)
+            if (_disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                this._cancellationTokenSource.Dispose();
+                _cancellationTokenSource.Dispose();
             }
 
-            this._disposed = true;
+            _disposed = true;
         }
 
         #endregion

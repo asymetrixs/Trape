@@ -123,23 +123,23 @@ namespace trape.cli.trader.Trading
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            this._accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
+            _accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             #endregion
 
-            this._logger = logger.ForContext<Broker>();
-            this._cancellationTokenSource = new CancellationTokenSource();
-            this._lastRecommendation = new Dictionary<Action, DateTime>();
-            this.Symbol = null;
-            this._canTrade = new SemaphoreSlim(1, 1);
-            this._lastPanicSell = default;
-            this._lastTakeProfitSell = default;
-            this._lastJumpBuy = default;
+            _logger = logger.ForContext<Broker>();
+            _cancellationTokenSource = new CancellationTokenSource();
+            _lastRecommendation = new Dictionary<Action, DateTime>();
+            Symbol = null;
+            _canTrade = new SemaphoreSlim(1, 1);
+            _lastPanicSell = default;
+            _lastTakeProfitSell = default;
+            _lastJumpBuy = default;
 
             // Set up timer
-            this._jobTrading = new Job(new TimeSpan(0, 0, 0, 0, 250), _trading);
+            _jobTrading = new Job(new TimeSpan(0, 0, 0, 0, 250), _trading);
         }
 
         #endregion
@@ -153,32 +153,32 @@ namespace trape.cli.trader.Trading
         /// <param name="e"></param>
         private async void _trading()
         {
-            this.LastActive = DateTime.UtcNow;
+            LastActive = DateTime.UtcNow;
 
             // Check if Symbol is set
-            if (string.IsNullOrEmpty(this.Symbol))
+            if (string.IsNullOrEmpty(Symbol))
             {
-                this._logger.Error("Trying to trade with empty symbol! Aborting...");
+                _logger.Error("Trying to trade with empty symbol! Aborting...");
                 return;
             }
 
-            this._logger.Verbose($"{this.Symbol}: Going to trade");
+            _logger.Verbose($"{Symbol}: Going to trade");
 
             // Get recommendation
-            var recommendation = this._buffer.GetRecommendation(this.Symbol);
+            var recommendation = _buffer.GetRecommendation(Symbol);
             if (null == recommendation)
             {
-                this._logger.Verbose($"{this.Symbol}: No recommendation available.");
+                _logger.Verbose($"{Symbol}: No recommendation available.");
                 return;
             }
             else if (recommendation.Action == datalayer.Enums.Action.Hold)
             {
-                this._logger.Verbose($"{this.Symbol}: Recommendation is hold.");
+                _logger.Verbose($"{Symbol}: Recommendation is hold.");
                 return;
             }
 
             // If this point is reached, the preconditions are fine, check if slot is available
-            if (this._canTrade.CurrentCount == 0)
+            if (_canTrade.CurrentCount == 0)
             {
                 return;
             }
@@ -188,10 +188,10 @@ namespace trape.cli.trader.Trading
                 // Wait because context is available, otherwise would have exited before reaching this step
                 // Synchronizing is just used in the rare case that a method needs longer to return than the timer needs to elapse
                 // so that no other task runs the same method
-                this._canTrade.Wait();
+                _canTrade.Wait();
 
                 // Get min notional
-                var symbolInfo = this._buffer.GetSymbolInfoFor(this.Symbol);
+                var symbolInfo = _buffer.GetSymbolInfoFor(Symbol);
 
                 // If exchange information are not yet available, return
                 if (symbolInfo == null)
@@ -208,7 +208,7 @@ namespace trape.cli.trader.Trading
                 || recommendation.Action == Action.JumpBuy)
                 {
                     // Buy
-                    await this.Buy(recommendation, symbolInfo).ConfigureAwait(true);
+                    await Buy(recommendation, symbolInfo).ConfigureAwait(true);
                 }
                 // Sell
                 else if (recommendation.Action == Action.Sell
@@ -217,28 +217,28 @@ namespace trape.cli.trader.Trading
                     || recommendation.Action == Action.TakeProfitsSell
                     || recommendation.Action == Action.Hold)
                 {
-                    await this.Sell(recommendation, symbolInfo).ConfigureAwait(true);
+                    await Sell(recommendation, symbolInfo).ConfigureAwait(true);
                 }
 
                 // Log recommended action, use for strong recommendations
-                if (this._lastRecommendation.ContainsKey(recommendation.Action))
+                if (_lastRecommendation.ContainsKey(recommendation.Action))
                 {
-                    this._lastRecommendation[recommendation.Action] = DateTime.UtcNow;
+                    _lastRecommendation[recommendation.Action] = DateTime.UtcNow;
                 }
                 else
                 {
-                    this._lastRecommendation.Add(recommendation.Action, DateTime.UtcNow);
+                    _lastRecommendation.Add(recommendation.Action, DateTime.UtcNow);
                 }
             }
             // Catch All Exception
             catch (Exception cae)
             {
-                this._logger.Error(cae, cae.Message);
+                _logger.Error(cae, cae.Message);
             }
             finally
             {
                 // Release lock
-                this._canTrade.Release();
+                _canTrade.Release();
             }
         }
 
@@ -263,14 +263,14 @@ namespace trape.cli.trader.Trading
 
             #endregion
 
-            this._logger.Debug($"{this.Symbol}: Preparing to buy");
+            _logger.Debug($"{Symbol}: Preparing to buy");
 
             // Get remaining USDT balance for trading
-            var usdt = await this._accountant.GetBalance("USDT").ConfigureAwait(false);
+            var usdt = await _accountant.GetBalance("USDT").ConfigureAwait(false);
             if (null == usdt)
             {
                 // Something is oddly wrong, wait a bit
-                this._logger.Debug("Cannot retrieve account info");
+                _logger.Debug("Cannot retrieve account info");
                 return;
             }
 
@@ -299,12 +299,12 @@ namespace trape.cli.trader.Trading
 
             if (availableUSDT == 0)
             {
-                this._logger.Debug($"{this.Symbol}: No funds available");
+                _logger.Debug($"{Symbol}: No funds available");
                 return;
             }
 
             // Get ask price
-            var bestBidPrice = this._buffer.GetBidPrice(this.Symbol);
+            var bestBidPrice = _buffer.GetBidPrice(Symbol);
 
             var quantity = availableUSDT / bestBidPrice;
 
@@ -312,7 +312,7 @@ namespace trape.cli.trader.Trading
 
             if (quantity == 0)
             {
-                this._logger.Debug($"{this.Symbol}: Quantity is 0");
+                _logger.Debug($"{Symbol}: Quantity is 0");
                 return;
             }
 
@@ -324,7 +324,7 @@ namespace trape.cli.trader.Trading
                 try
                 {
                     lastOrder = database.PlacedOrders
-                                .Where(p => p.Symbol == this.Symbol)
+                                .Where(p => p.Symbol == Symbol)
                                 .OrderByDescending(p => p.TransactionTime).AsNoTracking().FirstOrDefault();
                 }
                 catch
@@ -334,17 +334,17 @@ namespace trape.cli.trader.Trading
             }
 
             // Logging
-            this._logger.Debug($"{this.Symbol} Buy: {recommendation.Action} Bidding:{bestBidPrice:0.00};Quantity:{quantity}");
-            this._logger.Verbose($"{this.Symbol} Buy: Checking conditions");
-            this._logger.Verbose($"{this.Symbol} Buy: {null == lastOrder} lastOrder is null");
-            this._logger.Verbose($"{this.Symbol} Buy: {lastOrder?.Side.ToString()} lastOrder side");
-            this._logger.Verbose($"{this.Symbol} Buy: {lastOrder?.Price * requiredPriceDropforRebuy > bestBidPrice} lastOrder Price: {lastOrder?.Price} * {requiredPriceDropforRebuy} > {bestBidPrice}");
-            this._logger.Verbose($"{this.Symbol} Buy: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
-            this._logger.Verbose($"{this.Symbol} Buy: {quantity} quantity");
-            this._logger.Verbose($"{this.Symbol} Buy: {recommendation.Action} recommendation");
-            this._logger.Verbose($"{this.Symbol} Buy: {quantity * bestBidPrice >= symbolInfo.MinNotionalFilter.MinNotional} Value {quantity * bestBidPrice} > 0: {quantity * bestBidPrice > 0} and higher than minNotional {symbolInfo.MinNotionalFilter.MinNotional}");
-            this._logger.Verbose($"{this.Symbol} Buy: {symbolInfo.PriceFilter.MaxPrice >= bestBidPrice && bestBidPrice >= symbolInfo.PriceFilter.MinPrice} MaxPrice {symbolInfo.PriceFilter.MaxPrice} >= Amount {bestBidPrice} >= MinPrice {symbolInfo.PriceFilter.MinPrice}");
-            this._logger.Verbose($"{this.Symbol} Buy: {symbolInfo.LotSizeFilter.MaxQuantity >= quantity && quantity >= symbolInfo.LotSizeFilter.MinQuantity} MaxLOT {symbolInfo.LotSizeFilter.MaxQuantity} > Amount {quantity} > MinLOT {symbolInfo.LotSizeFilter.MinQuantity}");
+            _logger.Debug($"{Symbol} Buy: {recommendation.Action} Bidding:{bestBidPrice:0.00};Quantity:{quantity}");
+            _logger.Verbose($"{Symbol} Buy: Checking conditions");
+            _logger.Verbose($"{Symbol} Buy: {null == lastOrder} lastOrder is null");
+            _logger.Verbose($"{Symbol} Buy: {lastOrder?.Side.ToString()} lastOrder side");
+            _logger.Verbose($"{Symbol} Buy: {lastOrder?.Price * requiredPriceDropforRebuy > bestBidPrice} lastOrder Price: {lastOrder?.Price} * {requiredPriceDropforRebuy} > {bestBidPrice}");
+            _logger.Verbose($"{Symbol} Buy: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
+            _logger.Verbose($"{Symbol} Buy: {quantity} quantity");
+            _logger.Verbose($"{Symbol} Buy: {recommendation.Action} recommendation");
+            _logger.Verbose($"{Symbol} Buy: {quantity * bestBidPrice >= symbolInfo.MinNotionalFilter.MinNotional} Value {quantity * bestBidPrice} > 0: {quantity * bestBidPrice > 0} and higher than minNotional {symbolInfo.MinNotionalFilter.MinNotional}");
+            _logger.Verbose($"{Symbol} Buy: {symbolInfo.PriceFilter.MaxPrice >= bestBidPrice && bestBidPrice >= symbolInfo.PriceFilter.MinPrice} MaxPrice {symbolInfo.PriceFilter.MaxPrice} >= Amount {bestBidPrice} >= MinPrice {symbolInfo.PriceFilter.MinPrice}");
+            _logger.Verbose($"{Symbol} Buy: {symbolInfo.LotSizeFilter.MaxQuantity >= quantity && quantity >= symbolInfo.LotSizeFilter.MinQuantity} MaxLOT {symbolInfo.LotSizeFilter.MaxQuantity} > Amount {quantity} > MinLOT {symbolInfo.LotSizeFilter.MinQuantity}");
 
 
             // For increased readability            
@@ -364,15 +364,15 @@ namespace trape.cli.trader.Trading
                                                     && lastOrder.TransactionTime.AddMinutes(15) < DateTime.UtcNow;
 
             // Check if following strong buy recommendation
-            var shallFollowStrongBuy = (!this._lastRecommendation.ContainsKey(recommendation.Action)
-                                                        || this._lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow)
+            var shallFollowStrongBuy = (!_lastRecommendation.ContainsKey(recommendation.Action)
+                                                        || _lastRecommendation[recommendation.Action].AddMinutes(1) < DateTime.UtcNow)
                                                     && recommendation.Action == Action.StrongBuy;
 
             // Check if is jump buy and last one is more than 30 seconds ago
-            var isJumpBuy = recommendation.Action == Action.JumpBuy && this._lastJumpBuy.AddSeconds(30) < DateTime.Now;
+            var isJumpBuy = recommendation.Action == Action.JumpBuy && _lastJumpBuy.AddSeconds(30) < DateTime.Now;
             if (isJumpBuy)
             {
-                this._lastJumpBuy = DateTime.Now;
+                _lastJumpBuy = DateTime.Now;
             }
 
 
@@ -386,15 +386,15 @@ namespace trape.cli.trader.Trading
                                     && quantity <= symbolInfo.LotSizeFilter.MaxQuantity;
 
 
-            this._logger.Verbose($"{this.Symbol} Buy: {isLastOrderNull} isLastOrderNull");
-            this._logger.Verbose($"{this.Symbol} Buy: {isLastOrderSell} isLastOrderSell");
-            this._logger.Verbose($"{this.Symbol} Buy: {isLastOrderBuyAndPriceDecreased} isLastOrderBuyAndPriceDecreased");
-            this._logger.Verbose($"{this.Symbol} Buy: {isLongTimeNoRebuy} isLongTimeNoRebuy");
-            this._logger.Verbose($"{this.Symbol} Buy: {shallFollowStrongBuy} shallFollowStrongBuy");
-            this._logger.Verbose($"{this.Symbol} Buy: {shallFollowStrongBuy} shallFollowStrongBuy");
-            this._logger.Verbose($"{this.Symbol} Buy: {isJumpBuy} isJumpBuy");
-            this._logger.Verbose($"{this.Symbol} Buy: {isPriceRangeValid} isPriceRangeValid");
-            this._logger.Verbose($"{this.Symbol} Buy: {isLOTSizeValid} isLOTSizeValid");
+            _logger.Verbose($"{Symbol} Buy: {isLastOrderNull} isLastOrderNull");
+            _logger.Verbose($"{Symbol} Buy: {isLastOrderSell} isLastOrderSell");
+            _logger.Verbose($"{Symbol} Buy: {isLastOrderBuyAndPriceDecreased} isLastOrderBuyAndPriceDecreased");
+            _logger.Verbose($"{Symbol} Buy: {isLongTimeNoRebuy} isLongTimeNoRebuy");
+            _logger.Verbose($"{Symbol} Buy: {shallFollowStrongBuy} shallFollowStrongBuy");
+            _logger.Verbose($"{Symbol} Buy: {shallFollowStrongBuy} shallFollowStrongBuy");
+            _logger.Verbose($"{Symbol} Buy: {isJumpBuy} isJumpBuy");
+            _logger.Verbose($"{Symbol} Buy: {isPriceRangeValid} isPriceRangeValid");
+            _logger.Verbose($"{Symbol} Buy: {isLOTSizeValid} isLOTSizeValid");
 
 
             // Check conditions for buy
@@ -419,18 +419,18 @@ namespace trape.cli.trader.Trading
                 var stockExchange = Program.Container.GetService<IStockExchange>();
                 await stockExchange.PlaceOrder(new ClientOrder()
                 {
-                    Symbol = this.Symbol,
+                    Symbol = Symbol,
                     Side = OrderSide.Buy,
                     Type = (isJumpBuy || bestBidPrice < 50) ? OrderType.Market : OrderType.Limit,
                     OrderResponseType = OrderResponseType.Full,
                     Quantity = quantity,
                     Price = bestBidPrice,
                     TimeInForce = TimeInForce.ImmediateOrCancel,
-                }, this._cancellationTokenSource.Token).ConfigureAwait(true);
+                }, _cancellationTokenSource.Token).ConfigureAwait(true);
             }
             else
             {
-                this._logger.Debug($"{this.Symbol}: Skipping, final conditions not met");
+                _logger.Debug($"{Symbol}: Skipping, final conditions not met");
             }
         }
 
@@ -450,23 +450,23 @@ namespace trape.cli.trader.Trading
 
             #endregion
 
-            this._logger.Debug($"{this.Symbol}: Preparing to sell");
+            _logger.Debug($"{Symbol}: Preparing to sell");
 
-            var assetBalance = await this._accountant.GetBalance(this.Symbol.Replace("USDT", string.Empty)).ConfigureAwait(true);
+            var assetBalance = await _accountant.GetBalance(Symbol.Replace("USDT", string.Empty)).ConfigureAwait(true);
 
             if (assetBalance == null || assetBalance?.Free == 0)
             {
-                this._logger.Debug($"{this.Symbol} nothing free");
+                _logger.Debug($"{Symbol} nothing free");
 
                 if (recommendation.Action == datalayer.Enums.Action.PanicSell)
                 {
-                    this._logger.Warning($"{this.Symbol}: PANICKING - but no asset free to sell");
+                    _logger.Warning($"{Symbol}: PANICKING - but no asset free to sell");
                 }
             }
             else
             {
                 // Get best bid price
-                var bestAskPrice = this._buffer.GetAskPrice(this.Symbol);
+                var bestAskPrice = _buffer.GetAskPrice(Symbol);
 
                 IQueryable<OrderTrade> buyTrades = default;
                 // TODO: make scope smaller
@@ -477,13 +477,13 @@ namespace trape.cli.trader.Trading
                     {
                         // Get last orders
                         var lastOrder = database.PlacedOrders
-                                            .Where(p => p.Symbol == this.Symbol && p.QuantityFilled > 0)
+                                            .Where(p => p.Symbol == Symbol && p.QuantityFilled > 0)
                                             .OrderByDescending(p => p.TransactionTime).AsNoTracking().FirstOrDefault();
 
                         // Base query
                         buyTrades = database.PlacedOrders
                                     .Where(p => p.Side == OrderSide.Buy
-                                        && p.Symbol == this.Symbol
+                                        && p.Symbol == Symbol
                                         && p.QuantityFilled > 0)
                                     .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity)).AsNoTracking();
 
@@ -521,30 +521,30 @@ namespace trape.cli.trader.Trading
                         }
 
                         // Wait until previous trades were handled
-                        var lockedOpenOrderQuantity = this._buffer.GetOpenOrderValue(this.Symbol);
+                        var lockedOpenOrderQuantity = _buffer.GetOpenOrderValue(Symbol);
                         quantity = lockedOpenOrderQuantity == 0 ? quantity : 0;
 
                         quantity = Math.Round(quantity, symbolInfo.BaseAssetPrecision);
 
                         if (quantity == 0)
                         {
-                            this._logger.Debug($"{this.Symbol}: Quantity is 0");
+                            _logger.Debug($"{Symbol}: Quantity is 0");
                             return;
                         }
 
 
                         // Logging
-                        this._logger.Debug($"{this.Symbol} Sell: {recommendation.Action};Asking:{bestAskPrice:0.00};Free:{assetBalance?.Free:0.00######};Quantity:{quantity:0.00######};LockedOpenOrderAmount:{lockedOpenOrderQuantity:0.00}");
-                        this._logger.Verbose($"{this.Symbol} Sell: Checking conditions");
-                        this._logger.Verbose($"{this.Symbol} Sell: {null == lastOrder} lastOrder is null");
-                        this._logger.Verbose($"{this.Symbol} Sell: {lastOrder?.Side.ToString()} lastOrder side");
-                        this._logger.Verbose($"{this.Symbol} Sell: {lastOrder?.Price * requiredPriceGainForResell < bestAskPrice} lastOrder Price: {lastOrder?.Price} * {requiredPriceGainForResell} < {bestAskPrice}");
-                        this._logger.Verbose($"{this.Symbol} Sell: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
-                        this._logger.Verbose($"{this.Symbol} Sell: {quantity:0.00000000} quantity");
-                        this._logger.Verbose($"{this.Symbol} Sell: {recommendation.Action} recommendation");
-                        this._logger.Verbose($"{this.Symbol} Sell: {quantity * bestAskPrice >= symbolInfo.MinNotionalFilter.MinNotional} Value {quantity * bestAskPrice} > 0: {quantity * bestAskPrice > 0} and higher than {symbolInfo.MinNotionalFilter.MinNotional}");
-                        this._logger.Verbose($"{this.Symbol} Sell: {symbolInfo.PriceFilter.MaxPrice >= bestAskPrice && bestAskPrice >= symbolInfo.PriceFilter.MinPrice} MaxPrice { symbolInfo.PriceFilter.MaxPrice} > Amount {bestAskPrice} > MinPrice {symbolInfo.PriceFilter.MinPrice}");
-                        this._logger.Verbose($"{this.Symbol} Sell: {symbolInfo.LotSizeFilter.MaxQuantity >= quantity && quantity >= symbolInfo.LotSizeFilter.MinQuantity} MaxLOT {symbolInfo.LotSizeFilter.MaxQuantity} > Amount {quantity} > MinLOT {symbolInfo.LotSizeFilter.MinQuantity}");
+                        _logger.Debug($"{Symbol} Sell: {recommendation.Action};Asking:{bestAskPrice:0.00};Free:{assetBalance?.Free:0.00######};Quantity:{quantity:0.00######};LockedOpenOrderAmount:{lockedOpenOrderQuantity:0.00}");
+                        _logger.Verbose($"{Symbol} Sell: Checking conditions");
+                        _logger.Verbose($"{Symbol} Sell: {null == lastOrder} lastOrder is null");
+                        _logger.Verbose($"{Symbol} Sell: {lastOrder?.Side.ToString()} lastOrder side");
+                        _logger.Verbose($"{Symbol} Sell: {lastOrder?.Price * requiredPriceGainForResell < bestAskPrice} lastOrder Price: {lastOrder?.Price} * {requiredPriceGainForResell} < {bestAskPrice}");
+                        _logger.Verbose($"{Symbol} Sell: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
+                        _logger.Verbose($"{Symbol} Sell: {quantity:0.00000000} quantity");
+                        _logger.Verbose($"{Symbol} Sell: {recommendation.Action} recommendation");
+                        _logger.Verbose($"{Symbol} Sell: {quantity * bestAskPrice >= symbolInfo.MinNotionalFilter.MinNotional} Value {quantity * bestAskPrice} > 0: {quantity * bestAskPrice > 0} and higher than {symbolInfo.MinNotionalFilter.MinNotional}");
+                        _logger.Verbose($"{Symbol} Sell: {symbolInfo.PriceFilter.MaxPrice >= bestAskPrice && bestAskPrice >= symbolInfo.PriceFilter.MinPrice} MaxPrice { symbolInfo.PriceFilter.MaxPrice} > Amount {bestAskPrice} > MinPrice {symbolInfo.PriceFilter.MinPrice}");
+                        _logger.Verbose($"{Symbol} Sell: {symbolInfo.LotSizeFilter.MaxQuantity >= quantity && quantity >= symbolInfo.LotSizeFilter.MinQuantity} MaxLOT {symbolInfo.LotSizeFilter.MaxQuantity} > Amount {quantity} > MinLOT {symbolInfo.LotSizeFilter.MinQuantity}");
 
                         // TODO: adjust logging to log only failing step and returning
                         // TODO: if-direct checks
@@ -556,10 +556,10 @@ namespace trape.cli.trader.Trading
                                                                 && lastOrder.TransactionTime.AddMinutes(20) < DateTime.UtcNow;
 
                         // Check if is panick sell but only panic once every 20 seconds
-                        var isPanicking = recommendation.Action == Action.PanicSell && this._lastPanicSell.AddSeconds(20) < DateTime.UtcNow;
+                        var isPanicking = recommendation.Action == Action.PanicSell && _lastPanicSell.AddSeconds(20) < DateTime.UtcNow;
                         if (isPanicking)
                         {
-                            this._lastPanicSell = DateTime.UtcNow;
+                            _lastPanicSell = DateTime.UtcNow;
                         }
 
                         // Check if last transaction was also sell but price has gained and transaction is older than 5 minutes
@@ -568,20 +568,20 @@ namespace trape.cli.trader.Trading
                                                                     && lastOrder.TransactionTime.AddMinutes(7) < DateTime.UtcNow;
 
                         // Only one strong sell per minute
-                        var shallFollowStrongSell = (!this._lastRecommendation.ContainsKey(recommendation.Action)
-                                                                    || this._lastRecommendation[recommendation.Action].AddMinutes(5) < DateTime.UtcNow)
+                        var shallFollowStrongSell = (!_lastRecommendation.ContainsKey(recommendation.Action)
+                                                                    || _lastRecommendation[recommendation.Action].AddMinutes(5) < DateTime.UtcNow)
                                                                 && recommendation.Action == Action.StrongSell;
 
                         // Only one panic sell per minute
-                        var shallFollowPanicSell = (!this._lastRecommendation.ContainsKey(recommendation.Action)
-                                                                    || this._lastRecommendation[recommendation.Action].AddMinutes(2) < DateTime.UtcNow)
+                        var shallFollowPanicSell = (!_lastRecommendation.ContainsKey(recommendation.Action)
+                                                                    || _lastRecommendation[recommendation.Action].AddMinutes(2) < DateTime.UtcNow)
                                                                 && recommendation.Action == Action.PanicSell;
 
                         // Check if we just take profits
-                        var isTakeProfitSell = recommendation.Action == Action.TakeProfitsSell && this._lastTakeProfitSell.AddSeconds(20) < DateTime.Now;
+                        var isTakeProfitSell = recommendation.Action == Action.TakeProfitsSell && _lastTakeProfitSell.AddSeconds(20) < DateTime.Now;
                         if (isTakeProfitSell)
                         {
-                            this._lastTakeProfitSell = DateTime.UtcNow;
+                            _lastTakeProfitSell = DateTime.UtcNow;
                         }
 
                         var isLogicValid = quantity * bestAskPrice >= symbolInfo.MinNotionalFilter.MinNotional
@@ -597,17 +597,17 @@ namespace trape.cli.trader.Trading
                         var isAmountAvailable = assetBalance.Free >= quantity;
 
 
-                        this._logger.Verbose($"{this.Symbol} Sell: {isLastOrderNull} isLastOrderNull");
-                        this._logger.Verbose($"{this.Symbol} Sell: {isLastOrderBuy} isLastOrderBuy");
-                        this._logger.Verbose($"{this.Symbol} Sell: {isPanicking} isPanicking");
-                        this._logger.Verbose($"{this.Symbol} Sell: {isLastOrderSellAndPriceIncreased} isLastOrderSellAndPriceIncreased");
-                        this._logger.Verbose($"{this.Symbol} Sell: {shallFollowStrongSell} shallFollowStrongSell");
-                        this._logger.Verbose($"{this.Symbol} Sell: {shallFollowPanicSell} shallFollowPanicSell");
-                        this._logger.Verbose($"{this.Symbol} Sell: {isTakeProfitSell} isTakeProfitSell");
-                        this._logger.Verbose($"{this.Symbol} Sell: {isLogicValid} isLogicValid");
-                        this._logger.Verbose($"{this.Symbol} Sell: {isPriceRangeValid} isPriceRangeValid");
-                        this._logger.Verbose($"{this.Symbol} Sell: {isLOTSizeValid} isLOTSizeValid");
-                        this._logger.Verbose($"{this.Symbol} Sell: {isAmountAvailable} isAmountAvailable");
+                        _logger.Verbose($"{Symbol} Sell: {isLastOrderNull} isLastOrderNull");
+                        _logger.Verbose($"{Symbol} Sell: {isLastOrderBuy} isLastOrderBuy");
+                        _logger.Verbose($"{Symbol} Sell: {isPanicking} isPanicking");
+                        _logger.Verbose($"{Symbol} Sell: {isLastOrderSellAndPriceIncreased} isLastOrderSellAndPriceIncreased");
+                        _logger.Verbose($"{Symbol} Sell: {shallFollowStrongSell} shallFollowStrongSell");
+                        _logger.Verbose($"{Symbol} Sell: {shallFollowPanicSell} shallFollowPanicSell");
+                        _logger.Verbose($"{Symbol} Sell: {isTakeProfitSell} isTakeProfitSell");
+                        _logger.Verbose($"{Symbol} Sell: {isLogicValid} isLogicValid");
+                        _logger.Verbose($"{Symbol} Sell: {isPriceRangeValid} isPriceRangeValid");
+                        _logger.Verbose($"{Symbol} Sell: {isLOTSizeValid} isLOTSizeValid");
+                        _logger.Verbose($"{Symbol} Sell: {isAmountAvailable} isAmountAvailable");
 
                         // Check conditions for sell
                         if (
@@ -633,23 +633,23 @@ namespace trape.cli.trader.Trading
                             var stockExchange = Program.Container.GetInstance<IStockExchange>();
                             await stockExchange.PlaceOrder(new ClientOrder()
                             {
-                                Symbol = this.Symbol,
+                                Symbol = Symbol,
                                 Side = OrderSide.Sell,
                                 Type = (isTakeProfitSell || shallFollowPanicSell || bestAskPrice < 50) ? OrderType.Market : OrderType.Limit,
                                 OrderResponseType = OrderResponseType.Full,
                                 Quantity = quantity,
                                 Price = bestAskPrice,
                                 TimeInForce = TimeInForce.ImmediateOrCancel
-                            }, this._cancellationTokenSource.Token).ConfigureAwait(true);
+                            }, _cancellationTokenSource.Token).ConfigureAwait(true);
                         }
                         else
                         {
-                            this._logger.Debug($"{this.Symbol}: Skipping, final conditions not met");
+                            _logger.Debug($"{Symbol}: Skipping, final conditions not met");
                         }
                     }
                     catch (Exception e)
                     {
-                        this._logger.Error(e, e.Message);
+                        _logger.Error(e, e.Message);
                     }
                 }
             }
@@ -667,19 +667,19 @@ namespace trape.cli.trader.Trading
         {
             _ = symbol ?? throw new ArgumentNullException(paramName: symbol);
 
-            if (this._jobTrading.Enabled)
+            if (_jobTrading.Enabled)
             {
-                this._logger.Warning($"{symbol}: Broker is already active");
+                _logger.Warning($"{symbol}: Broker is already active");
                 return;
             }
 
-            this._logger.Information($"{symbol}: Starting Broker");
+            _logger.Information($"{symbol}: Starting Broker");
 
-            this.Symbol = symbol;
+            Symbol = symbol;
 
-            this._jobTrading.Start();
+            _jobTrading.Start();
 
-            this._logger.Information($"{symbol}: Broker started");
+            _logger.Information($"{symbol}: Broker started");
         }
 
         /// <summary>
@@ -688,22 +688,22 @@ namespace trape.cli.trader.Trading
         /// <returns></returns>
         public async Task Terminate()
         {
-            if (!this._jobTrading.Enabled)
+            if (!_jobTrading.Enabled)
             {
-                this._logger.Warning($"{this.Symbol}: Broker is not active");
+                _logger.Warning($"{Symbol}: Broker is not active");
                 return;
             }
 
-            this._logger.Information($"{this.Symbol}: Stopping Broker");
+            _logger.Information($"{Symbol}: Stopping Broker");
 
-            this._jobTrading.Terminate();
+            _jobTrading.Terminate();
 
             // Give time for running task to end
             await Task.Delay(1000).ConfigureAwait(false);
 
-            this._cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Cancel();
 
-            this._logger.Information($"{this.Symbol}: Broker stopped");
+            _logger.Information($"{Symbol}: Broker stopped");
         }
 
         #endregion
@@ -725,17 +725,17 @@ namespace trape.cli.trader.Trading
         /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
-            if (this._disposed)
+            if (_disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                this._jobTrading.Dispose();
+                _jobTrading.Dispose();
             }
 
-            this._disposed = true;
+            _disposed = true;
         }
 
         #endregion

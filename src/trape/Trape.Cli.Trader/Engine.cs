@@ -20,27 +20,27 @@ namespace trape.cli.trader
         /// <summary>
         /// Logger
         /// </summary>
-        private ILogger _logger;
+        private readonly ILogger _logger;
 
         /// <summary>
         /// Buffer
         /// </summary>
-        private IBuffer _buffer;
+        private readonly IBuffer _buffer;
 
         /// <summary>
         /// Trading Team
         /// </summary>
-        private ITradingTeam _tradingTeam;
+        private readonly ITradingTeam _tradingTeam;
 
         /// <summary>
         /// Accountant
         /// </summary>
-        private IAccountant _accountant;
+        private readonly IAccountant _accountant;
 
         /// <summary>
         /// Fee Watchdog
         /// </summary>
-        private IFeeWatchdog _feeWatchdog;
+        private readonly IFeeWatchdog _feeWatchdog;
 
         /// <summary>
         /// Disposed
@@ -50,7 +50,7 @@ namespace trape.cli.trader
         /// <summary>
         /// Running waitfor
         /// </summary>
-        private SemaphoreSlim _running;
+        private readonly SemaphoreSlim _running;
 
         #endregion
 
@@ -70,18 +70,18 @@ namespace trape.cli.trader
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
-            this._tradingTeam = tradingTeam ?? throw new ArgumentNullException(paramName: nameof(tradingTeam));
+            _tradingTeam = tradingTeam ?? throw new ArgumentNullException(paramName: nameof(tradingTeam));
 
-            this._accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
+            _accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            this._feeWatchdog = feeWatchdog ?? throw new ArgumentNullException(paramName: nameof(feeWatchdog));
+            _feeWatchdog = feeWatchdog ?? throw new ArgumentNullException(paramName: nameof(feeWatchdog));
 
             #endregion
 
-            this._logger = logger.ForContext<Engine>();
-            this._running = new SemaphoreSlim(1, 1);
+            _logger = logger.ForContext<Engine>();
+            _running = new SemaphoreSlim(1, 1);
         }
 
         #endregion
@@ -93,21 +93,21 @@ namespace trape.cli.trader
         /// </summary>
         /// <param name="stoppingToken"></param>
         /// <returns></returns>
-        public async override Task StartAsync(CancellationToken stoppingToken)
+        public override async Task StartAsync(CancellationToken stoppingToken)
         {
-            this._logger.Information("Engine is starting");
+            _logger.Information("Engine is starting");
 
-            this._running.Wait();
+            _running.Wait();
 
-            await this._buffer.Start().ConfigureAwait(true);
+            await _buffer.Start().ConfigureAwait(true);
 
-            await this._accountant.Start().ConfigureAwait(true);
+            await _accountant.Start().ConfigureAwait(true);
 
-            this._tradingTeam.Start();
+            _tradingTeam.Start();
 
-            this._feeWatchdog.Start();
+            _feeWatchdog.Start();
 
-            this._logger.Information("Engine is started");
+            _logger.Information("Engine is started");
         }
 
         /// <summary>
@@ -117,10 +117,10 @@ namespace trape.cli.trader
         /// <returns></returns>
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            this._logger.Verbose("Waiting...");
+            _logger.Verbose("Waiting...");
 
             // Return state
-            return this._running.WaitAsync(stoppingToken);
+            return _running.WaitAsync(stoppingToken);
         }
 
         /// <summary>
@@ -128,22 +128,22 @@ namespace trape.cli.trader
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async override Task StopAsync(CancellationToken cancellationToken = default)
+        public override async Task StopAsync(CancellationToken cancellationToken = default)
         {
-            this._logger.Information("Engine is stopping");
+            _logger.Information("Engine is stopping");
 
-            this._feeWatchdog.Terminate();
+            _feeWatchdog.Terminate();
 
-            await this._tradingTeam.Terminate().ConfigureAwait(true);
+            await _tradingTeam.Terminate().ConfigureAwait(true);
 
-            await this._accountant.Terminate().ConfigureAwait(true);
+            await _accountant.Terminate().ConfigureAwait(true);
 
             // End running state
-            this._running.Release();
+            _running.Release();
 
-            this._buffer.Terminate();
+            _buffer.Terminate();
 
-            this._logger.Information("Engine is stopped");
+            _logger.Information("Engine is stopped");
         }
 
         #endregion
@@ -165,19 +165,19 @@ namespace trape.cli.trader
         /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
-            if (this._disposed)
+            if (_disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                this._buffer.Dispose();
-                this._accountant.Dispose();
-                this._tradingTeam.Dispose();
+                _buffer.Dispose();
+                _accountant.Dispose();
+                _tradingTeam.Dispose();
             }
 
-            this._disposed = true;
+            _disposed = true;
         }
 
         #endregion

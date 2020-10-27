@@ -1,4 +1,5 @@
-﻿using Binance.Net.Objects.Spot.MarketStream;
+﻿using Binance.Net.Interfaces;
+using Binance.Net.Objects.Spot.MarketStream;
 using Binance.Net.Objects.Spot.SpotData;
 using Binance.Net.Objects.Spot.UserStream;
 using System;
@@ -32,7 +33,7 @@ namespace trape.mapper
                 Quantity = binancePlacedOrder.Quantity,
                 QuantityFilled = binancePlacedOrder.QuantityFilled,
                 QuoteQuantity = binancePlacedOrder.QuoteQuantity,
-                QuoteQuantityFilled = binancePlacedOrder.QuoteQuantityFilled,                
+                QuoteQuantityFilled = binancePlacedOrder.QuoteQuantityFilled,
                 Side = (datalayer.Enums.OrderSide)(int)binancePlacedOrder.Side,
                 Status = (datalayer.Enums.OrderStatus)(int)binancePlacedOrder.Status,
                 StopPrice = binancePlacedOrder.StopPrice,
@@ -106,7 +107,7 @@ namespace trape.mapper
                 Symbol = binanceStreamOrderList.Symbol,
                 TransactionTime = binanceStreamOrderList.TransactionTime
             };
-            
+
             foreach (var ol in binanceStreamOrderList.Orders)
             {
                 orderList.Orders.Add(Translate(ol, orderList));
@@ -136,20 +137,20 @@ namespace trape.mapper
         /// <summary>
         /// Translates from <c>BinanceStreamBalance</c> to <c>Balance</c>.
         /// </summary>
-        /// <param name="binanceStreamBalances"></param>
+        /// <param name="binanceStreamPositionsUpdate"></param>
         /// <returns></returns>
-        public static IEnumerable<Balance> Translate(IEnumerable<BinanceStreamBalance> binanceStreamBalances)
+        public static IEnumerable<Balance> Translate(BinanceStreamPositionsUpdate binanceStreamPositionsUpdate)
         {
             var list = new List<Balance>();
-            foreach (var streamBalance in binanceStreamBalances)
+            foreach (var balance in binanceStreamPositionsUpdate.Balances)
             {
                 list.Add(new Balance()
                 {
-                    Asset = streamBalance.Asset,
-                    Free = streamBalance.Free,
-                    Locked = streamBalance.Locked,
-                    Total = streamBalance.Total,
-                    CreatedOn = DateTime.UtcNow
+                    Asset = balance.Asset,
+                    Free = balance.Free,
+                    Locked = balance.Locked,
+                    Total = balance.Total,
+                    CreatedOn = binanceStreamPositionsUpdate.Time.ToUniversalTime()
                 });
             }
 
@@ -179,12 +180,12 @@ namespace trape.mapper
         public static OrderUpdate Translate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
         {
             return new OrderUpdate()
-            {                
+            {
                 BuyerIsMaker = binanceStreamOrderUpdate.BuyerIsMaker,
                 ClientOrderId = binanceStreamOrderUpdate.ClientOrderId,
                 Commission = binanceStreamOrderUpdate.Commission,
                 CommissionAsset = binanceStreamOrderUpdate.CommissionAsset,
-                CreateTime = binanceStreamOrderUpdate.CreateTime,                
+                CreateTime = binanceStreamOrderUpdate.CreateTime,
                 ExecutionType = (datalayer.Enums.ExecutionType)(int)binanceStreamOrderUpdate.ExecutionType,
                 I = binanceStreamOrderUpdate.I,
                 IcebergQuantity = binanceStreamOrderUpdate.IcebergQuantity,
@@ -200,7 +201,7 @@ namespace trape.mapper
                 QuantityFilled = binanceStreamOrderUpdate.QuantityFilled,
                 QuoteQuantity = binanceStreamOrderUpdate.QuoteQuantity,
                 QuoteQuantityFilled = binanceStreamOrderUpdate.QuoteQuantityFilled,
-                RejectReason = (datalayer.Enums.OrderRejectReason)(int)binanceStreamOrderUpdate.RejectReason,                
+                RejectReason = (datalayer.Enums.OrderRejectReason)(int)binanceStreamOrderUpdate.RejectReason,
                 Side = (datalayer.Enums.OrderSide)(int)binanceStreamOrderUpdate.Side,
                 Status = (datalayer.Enums.OrderStatus)(int)binanceStreamOrderUpdate.Status,
                 StopPrice = binanceStreamOrderUpdate.StopPrice,
@@ -213,16 +214,17 @@ namespace trape.mapper
         }
 
         /// <summary>
-        /// Translates from <c>BinanceStreamTick</c> to <c>Tick</c>.
+        /// Translates from <c>IBinanceTick</c> to <c>Tick</c>.
         /// </summary>
         /// <param name="binanceStreamTick"></param>
         /// <returns></returns>
-        public static Tick Translate(BinanceStreamTick binanceStreamTick)
+        public static Tick Translate(IBinanceTick binanceStreamTick)
         {
             return new Tick()
             {
                 AskPrice = binanceStreamTick.AskPrice,
                 AskQuantity = binanceStreamTick.AskQuantity,
+                BaseVolume = binanceStreamTick.BaseVolume,
                 BidPrice = binanceStreamTick.BidPrice,
                 BidQuantity = binanceStreamTick.BidQuantity,
                 CloseTime = binanceStreamTick.CloseTime,
@@ -237,23 +239,23 @@ namespace trape.mapper
                 PrevDayClosePrice = binanceStreamTick.PrevDayClosePrice,
                 PriceChange = binanceStreamTick.PriceChange,
                 PriceChangePercent = binanceStreamTick.PriceChangePercent,
+                QuoteVolume = binanceStreamTick.QuoteVolume,
                 Symbol = binanceStreamTick.Symbol,
-                TotalTradedBaseAssetVolume = binanceStreamTick.TotalTradedBaseAssetVolume,
-                TotalTradedQuoteAssetVolume = binanceStreamTick.TotalTradedQuoteAssetVolume,
                 TotalTrades = binanceStreamTick.TotalTrades,
                 WeightedAveragePrice = binanceStreamTick.WeightedAveragePrice
             };
         }
 
         /// <summary>
-        /// Translates from <c>BinanceStreamKlineDate</c> to <c>Kline</c>.
+        /// Translates from <c>IBinanceStreamKlineData</c> to <c>Kline</c>.
         /// </summary>
         /// <param name="binanceStreamKlineData"></param>
         /// <returns></returns>
-        public static Kline Translate(BinanceStreamKlineData binanceStreamKlineData)
+        public static Kline Translate(IBinanceStreamKlineData binanceStreamKlineData)
         {
             return new Kline()
             {
+                BaseVolume = binanceStreamKlineData.Data.BaseVolume,
                 Close = binanceStreamKlineData.Data.Close,
                 CloseTime = binanceStreamKlineData.Data.CloseTime,
                 Final = binanceStreamKlineData.Data.Final,
@@ -264,12 +266,11 @@ namespace trape.mapper
                 Low = binanceStreamKlineData.Data.Low,
                 Open = binanceStreamKlineData.Data.Open,
                 OpenTime = binanceStreamKlineData.Data.OpenTime,
-                QuoteAssetVolume = binanceStreamKlineData.Data.QuoteAssetVolume,
-                Symbol = binanceStreamKlineData.Data.Symbol,
-                TakerBuyBaseAssetVolume = binanceStreamKlineData.Data.TakerBuyBaseAssetVolume,
-                TakerBuyQuoteAssetVolume = binanceStreamKlineData.Data.TakerBuyQuoteAssetVolume,
-                TradeCount = binanceStreamKlineData.Data.TradeCount,
-                Volume = binanceStreamKlineData.Data.Volume
+                QuoteVolume = binanceStreamKlineData.Data.QuoteVolume,
+                Symbol = binanceStreamKlineData.Symbol,
+                TakerBuyBaseVolume = binanceStreamKlineData.Data.TakerBuyBaseVolume,
+                TakerBuyQuoteVolume = binanceStreamKlineData.Data.TakerBuyQuoteVolume,
+                TradeCount = binanceStreamKlineData.Data.TradeCount
             };
         }
 
@@ -286,7 +287,6 @@ namespace trape.mapper
                 BestAskQuantity = binanceStreamBookPrice.BestAskQuantity,
                 BestBidPrice = binanceStreamBookPrice.BestBidPrice,
                 BestBidQuantity = binanceStreamBookPrice.BestBidQuantity,
-                TransactionTime = binanceStreamBookPrice?.TransactionTime ?? DateTime.Now,
                 Symbol = binanceStreamBookPrice.Symbol,
                 UpdateId = binanceStreamBookPrice.UpdateId
             };

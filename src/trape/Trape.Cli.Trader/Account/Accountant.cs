@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using SimpleInjector.Lifestyles;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -89,7 +88,7 @@ namespace trape.cli.trader.Account
         /// <summary>
         /// Synchronize stream order updates
         /// </summary>
-        private SemaphoreSlim _syncBinanceStreamOrderUpdate;
+        private readonly SemaphoreSlim _syncBinanceStreamOrderUpdate;
 
         #endregion
 
@@ -107,26 +106,26 @@ namespace trape.cli.trader.Account
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
-            this._binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
+            _binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
 
-            this._binanceSocketClient = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
+            _binanceSocketClient = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
 
             #endregion
 
-            this._logger = logger.ForContext<Accountant>();
-            this._cancellationTokenSource = new CancellationTokenSource();
-            this._binanceAccountInfoUpdated = default;
-            this._syncBinanceStreamOrderUpdate = new SemaphoreSlim(1, 1);
+            _logger = logger.ForContext<Accountant>();
+            _cancellationTokenSource = new CancellationTokenSource();
+            _binanceAccountInfoUpdated = default;
+            _syncBinanceStreamOrderUpdate = new SemaphoreSlim(1, 1);
 
             #region Job Setup
 
             // Create timer for account info synchronization
-            this._jobSynchronizeAccountInfo = new Job(new TimeSpan(0, 0, 5), _synchronizeAccountInfo);
+            _jobSynchronizeAccountInfo = new Job(new TimeSpan(0, 0, 5), SynchronizeAccountInfo);
 
             // Create timer for connection keep alive
-            this._jobConnectionKeepAlive = new Job(new TimeSpan(0, 15, 0), _connectionKeepAlive);
+            _jobConnectionKeepAlive = new Job(new TimeSpan(0, 15, 0), ConnectionKeepAlive);
 
             #endregion
         }
@@ -140,29 +139,29 @@ namespace trape.cli.trader.Account
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _connectionKeepAlive()
+        private async void ConnectionKeepAlive()
         {
             // Test connection to binance
-            var ping = await this._binanceClient.PingAsync(this._cancellationTokenSource.Token).ConfigureAwait(false);
+            var ping = await _binanceClient.PingAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
 
             if (ping.Success)
             {
-                this._logger.Verbose("Ping successful");
+                _logger.Verbose("Ping successful");
 
                 // Send keep alive packages
-                var userStreamKeepAlive = await this._binanceClient.KeepAliveUserStreamAsync(this._binanceListenKey, ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
+                var userStreamKeepAlive = await _binanceClient.Spot.UserStream.KeepAliveUserStreamAsync(_binanceListenKey, ct: _cancellationTokenSource.Token).ConfigureAwait(false);
                 if (userStreamKeepAlive.Success)
                 {
-                    this._logger.Verbose("User Stream Keep Alive successful");
+                    _logger.Verbose("User Stream Keep Alive successful");
                 }
                 else
                 {
-                    this._logger.Verbose("User Stream Keep Alive NOT successful");
+                    _logger.Verbose("User Stream Keep Alive NOT successful");
                 }
             }
             else
             {
-                this._logger.Verbose("Ping NOT successful");
+                _logger.Verbose("Ping NOT successful");
             }
         }
 
@@ -171,17 +170,17 @@ namespace trape.cli.trader.Account
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _synchronizeAccountInfo()
+        private async void SynchronizeAccountInfo()
         {
             // Get latest account information
-            var accountInfo = await this._binanceClient.GetAccountInfoAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(false);
+            var accountInfo = await _binanceClient.General.GetAccountInfoAsync(ct: _cancellationTokenSource.Token).ConfigureAwait(false);
             if (accountInfo.Success)
             {
-                this._binanceAccountInfo = accountInfo.Data;
-                this._binanceAccountInfoUpdated = DateTime.UtcNow;
+                _binanceAccountInfo = accountInfo.Data;
+                _binanceAccountInfoUpdated = DateTime.UtcNow;
             }
 
-            this._logger.Verbose("Account info synchronized");
+            _logger.Verbose("Account info synchronized");
         }
 
         #endregion
@@ -192,22 +191,22 @@ namespace trape.cli.trader.Account
         /// Receives Binance account info
         /// </summary>
         /// <param name="binanceStreamAccountInfo"></param>
-        private void _saveBinanceStreamAccountInfo(BinanceStreamAccountInfo binanceStreamAccountInfo)
+        private void SaveBinanceStreamAccountInfo(BinanceStreamAccountInfo binanceStreamAccountInfo)
         {
-            this._binanceStreamAccountInfo = binanceStreamAccountInfo;
-            this._logger.Verbose("Received Binance Stream Account Info");
+            _binanceStreamAccountInfo = binanceStreamAccountInfo;
+            _logger.Verbose("Received Binance Stream Account Info");
         }
 
         /// <summary>
         /// Receives Binance order updates
         /// </summary>
         /// <param name="binanceStreamOrderUpdate"></param>
-        private async void _saveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
+        private async void SaveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
         {
             try
             {
                 // Synchronize access
-                await this._syncBinanceStreamOrderUpdate.WaitAsync().ConfigureAwait(false);
+                await _syncBinanceStreamOrderUpdate.WaitAsync().ConfigureAwait(false);
 
                 using (AsyncScopedLifestyle.BeginScope(Program.Container))
                 {
@@ -223,14 +222,14 @@ namespace trape.cli.trader.Account
                     {
                         try
                         {
-                            this._logger.Information($"Loading existing Client Order: {orderUpdate.ClientOrderId}");
+                            _logger.Information($"Loading existing Client Order: {orderUpdate.ClientOrderId}");
                             clientOrder = database.ClientOrder.FirstOrDefault(c => c.Id == orderUpdate.ClientOrderId);
 
-                            this._logger.Information($"Client Order found: {(clientOrder != null).ToString()}: {orderUpdate.ClientOrderId}");
+                            _logger.Information($"Client Order found: {clientOrder != null}: {orderUpdate.ClientOrderId}");
 
                             if (clientOrder == null)
                             {
-                                this._logger.Information($"Adding new Client Order: {orderUpdate.ClientOrderId}");
+                                _logger.Information($"Adding new Client Order: {orderUpdate.ClientOrderId}");
 
                                 clientOrder = new ClientOrder(orderUpdate.ClientOrderId)
                                 {
@@ -254,20 +253,20 @@ namespace trape.cli.trader.Account
                         {
                             attempts--;
 
-                            this._logger.Information($"Failed attempt to store Client Order {clientOrder.Id}; attempt: {attempts}");
+                            _logger.Information($"Failed attempt to store Client Order {clientOrder.Id}; attempt: {attempts}");
 
                             database.Entry(clientOrder).State = EntityState.Modified;
 
                             try
                             {
                                 await database.SaveChangesAsync().ConfigureAwait(true);
-                                this._logger.Warning($"Modified state accepted for: {clientOrder.Id}");
+                                _logger.Warning($"Modified state accepted for: {clientOrder.Id}");
                             }
                             catch (Exception coe2)
                             {
-                                this._logger.Error(coe, $"Finally attempt to store Client Order {clientOrder.Id} failed");
+                                _logger.Error(coe, $"Finally attempt to store Client Order {clientOrder.Id} failed");
 
-                                this._logger.Warning(coe2, $"Modified state not accepted for: {clientOrder.Id}");
+                                _logger.Warning(coe2, $"Modified state not accepted for: {clientOrder.Id}");
                             }
 
                             if (attempts == 0)
@@ -417,12 +416,12 @@ namespace trape.cli.trader.Account
             }
             catch (Exception e)
             {
-                this._logger.ForContext(typeof(Accountant));
-                this._logger.Error(e, e.Message);
+                _logger.ForContext(typeof(Accountant));
+                _logger.Error(e, e.Message);
             }
             finally
             {
-                this._syncBinanceStreamOrderUpdate.Release();
+                _syncBinanceStreamOrderUpdate.Release();
             }
 
             // Clear blocked amount
@@ -431,17 +430,17 @@ namespace trape.cli.trader.Account
                 || binanceStreamOrderUpdate.Status == OrderStatus.Expired
                 || binanceStreamOrderUpdate.Status == OrderStatus.Canceled)
             {
-                this._buffer.RemoveOpenOrder(binanceStreamOrderUpdate.ClientOrderId);
+                _buffer.RemoveOpenOrder(binanceStreamOrderUpdate.ClientOrderId);
             }
 
-            this._logger.Verbose("Received Binance Stream Order Update");
+            _logger.Verbose("Received Binance Stream Order Update");
         }
 
         /// <summary>
         /// Receives Binance order lists
         /// </summary>
         /// <param name="binanceStreamOrderList"></param>
-        private async void _saveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)
+        private async void SaveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)
         {
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
@@ -473,19 +472,19 @@ namespace trape.cli.trader.Account
                 }
                 catch (Exception e)
                 {
-                    this._logger.ForContext(typeof(Accountant));
-                    this._logger.Error(e, e.Message);
+                    _logger.ForContext(typeof(Accountant));
+                    _logger.Error(e, e.Message);
                 }
             }
 
-            this._logger.Verbose("Received Binance Stream Order List");
+            _logger.Verbose("Received Binance Stream Order List");
         }
 
         /// <summary>
         /// Receives Binance balances
         /// </summary>
-        /// <param name="binanceStreamBalances"></param>
-        private async void _saveBinanceStreamBalance(IEnumerable<BinanceStreamBalance> binanceStreamBalances)
+        /// <param name="binanceStreamPositionsUpdate"></param>
+        private async void SaveBinanceStreamPositionUpdate(BinanceStreamPositionsUpdate binanceStreamPositionsUpdate)
         {
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
@@ -495,7 +494,7 @@ namespace trape.cli.trader.Account
                     // Get account info, has to be present because is loaded already when Accountant is started.
                     var accountInfo = await database.AccountInfos.FirstAsync().ConfigureAwait(true);
 
-                    var balances = Translator.Translate(binanceStreamBalances);
+                    var balances = Translator.Translate(binanceStreamPositionsUpdate);
                     foreach (var balance in balances)
                     {
                         var oldBalance = await database.Balances.FirstOrDefaultAsync(b => b.Asset == balance.Asset).ConfigureAwait(true);
@@ -517,19 +516,19 @@ namespace trape.cli.trader.Account
                 }
                 catch (Exception e)
                 {
-                    this._logger.ForContext(typeof(Accountant));
-                    this._logger.Error(e, e.Message);
+                    _logger.ForContext(typeof(Accountant));
+                    _logger.Error(e, e.Message);
                 }
             }
 
-            this._logger.Verbose("Received Binance Stream Balances");
+            _logger.Verbose("Received Binance Stream Balances");
         }
 
         /// <summary>
         /// Receives Binance balance updates
         /// </summary>
         /// <param name="binanceStreamBalanceUpdate"></param>
-        private async void _saveBinanceStreamBalanceUpdate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
+        private async void SaveBinanceStreamBalanceUpdate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
         {
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
@@ -541,12 +540,12 @@ namespace trape.cli.trader.Account
                 }
                 catch (Exception e)
                 {
-                    this._logger.ForContext(typeof(Accountant));
-                    this._logger.Error(e, e.Message);
+                    _logger.ForContext(typeof(Accountant));
+                    _logger.Error(e, e.Message);
                 }
             }
 
-            this._logger.Verbose("Received Binance Stream Balance Update");
+            _logger.Verbose("Received Binance Stream Balance Update");
         }
 
         /// <summary>
@@ -557,7 +556,7 @@ namespace trape.cli.trader.Account
         public async Task<BinanceBalance> GetBalance(string asset)
         {
             // Take reference to original instance in case _binanceAccountInfo is updated
-            var bac = await this.GetAccountInfo().ConfigureAwait(true);
+            var bac = await GetAccountInfo().ConfigureAwait(true);
 
             return bac?.Balances.FirstOrDefault(b => b.Asset == asset);
         }
@@ -568,23 +567,23 @@ namespace trape.cli.trader.Account
         /// <returns></returns>
         public async Task<BinanceAccountInfo> GetAccountInfo()
         {
-            var bac = this._binanceAccountInfo;
+            var bac = _binanceAccountInfo;
 
-            if (bac == null || this._binanceAccountInfoUpdated < DateTime.UtcNow.AddSeconds(-6))
+            if (bac == null || _binanceAccountInfoUpdated < DateTime.UtcNow.AddSeconds(-6))
             {
-                var accountInfoRequest = await this._binanceClient.GetAccountInfoAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(true);
+                var accountInfoRequest = await _binanceClient.General.GetAccountInfoAsync(ct: _cancellationTokenSource.Token).ConfigureAwait(true);
 
                 if (accountInfoRequest.Success)
                 {
-                    this._binanceAccountInfo = accountInfoRequest.Data;
-                    this._binanceAccountInfoUpdated = DateTime.UtcNow;
+                    _binanceAccountInfo = accountInfoRequest.Data;
+                    _binanceAccountInfoUpdated = DateTime.UtcNow;
 
-                    this._logger.Information($"Requested account info");
+                    _logger.Information($"Requested account info");
                 }
                 else
                 {
                     // Something is oddly wrong, wait a bit
-                    this._logger.Warning("Cannot retrieve account info");
+                    _logger.Warning("Cannot retrieve account info");
                     await Task.Delay(200).ConfigureAwait(false);
                 }
             }
@@ -602,20 +601,20 @@ namespace trape.cli.trader.Account
                         // Add new account info
                         accountInfo = new AccountInfo()
                         {
-                            BuyerCommission = this._binanceAccountInfo.BuyerCommission,
-                            CanDeposit = this._binanceAccountInfo.CanDeposit,
-                            CanTrade = this._binanceAccountInfo.CanTrade,
-                            CanWithdraw = this._binanceAccountInfo.CanWithdraw,
-                            MakerCommission = this._binanceAccountInfo.MakerCommission,
-                            SellerCommission = this._binanceAccountInfo.SellerCommission,
-                            TakerCommission = this._binanceAccountInfo.TakerCommission,
-                            UpdatedOn = this._binanceAccountInfo.UpdateTime.ToUniversalTime()
+                            BuyerCommission = _binanceAccountInfo.BuyerCommission,
+                            CanDeposit = _binanceAccountInfo.CanDeposit,
+                            CanTrade = _binanceAccountInfo.CanTrade,
+                            CanWithdraw = _binanceAccountInfo.CanWithdraw,
+                            MakerCommission = _binanceAccountInfo.MakerCommission,
+                            SellerCommission = _binanceAccountInfo.SellerCommission,
+                            TakerCommission = _binanceAccountInfo.TakerCommission,
+                            UpdatedOn = _binanceAccountInfo.UpdateTime.ToUniversalTime()
                         };
 
                         database.AccountInfos.Add(accountInfo);
 
                         // Add balances
-                        foreach (var balance in this._binanceAccountInfo.Balances)
+                        foreach (var balance in _binanceAccountInfo.Balances)
                         {
                             accountInfo.Balances.Add(Translator.Translate(balance, accountInfo));
                         }
@@ -623,17 +622,17 @@ namespace trape.cli.trader.Account
                     else
                     {
                         // Update existing account info
-                        accountInfo.BuyerCommission = this._binanceAccountInfo.BuyerCommission;
-                        accountInfo.CanDeposit = this._binanceAccountInfo.CanDeposit;
-                        accountInfo.CanTrade = this._binanceAccountInfo.CanTrade;
-                        accountInfo.CanWithdraw = this._binanceAccountInfo.CanWithdraw;
-                        accountInfo.MakerCommission = this._binanceAccountInfo.MakerCommission;
-                        accountInfo.SellerCommission = this._binanceAccountInfo.SellerCommission;
-                        accountInfo.TakerCommission = this._binanceAccountInfo.TakerCommission;
-                        accountInfo.UpdatedOn = this._binanceAccountInfo.UpdateTime.ToUniversalTime();
+                        accountInfo.BuyerCommission = _binanceAccountInfo.BuyerCommission;
+                        accountInfo.CanDeposit = _binanceAccountInfo.CanDeposit;
+                        accountInfo.CanTrade = _binanceAccountInfo.CanTrade;
+                        accountInfo.CanWithdraw = _binanceAccountInfo.CanWithdraw;
+                        accountInfo.MakerCommission = _binanceAccountInfo.MakerCommission;
+                        accountInfo.SellerCommission = _binanceAccountInfo.SellerCommission;
+                        accountInfo.TakerCommission = _binanceAccountInfo.TakerCommission;
+                        accountInfo.UpdatedOn = _binanceAccountInfo.UpdateTime.ToUniversalTime();
 
                         // Add or update balances
-                        foreach (var newBalance in this._binanceAccountInfo.Balances)
+                        foreach (var newBalance in _binanceAccountInfo.Balances)
                         {
                             var oldBalance = accountInfo.Balances.FirstOrDefault(b => b.Asset == newBalance.Asset);
                             if (oldBalance == null)
@@ -654,12 +653,12 @@ namespace trape.cli.trader.Account
                 }
                 catch (Exception e)
                 {
-                    this._logger.ForContext(typeof(Accountant));
-                    this._logger.Error(e, e.Message);
+                    _logger.ForContext(typeof(Accountant));
+                    _logger.Error(e, e.Message);
                 }
             }
 
-            return this._binanceAccountInfo;
+            return _binanceAccountInfo;
         }
 
         #endregion
@@ -672,38 +671,38 @@ namespace trape.cli.trader.Account
         /// <returns></returns>
         public async Task Start()
         {
-            this._logger.Verbose("Starting Accountant");
+            _logger.Verbose("Starting Accountant");
 
             // Connect to user stream
-            var result = await this._binanceClient.StartUserStreamAsync(ct: this._cancellationTokenSource.Token).ConfigureAwait(true);
+            var result = await _binanceClient.Spot.UserStream.StartUserStreamAsync(ct: _cancellationTokenSource.Token).ConfigureAwait(true);
             if (result.Success)
             {
-                this._binanceListenKey = result.Data;
-                this._logger.Verbose("Connection ok, ListenKey received");
+                _binanceListenKey = result.Data;
+                _logger.Verbose("Connection ok, ListenKey received");
             }
 
             // Run initial keep alive
-            this._connectionKeepAlive();
+            ConnectionKeepAlive();
 
             // Subscribe to socket events
-            await this._binanceSocketClient.SubscribeToUserDataUpdatesAsync(this._binanceListenKey,
-                (bsai) => _saveBinanceStreamAccountInfo(bsai),
-                (bsou) => _saveBinanceStreamOrderUpdate(bsou),
-                (bsol) => _saveBinanceStreamOrderList(bsol),
-                (bsbs) => _saveBinanceStreamBalance(bsbs),
-                (bsbu) => _saveBinanceStreamBalanceUpdate(bsbu)
+            await _binanceSocketClient.Spot.SubscribeToUserDataUpdatesAsync(_binanceListenKey,
+                (bsai) => SaveBinanceStreamAccountInfo(bsai),
+                (bsou) => SaveBinanceStreamOrderUpdate(bsou),
+                (bsol) => SaveBinanceStreamOrderList(bsol),
+                (bspu) => SaveBinanceStreamPositionUpdate(bspu),
+                (bsbu) => SaveBinanceStreamBalanceUpdate(bsbu)
                 ).ConfigureAwait(true);
 
-            this._logger.Information("Binance Client is online");
+            _logger.Information("Binance Client is online");
 
             // Get updated account infos
-            _ = await this.GetAccountInfo().ConfigureAwait(false);
+            _ = await GetAccountInfo().ConfigureAwait(false);
 
             // Start jobs
-            this._jobSynchronizeAccountInfo.Start();
-            this._jobConnectionKeepAlive.Start();
+            _jobSynchronizeAccountInfo.Start();
+            _jobConnectionKeepAlive.Start();
 
-            this._logger.Debug("Accountant started");
+            _logger.Debug("Accountant started");
         }
 
         /// <summary>
@@ -712,21 +711,21 @@ namespace trape.cli.trader.Account
         /// <returns></returns>
         public async Task Terminate()
         {
-            this._logger.Verbose("Stopping accountant");
+            _logger.Verbose("Stopping accountant");
 
             // Stop jobs
-            this._jobSynchronizeAccountInfo.Terminate();
-            this._jobConnectionKeepAlive.Terminate();
+            _jobSynchronizeAccountInfo.Terminate();
+            _jobConnectionKeepAlive.Terminate();
 
-            await this._binanceClient.StopUserStreamAsync(this._binanceListenKey).ConfigureAwait(true);
+            await _binanceClient.Spot.UserStream.StopUserStreamAsync(_binanceListenKey).ConfigureAwait(true);
 
             // Wait until delay elapsed event finishes to give background tasks some time and buffers time to flush
             await Task.Delay(1000).ConfigureAwait(true);
 
             // Signal cancellation for what ever remains
-            this._cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Cancel();
 
-            this._logger.Debug("Accountant stopped");
+            _logger.Debug("Accountant stopped");
         }
 
         #endregion
@@ -748,18 +747,18 @@ namespace trape.cli.trader.Account
         /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
-            if (this._disposed)
+            if (_disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                this._jobSynchronizeAccountInfo.Dispose();
-                this._binanceClient.Dispose();
+                _jobSynchronizeAccountInfo.Dispose();
+                _binanceClient.Dispose();
             }
 
-            this._disposed = true;
+            _disposed = true;
         }
 
         #endregion

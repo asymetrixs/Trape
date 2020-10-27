@@ -11,7 +11,7 @@ namespace trape.datalayer.Models
         /// </summary>
         public Recommendation()
         {
-            this.Id = Guid.NewGuid().ToString("N");
+            Id = Guid.NewGuid().ToString("N");
         }
 
         #endregion

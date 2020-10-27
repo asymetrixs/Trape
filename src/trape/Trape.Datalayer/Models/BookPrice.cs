@@ -4,6 +4,18 @@ namespace trape.datalayer.Models
 {
     public class BookPrice
     {
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the <c>BookPrice</c> class.
+        /// </summary>
+        public BookPrice()
+        {
+            TransactionTime = DateTime.UtcNow;
+        }
+
+        #endregion
+
         #region Properties
 
         /// <summary>

@@ -13,7 +13,7 @@ namespace trape.datalayer.Models
         /// </summary>
         public PlacedOrder()
         {
-            this.Fills = new List<OrderTrade>();
+            Fills = new List<OrderTrade>();
         }
 
         #endregion

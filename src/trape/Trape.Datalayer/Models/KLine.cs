@@ -12,7 +12,7 @@ namespace trape.datalayer.Models
         /// </summary>
         public Kline()
         {
-            this.Id = Guid.NewGuid().ToString("N");
+            Id = Guid.NewGuid().ToString("N");
         }
 
         #endregion
@@ -32,7 +32,7 @@ namespace trape.datalayer.Models
         /// <summary>
         /// The quote volume
         /// </summary>
-        public decimal QuoteAssetVolume { get; set; }
+        public decimal QuoteVolume { get; set; }
 
         /// <summary>
         /// Boolean indicating whether this candlestick is closed
@@ -43,11 +43,6 @@ namespace trape.datalayer.Models
         /// The amount of trades in this candlestick
         /// </summary>
         public int TradeCount { get; set; }
-
-        /// <summary>
-        /// The volume traded during this candlestick
-        /// </summary>
-        public decimal Volume { get; set; }
 
         /// <summary>
         /// The lowest price of this candlestick
@@ -67,7 +62,7 @@ namespace trape.datalayer.Models
         /// <summary>
         /// The quote volume of active buy
         /// </summary>
-        public decimal TakerBuyQuoteAssetVolume { get; set; }
+        public decimal TakerBuyQuoteVolume { get; set; }
 
         /// <summary>
         /// The last trade id in this candlestick
@@ -102,7 +97,12 @@ namespace trape.datalayer.Models
         /// <summary>
         /// The volume of active buy
         /// </summary>
-        public decimal TakerBuyBaseAssetVolume { get; set; }
+        public decimal TakerBuyBaseVolume { get; set; }
+
+        /// <summary>
+        /// The volume traded during this candle stick
+        /// </summary>
+        public decimal BaseVolume { get; set; }
 
         #endregion
     }

@@ -16,7 +16,7 @@ namespace trape.datalayer.Models
         /// <param name="symbol">Symbol</param>
         public Stats2m(string symbol = null)
         {
-            this.Symbol = symbol;
+            Symbol = symbol;
         }
 
         #endregion

@@ -23,14 +23,14 @@ namespace trape.datalayer.Models
         public CurrentPrice(string symbol, DateTimeOffset eventTime, decimal lowPrice, decimal highPrice, decimal openPrice,
             decimal currentDayClosePrice, decimal priceChangePercentage, decimal priceChange)
         {
-            this.CurrentDayClosePrice = currentDayClosePrice;
-            this.EventTime = eventTime;
-            this.HighPrice = highPrice;
-            this.LowPrice = lowPrice;
-            this.OpenPrice = openPrice;
-            this.PriceChange = priceChange;
-            this.PriceChangePercentage = priceChangePercentage;
-            this.Symbol = symbol;
+            CurrentDayClosePrice = currentDayClosePrice;
+            EventTime = eventTime;
+            HighPrice = highPrice;
+            LowPrice = lowPrice;
+            OpenPrice = openPrice;
+            PriceChange = priceChange;
+            PriceChangePercentage = priceChangePercentage;
+            Symbol = symbol;
         }
 
         #endregion

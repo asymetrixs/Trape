@@ -1,8 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using System;
-using System.Collections.Generic;
-using System.Security.Cryptography;
-using System.Text;
+﻿using System;
 
 namespace trape.cli.trader.Cache.Models
 {
@@ -40,9 +36,9 @@ namespace trape.cli.trader.Cache.Models
 
             #endregion
 
-            this.Symbol = symbol;
-            this.OriginalPrice = from;
-            this.Since = since;
+            Symbol = symbol;
+            OriginalPrice = from;
+            Since = since;
         }
 
         #endregion

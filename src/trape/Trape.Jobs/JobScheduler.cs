@@ -13,12 +13,12 @@ namespace trape.jobs
         /// <summary>
         /// Job being executed
         /// </summary>
-        private IJob _job;
+        private readonly IJob _job;
 
         /// <summary>
         /// Timer to execute job
         /// </summary>
-        private System.Timers.Timer _timer;
+        private readonly System.Timers.Timer _timer;
 
         /// <summary>
         /// Synchronization
@@ -47,13 +47,13 @@ namespace trape.jobs
         {
             #region Argument checks
 
-            this._job = job ?? throw new ArgumentNullException(paramName: nameof(job));
+            _job = job ?? throw new ArgumentNullException(paramName: nameof(job));
 
             #endregion
 
-            this._disposed = false;
-            this._execute = new SemaphoreSlim(1, 1);
-            this._cancellationTokenSource = new CancellationTokenSource();
+            _disposed = false;
+            _execute = new SemaphoreSlim(1, 1);
+            _cancellationTokenSource = new CancellationTokenSource();
 
             TimeSpan timeInterval = default;
 
@@ -73,12 +73,12 @@ namespace trape.jobs
             }
 
             // Set up timer
-            this._timer = new System.Timers.Timer
+            _timer = new System.Timers.Timer
             {
                 Interval = timeInterval.TotalMilliseconds,
                 AutoReset = true
             };
-            this._timer.Elapsed += _timer_Elapsed;
+            _timer.Elapsed += _timer_Elapsed;
         }
 
         #endregion
@@ -92,11 +92,11 @@ namespace trape.jobs
         /// <param name="e"></param>
         private async void _timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            await this._execute.WaitAsync().ConfigureAwait(false);
+            await _execute.WaitAsync().ConfigureAwait(false);
 
             try
             {
-                await this._job.Execute(this._cancellationTokenSource.Token).ConfigureAwait(false);
+                await _job.Execute(_cancellationTokenSource.Token).ConfigureAwait(false);
             }
             catch
             {
@@ -107,7 +107,7 @@ namespace trape.jobs
 
             }
 
-            this._execute.Release();
+            _execute.Release();
         }
 
         #endregion
@@ -119,9 +119,9 @@ namespace trape.jobs
         /// </summary>
         internal void Start()
         {
-            if (!this._timer.Enabled)
+            if (!_timer.Enabled)
             {
-                this._timer.Start();
+                _timer.Start();
             }
         }
 
@@ -130,9 +130,9 @@ namespace trape.jobs
         /// </summary>
         internal void Stop()
         {
-            if (this._timer.Enabled)
+            if (_timer.Enabled)
             {
-                this._timer.Stop();
+                _timer.Stop();
             }
         }
 
@@ -141,9 +141,9 @@ namespace trape.jobs
         /// </summary>
         internal void Terminate()
         {
-            if (!this._cancellationTokenSource.IsCancellationRequested)
+            if (!_cancellationTokenSource.IsCancellationRequested)
             {
-                this._cancellationTokenSource.Cancel();
+                _cancellationTokenSource.Cancel();
             }
         }
 
@@ -166,25 +166,25 @@ namespace trape.jobs
         /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
-            if (this._disposed)
+            if (_disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                if (!this._cancellationTokenSource.IsCancellationRequested)
+                if (!_cancellationTokenSource.IsCancellationRequested)
                 {
-                    this._cancellationTokenSource.Cancel();
+                    _cancellationTokenSource.Cancel();
                 }
 
-                this._timer.Stop();
-                this._timer.Dispose();
+                _timer.Stop();
+                _timer.Dispose();
 
-                this._cancellationTokenSource.Dispose();
+                _cancellationTokenSource.Dispose();
             }
 
-            this._disposed = true;
+            _disposed = true;
         }
 
         #endregion

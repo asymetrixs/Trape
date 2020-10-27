@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Internal;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using trape.datalayer.Models;
@@ -17,7 +16,7 @@ namespace trape.cli.trader.Analyze.Models
         /// <summary>
         /// Records last time an action occured
         /// </summary>
-        private List<LastDecision> _lastDecisionTimes;
+        private readonly List<LastDecision> _lastDecisionTimes;
 
         #endregion
 
@@ -29,12 +28,12 @@ namespace trape.cli.trader.Analyze.Models
         /// <param name="symbol"></param>
         public Analysis(string symbol, IEnumerable<LastDecision> lastDecisions)
         {
-            this.Symbol = symbol;
-            this.Now = DateTime.UtcNow;
-            this.IssuedBuyAfterLastPanicSell = default;
-            this.LastPanicModeDetected = default;
-            this.LastPanicModeEnded = default;
-            this._lastDecisionTimes = lastDecisions.ToList();
+            Symbol = symbol;
+            Now = DateTime.UtcNow;
+            IssuedBuyAfterLastPanicSell = default;
+            LastPanicModeDetected = default;
+            LastPanicModeEnded = default;
+            _lastDecisionTimes = lastDecisions.ToList();
         }
 
         #endregion
@@ -95,7 +94,7 @@ namespace trape.cli.trader.Analyze.Models
         /// Indicates if the PanicSell has ended
         /// </summary>
         /// <returns></returns>
-        public bool PanicSellHasEnded => this.LastPanicModeEnded.AddMinutes(15) < this.Now;
+        public bool PanicSellHasEnded => LastPanicModeEnded.AddMinutes(15) < Now;
 
         #endregion
 
@@ -107,17 +106,17 @@ namespace trape.cli.trader.Analyze.Models
         /// <param name="action">Action</param>        
         public void UpdateAction(Action action)
         {
-            var decision = this._lastDecisionTimes.FirstOrDefault(l => l.Action == Action);
+            var decision = _lastDecisionTimes.FirstOrDefault(l => l.Action == Action);
             if (decision == null)
             {
-                this._lastDecisionTimes.Add(new LastDecision() { Action = action, Symbol = this.Symbol, EventTime = DateTime.UtcNow });
+                _lastDecisionTimes.Add(new LastDecision() { Action = action, Symbol = Symbol, EventTime = DateTime.UtcNow });
             }
             else
             {
                 decision.EventTime = DateTime.UtcNow;
             }
 
-            this.Action = action;
+            Action = action;
         }
 
         /// <summary>
@@ -125,7 +124,7 @@ namespace trape.cli.trader.Analyze.Models
         /// </summary>
         public void PrepareForUpdate()
         {
-            this.Now = DateTime.UtcNow;
+            Now = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -133,9 +132,9 @@ namespace trape.cli.trader.Analyze.Models
         /// </summary>
         public void RaceDetected()
         {
-            if (this.LastRaceEnded < this.Now.AddSeconds(-5))
+            if (LastRaceEnded < Now.AddSeconds(-5))
             {
-                this.LastRaceDetected = this.Now;
+                LastRaceDetected = Now;
             }
         }
 
@@ -144,7 +143,7 @@ namespace trape.cli.trader.Analyze.Models
         /// </summary>
         public void RaceEnded()
         {
-            this.LastRaceEnded = this.Now;
+            LastRaceEnded = Now;
         }
 
         /// <summary>
@@ -152,11 +151,11 @@ namespace trape.cli.trader.Analyze.Models
         /// </summary>
         public void PanicDetected()
         {
-            if (this.LastPanicModeEnded.AddSeconds(5) < this.Now)
+            if (LastPanicModeEnded.AddSeconds(5) < Now)
             {
-                this.LastPanicModeDetected = this.Now;
+                LastPanicModeDetected = Now;
             }
-            this.LastPanicModeEnded = this.Now;
+            LastPanicModeEnded = Now;
         }
 
         /// <summary>
@@ -164,12 +163,12 @@ namespace trape.cli.trader.Analyze.Models
         /// </summary>
         public void JumpDetected()
         {
-            if (this.LastJumpStart < this.Now.AddSeconds(-10))
+            if (LastJumpStart < Now.AddSeconds(-10))
             {
-                this.LastJumpStart = this.Now;
+                LastJumpStart = Now;
             }
 
-            this.LastJumpEnded = this.Now;
+            LastJumpEnded = Now;
         }
 
         /// <summary>
@@ -179,7 +178,7 @@ namespace trape.cli.trader.Analyze.Models
         /// <returns></returns>
         public DateTime GetLastDateOf(Action action)
         {
-            var decision = this._lastDecisionTimes.FirstOrDefault(l => l.Action == action);
+            var decision = _lastDecisionTimes.FirstOrDefault(l => l.Action == action);
             if (decision != null)
             {
                 return decision.EventTime;
@@ -194,9 +193,9 @@ namespace trape.cli.trader.Analyze.Models
         public bool BuyAfterPanicSell()
         {
             // If last buy does not match end date, no buy has been issued yet
-            if (this.IssuedBuyAfterLastPanicSell != this.LastPanicModeEnded)
+            if (IssuedBuyAfterLastPanicSell != LastPanicModeEnded)
             {
-                this.IssuedBuyAfterLastPanicSell = this.LastPanicModeEnded;
+                IssuedBuyAfterLastPanicSell = LastPanicModeEnded;
                 return true;
             }
 

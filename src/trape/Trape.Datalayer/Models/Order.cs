@@ -12,7 +12,7 @@ namespace trape.datalayer.Models
         /// </summary>
         public Order()
         {
-            this.OrderUpdates = new List<OrderUpdate>();
+            OrderUpdates = new List<OrderUpdate>();
         }
 
         #endregion

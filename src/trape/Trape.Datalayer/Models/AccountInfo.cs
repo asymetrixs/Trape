@@ -12,7 +12,7 @@ namespace trape.datalayer.Models
         /// </summary>
         public AccountInfo()
         {
-            this.Balances = new List<Balance>();
+            Balances = new List<Balance>();
         }
 
         #endregion

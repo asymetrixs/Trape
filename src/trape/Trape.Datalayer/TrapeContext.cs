@@ -4,7 +4,6 @@ using Npgsql.NameTranslation;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using trape.datalayer.Models;
@@ -25,7 +24,7 @@ namespace trape.datalayer
         public TrapeContext(DbContextOptions<TrapeContext> options)
             : base(options)
         {
-            
+
         }
 
         #endregion
@@ -111,7 +110,7 @@ namespace trape.datalayer
         /// </summary>
         /// <param name="optionsBuilder"></param>
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) => base.OnConfiguring(optionsBuilder);
-        
+
         /// <summary>
         /// Override of <see cref="OnModelCreating(ModelBuilder)"/>
         /// </summary>
@@ -294,7 +293,7 @@ namespace trape.datalayer
             base.OnModelCreating(modelBuilder);
 
             // Fix naming
-            this.FixSnakeCaseNames(modelBuilder);
+            FixSnakeCaseNames(modelBuilder);
         }
 
         /// <summary>
@@ -329,139 +328,89 @@ namespace trape.datalayer
             // Generate names so in case of refactor they are adjusted automatically
             // And a dependency to to that elements is established
             var mapper = new NpgsqlSnakeCaseNameTranslator();
-            var tableName = mapper.TranslateMemberName(nameof(this.BookTicks));
+            var tableName = mapper.TranslateMemberName(nameof(BookTicks));
             var columName = mapper.TranslateMemberName(nameof(BookPrice.TransactionTime));
 
             // Generate SQL statement
             var sql = $"DELETE FROM {tableName} WHERE {columName} < NOW() - INTERVAL '24 hours'";
 
-            return await this.Database.ExecuteSqlRawAsync(sql, cancellationToken).ConfigureAwait(false);
+            return await Database.ExecuteSqlRawAsync(sql, cancellationToken).ConfigureAwait(false);
         }
 
 
-        public IEnumerable<Stats3s> Get3SecondsTrendAsync()
+        public Task<List<Stats3s>> Get3SecondsTrendAsync()
         {
-            try
-            {
-                return this.Set<Stats3s>().FromSqlRaw("SELECT * FROM stats_3s();").AsNoTracking().ToList();
-            }
-            catch { }
-
-            return new List<Stats3s>();
+            return Set<Stats3s>().FromSqlRaw("SELECT * FROM stats_3s();").AsNoTracking().ToListAsync();
         }
 
-        public IEnumerable<Stats15s> Get15SecondsTrendAsync()
+        public Task<List<Stats15s>> Get15SecondsTrendAsync()
         {
-            try
-            {
-                return this.Set<Stats15s>().FromSqlRaw("SELECT * FROM stats_15s();").AsNoTracking().ToList();
-            }
-            catch { }
-
-            return new List<Stats15s>();
+            return Set<Stats15s>().FromSqlRaw("SELECT * FROM stats_15s();").AsNoTracking().ToListAsync();
         }
 
-        public IEnumerable<Stats2m> Get2MinutesTrendAsync()
+        public Task<List<Stats2m>> Get2MinutesTrendAsync()
         {
-            try
-            {
-                return this.Set<Stats2m>().FromSqlRaw("SELECT * FROM stats_2m();").AsNoTracking().ToList();
-            }
-            catch { }
-
-            return new List<Stats2m>();
+            return Set<Stats2m>().FromSqlRaw("SELECT * FROM stats_2m();").AsNoTracking().ToListAsync();
         }
 
-        public IEnumerable<Stats10m> Get10MinutesTrendAsync()
+        public Task<List<Stats10m>> Get10MinutesTrendAsync()
         {
-            try
-            {
-                return this.Set<Stats10m>().FromSqlRaw("SELECT * FROM stats_10m();").AsNoTracking().ToList();
-            }
-            catch { }
-
-            return new List<Stats10m>();
+            return Set<Stats10m>().FromSqlRaw("SELECT * FROM stats_10m();").AsNoTracking().ToListAsync();
         }
 
-        public IEnumerable<Stats2h> Get2HoursTrendAsync()
+        public Task<List<Stats2h>> Get2HoursTrendAsync()
         {
-            try
-            {
-                return this.Set<Stats2h>().FromSqlRaw("SELECT * FROM stats_2h();").AsNoTracking().ToList();
-            }
-            catch { }
-
-            return new List<Stats2h>();
+            return Set<Stats2h>().FromSqlRaw("SELECT * FROM stats_2h();").AsNoTracking().ToListAsync();
         }
 
-        public IEnumerable<LatestMA10mAndMA30mCrossing> GetLatestMA10mAndMA30mCrossing()
+        public Task<List<LatestMA10mAndMA30mCrossing>> GetLatestMA10mAndMA30mCrossing()
         {
-            try
-            {
-                return this.Set<LatestMA10mAndMA30mCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma10m_ma30m_crossing();").AsNoTracking().ToList();
-            }
-            catch { }
-
-            return new List<LatestMA10mAndMA30mCrossing>();
+            return Set<LatestMA10mAndMA30mCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma10m_ma30m_crossing();").AsNoTracking().ToListAsync();
         }
 
-        public IEnumerable<LatestMA30mAndMA1hCrossing> GetLatestMA30mAndMA1hCrossing()
+        public Task<List<LatestMA30mAndMA1hCrossing>> GetLatestMA30mAndMA1hCrossing()
         {
-            try
-            {
-                return this.Set<LatestMA30mAndMA1hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma30m_ma1h_crossing();").AsNoTracking().ToList();
-            }
-            catch { }
-
-            return new List<LatestMA30mAndMA1hCrossing>();
+            return Set<LatestMA30mAndMA1hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma30m_ma1h_crossing();").AsNoTracking().ToListAsync();
         }
 
-        public IEnumerable<LatestMA1hAndMA3hCrossing> GetLatestMA1hAndMA3hCrossing()
+        public Task<List<LatestMA1hAndMA3hCrossing>> GetLatestMA1hAndMA3hCrossing()
         {
-            try
-            {
-                return this.Set<LatestMA1hAndMA3hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma1h_ma3h_crossing();").AsNoTracking().ToList();
-            }
-            catch { }
-
-            return new List<LatestMA1hAndMA3hCrossing>();
+            return Set<LatestMA1hAndMA3hCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma1h_ma3h_crossing();").AsNoTracking().ToListAsync();
         }
 
-        public IEnumerable<LastDecision> GetLastDecisions()
+        public Task<List<LastDecision>> GetLastDecisions()
         {
-            return this.Set<LastDecision>().FromSqlRaw("SELECT * FROM get_last_decisions();").AsNoTracking().ToList();
+            return Set<LastDecision>().FromSqlRaw("SELECT * FROM get_last_decisions();").AsNoTracking().ToListAsync();
         }
 
         public async Task<decimal> GetLowestPrice(string symbol, DateTime dateTime, CancellationToken cancellationToken = default)
         {
             var price = default(decimal);
 
-            using (var con = new NpgsqlConnection(this.Database.GetDbConnection().ConnectionString))
+            using (var con = new NpgsqlConnection(Database.GetDbConnection().ConnectionString))
             {
-                using (var com = new NpgsqlCommand("get_lowest_price", con))
+                using var com = new NpgsqlCommand("get_lowest_price", con);
+                try
                 {
-                    try
-                    {
-                        com.CommandType = CommandType.StoredProcedure;
+                    com.CommandType = CommandType.StoredProcedure;
 
-                        com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = symbol;
-                        com.Parameters.Add("p_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = dateTime.ToUniversalTime();
+                    com.Parameters.Add("p_symbol", NpgsqlTypes.NpgsqlDbType.Text).Value = symbol;
+                    com.Parameters.Add("p_time", NpgsqlTypes.NpgsqlDbType.TimestampTz).Value = dateTime.ToUniversalTime();
 
-                        await con.OpenAsync(cancellationToken).ConfigureAwait(false);
+                    await con.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-                        var obj = await com.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+                    var obj = await com.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
 
-                        price = (decimal)obj;
-                    }
-                    catch
-                    {
-                        // rethrow
-                        throw;
-                    }
-                    finally
-                    {
-                        con.Close();
-                    }
+                    price = (decimal)obj;
+                }
+                catch
+                {
+                    // rethrow
+                    throw;
+                }
+                finally
+                {
+                    con.Close();
                 }
             }
 

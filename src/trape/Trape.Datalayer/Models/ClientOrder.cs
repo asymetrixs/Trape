@@ -15,7 +15,7 @@ namespace trape.datalayer.Models
         /// </summary>
         public ClientOrder()
         {
-            this.Id = Guid.NewGuid().ToString("N");
+            Id = Guid.NewGuid().ToString("N");
         }
 
         /// <summary>
@@ -24,7 +24,7 @@ namespace trape.datalayer.Models
         /// <param name="id">Id of the client order</param>
         public ClientOrder(string id)
         {
-            this.Id = id;
+            Id = id;
         }
 
         #endregion
@@ -85,7 +85,7 @@ namespace trape.datalayer.Models
         /// [IGNORED] Time in force
         /// </summary>
         public TimeInForce? TimeInForce { get; set; }
-             
+
         #endregion
     }
 }

@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace trape.datalayer.Models
+﻿namespace trape.datalayer.Models
 {
     public class AbstractKey
     {

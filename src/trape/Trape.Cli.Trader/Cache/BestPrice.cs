@@ -25,12 +25,12 @@ namespace trape.cli.trader.Cache
         /// <summary>
         /// Synchronize adding of values
         /// </summary>
-        private SemaphoreSlim _syncAdd;
+        private readonly SemaphoreSlim _syncAdd;
 
         /// <summary>
         /// Array holding the prices
         /// </summary>
-        private decimal[] _prices;
+        private readonly decimal[] _prices;
 
         /// <summary>
         /// Date of last update
@@ -57,13 +57,13 @@ namespace trape.cli.trader.Cache
         /// <param name="symbol"></param>
         public BestPrice(string symbol)
         {
-            this.Symbol = symbol;
-            this._position = -1;
-            this._prices = new decimal[_bufferSize];
-            this._syncAdd = new SemaphoreSlim(1, 1);
+            Symbol = symbol;
+            _position = -1;
+            _prices = new decimal[_bufferSize];
+            _syncAdd = new SemaphoreSlim(1, 1);
 
             // Initialize with an obsolete value
-            this._lastUpdate = DateTime.UtcNow.AddMinutes(-1).Ticks;
+            _lastUpdate = DateTime.UtcNow.AddMinutes(-1).Ticks;
         }
 
         #endregion
@@ -77,7 +77,7 @@ namespace trape.cli.trader.Cache
         public async Task Add(decimal price)
         {
             // Enter synchronized context
-            await this._syncAdd.WaitAsync().ConfigureAwait(true);
+            await _syncAdd.WaitAsync().ConfigureAwait(true);
 
             try
             {
@@ -85,15 +85,15 @@ namespace trape.cli.trader.Cache
                 unchecked
                 {
                     // Move cursor ahead
-                    this._prices[++this._position % _bufferSize] = price;
+                    _prices[++_position % _bufferSize] = price;
                 }
 
                 // Update time of addition
-                this._lastUpdate = DateTime.UtcNow.Ticks;
+                _lastUpdate = DateTime.UtcNow.Ticks;
             }
             finally
             {
-                this._syncAdd.Release();
+                _syncAdd.Release();
             }
         }
 
@@ -106,13 +106,13 @@ namespace trape.cli.trader.Cache
             decimal average;
 
             // Check if last value is more recent than 3 seconds ago
-            if (this._lastUpdate < (DateTime.UtcNow.Ticks - _3secondsInTicks))
+            if (_lastUpdate < (DateTime.UtcNow.Ticks - _3secondsInTicks))
             {
                 return -1;
             }
 
             // Calculate average over array
-            average = this._prices.Average();
+            average = _prices.Average();
 
             return average;
         }

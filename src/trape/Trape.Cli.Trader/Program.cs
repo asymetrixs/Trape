@@ -43,7 +43,7 @@ namespace trape.cli.trader
         /// </summary>
         /// <param name="args"></param>
         /// <returns></returns>
-        static async Task Main(string[] args)
+        static async Task Main()
         {
             // Set up configuration
             Config.SetUp();
@@ -73,7 +73,8 @@ namespace trape.cli.trader
 
                     // Signal unclean exit and rely on service manager (e.g. systemd) to restart the service
                     logger.Warning("Check previous errors. Exiting with 254.");
-                    Environment.Exit(254);
+                    await Task.Delay(100).ConfigureAwait(true);
+                    throw;
                 }
             }
 
@@ -112,7 +113,7 @@ namespace trape.cli.trader
             dbContextOptionsBuilder.UseNpgsql(Config.GetConnectionString("trape-db"));
             dbContextOptionsBuilder.EnableDetailedErrors(false);
             dbContextOptionsBuilder.EnableSensitiveDataLogging(false);
-            
+
 
             // Setup container and register defauld scope as first thing
             Container = new Container();
@@ -137,7 +138,7 @@ namespace trape.cli.trader
                 .UseSimpleInjector(Container);
 
             // Registration
-            
+
             Container.Register<TrapeContext, TrapeContext>(Lifestyle.Scoped);
 
             Container.Register<IStockExchange, StockExchange>(Lifestyle.Transient);

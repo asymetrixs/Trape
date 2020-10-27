@@ -29,17 +29,17 @@ namespace trape.cli.trader.Market
         /// <summary>
         /// Logger
         /// </summary>
-        private ILogger _logger;
+        private readonly ILogger _logger;
 
         /// <summary>
         /// Buffer
         /// </summary>
-        private IBuffer _buffer;
+        private readonly IBuffer _buffer;
 
         /// <summary>
         /// Binance Client
         /// </summary>
-        private IBinanceClient _binanceClient;
+        private readonly IBinanceClient _binanceClient;
 
         #endregion
 
@@ -57,13 +57,13 @@ namespace trape.cli.trader.Market
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
-            this._binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
+            _binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
 
             #endregion
 
-            this._logger = logger.ForContext(typeof(StockExchange));
+            _logger = logger.ForContext(typeof(StockExchange));
         }
 
         #endregion
@@ -86,14 +86,14 @@ namespace trape.cli.trader.Market
             // https://nsubstitute.github.io/help/getting-started/
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                this._logger.Information($"{clientOrder.Symbol} @ {clientOrder.Price:0.00}: Issuing {clientOrder.Side.ToString().ToLower()} of {clientOrder.Quantity}");
+                _logger.Information($"{clientOrder.Symbol} @ {clientOrder.Price:0.00}: Issuing {clientOrder.Side.ToString().ToLower()} of {clientOrder.Quantity}");
 
                 var database = Program.Container.GetService<TrapeContext>();
 
                 try
                 {
                     // Block quantity until order is processed
-                    this._buffer.AddOpenOrder(new OpenOrder(clientOrder.Id, clientOrder.Symbol, clientOrder.Quantity));
+                    _buffer.AddOpenOrder(new OpenOrder(clientOrder.Id, clientOrder.Symbol, clientOrder.Quantity));
 
                     // Place the order with binance tools
                     var binanceSide = (OrderSide)(int)clientOrder.Side;
@@ -106,13 +106,13 @@ namespace trape.cli.trader.Market
                     // Market does not require parameter 'timeInForce' and 'price'
                     if (binanceType == OrderType.Market)
                     {
-                        placedOrder = await this._binanceClient.PlaceTestOrderAsync(clientOrder.Symbol, binanceSide, binanceType,
+                        placedOrder = await _binanceClient.Spot.Order.PlaceTestOrderAsync(clientOrder.Symbol, binanceSide, binanceType,
                           quantity: clientOrder.Quantity, newClientOrderId: clientOrder.Id, orderResponseType: binanceResponseType,
                           ct: cancellationToken).ConfigureAwait(true);
                     }
                     else
                     {
-                        placedOrder = await this._binanceClient.PlaceTestOrderAsync(clientOrder.Symbol, binanceSide, binanceType, price: clientOrder.Price,
+                        placedOrder = await _binanceClient.Spot.Order.PlaceTestOrderAsync(clientOrder.Symbol, binanceSide, binanceType, price: clientOrder.Price,
                           quantity: clientOrder.Quantity, newClientOrderId: clientOrder.Id, orderResponseType: binanceResponseType, timeInForce: timeInForce,
                           ct: cancellationToken).ConfigureAwait(true);
                     }
@@ -125,16 +125,16 @@ namespace trape.cli.trader.Market
                             // Log order in custom format
                             // Due to timing from Binance this might be executed after updates occurred
                             // So check if it exists in the database and update, otherwise add new
-                            this._logger.Information($"Loading existing Client Order: {clientOrder.Id}");
+                            _logger.Information($"Loading existing Client Order: {clientOrder.Id}");
                             var existingClientOrder = database.ClientOrder.FirstOrDefault(c => c.Id == clientOrder.Id);
 
-                            this._logger.Information($"Client Order found: {(existingClientOrder != null).ToString()} : {clientOrder.Id}");
+                            _logger.Information($"Client Order found: {existingClientOrder != null} : {clientOrder.Id}");
 
                             if (existingClientOrder == null)
                             {
                                 database.ClientOrder.Add(clientOrder);
 
-                                this._logger.Information($"Adding new Client Order: {clientOrder.Id}");
+                                _logger.Information($"Adding new Client Order: {clientOrder.Id}");
                             }
                             else
                             {
@@ -148,10 +148,10 @@ namespace trape.cli.trader.Market
                                 existingClientOrder.TimeInForce = clientOrder.TimeInForce;
                                 existingClientOrder.Type = clientOrder.Type;
 
-                                this._logger.Information($"Updating existing Client Order: {clientOrder.Id}");
+                                _logger.Information($"Updating existing Client Order: {clientOrder.Id}");
                             }
 
-                            this._logger.Debug($"{clientOrder.Symbol}: {clientOrder.Side} {clientOrder.Quantity} {clientOrder.Price:0.00} {clientOrder.Id}");
+                            _logger.Debug($"{clientOrder.Symbol}: {clientOrder.Side} {clientOrder.Quantity} {clientOrder.Price:0.00} {clientOrder.Id}");
 
                             await database.SaveChangesAsync(cancellationToken).ConfigureAwait(true);
 
@@ -163,20 +163,20 @@ namespace trape.cli.trader.Market
                         {
                             attempts--;
 
-                            this._logger.Information($"Failed attempt to store Client Order {clientOrder.Id}; attempt: {attempts}");
+                            _logger.Information($"Failed attempt to store Client Order {clientOrder.Id}; attempt: {attempts}");
 
                             database.Entry(clientOrder).State = EntityState.Modified;
 
                             try
                             {
                                 await database.SaveChangesAsync().ConfigureAwait(true);
-                                this._logger.Warning($"Modified state accepted for: {clientOrder.Id}");
+                                _logger.Warning($"Modified state accepted for: {clientOrder.Id}");
                             }
                             catch (Exception coe2)
                             {
-                                this._logger.Error(coe, $"Finally attempt to store Client Order {clientOrder.Id} failed");
+                                _logger.Error(coe, $"Finally attempt to store Client Order {clientOrder.Id} failed");
 
-                                this._logger.Warning(coe2, $"Modified state not accepted for: {clientOrder.Id}");
+                                _logger.Warning(coe2, $"Modified state not accepted for: {clientOrder.Id}");
                             }
 
                             if (attempts == 0)
@@ -188,7 +188,7 @@ namespace trape.cli.trader.Market
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e, e.Message);
+                    _logger.Error(e, e.Message);
                 }
             }
         }
@@ -223,18 +223,18 @@ namespace trape.cli.trader.Market
                     using (var context1 = LogContext.PushProperty("placedOrder.Error", placedOrder.Error))
                     using (var context2 = LogContext.PushProperty("placedOrder.Data", placedOrder.Data))
                     {
-                        this._logger.Error($"Order {newClientOrderId} caused an error");
+                        _logger.Error($"Order {newClientOrderId} caused an error");
                     }
 
                     // Error Codes: https://github.com/binance-exchange/binance-official-api-docs/blob/master/errors.md
 
                     // Logging
-                    this._logger.Error($"{placedOrder.Error?.Code.ToString()}: {placedOrder.Error?.Message}");
-                    this._logger.Error(placedOrder.Error?.Data?.ToString());
+                    _logger.Error($"{placedOrder.Error?.Code.ToString()}: {placedOrder.Error?.Message}");
+                    _logger.Error(placedOrder.Error?.Data?.ToString());
 
                     if (placedOrder.Data != null)
                     {
-                        this._logger.Warning($"PlacedOrder: {placedOrder.Data.Symbol};{placedOrder.Data.Side};{placedOrder.Data.Type} > ClientOrderId:{placedOrder.Data.ClientOrderId} QuoteQuantity:{placedOrder.Data.QuoteQuantity} QuoteQuantityFilled:{placedOrder.Data.QuoteQuantityFilled} Status:{placedOrder.Data.Status}");
+                        _logger.Warning($"PlacedOrder: {placedOrder.Data.Symbol};{placedOrder.Data.Side};{placedOrder.Data.Type} > ClientOrderId:{placedOrder.Data.ClientOrderId} QuoteQuantity:{placedOrder.Data.QuoteQuantity} QuoteQuantityFilled:{placedOrder.Data.QuoteQuantityFilled} Status:{placedOrder.Data.Status}");
                     }
 
                     // TODO: 1015 - TOO_MANY_ORDERS
@@ -257,7 +257,7 @@ namespace trape.cli.trader.Market
                             {
                                 existingPlacedOrder.ClientOrderId = newPlacedOrder.ClientOrderId;
                                 existingPlacedOrder.QuantityFilled = newPlacedOrder.QuoteQuantity;
-                                existingPlacedOrder.QuoteQuantityFilled = newPlacedOrder.QuoteQuantityFilled;                                
+                                existingPlacedOrder.QuoteQuantityFilled = newPlacedOrder.QuoteQuantityFilled;
                                 existingPlacedOrder.MarginBuyBorrowAmount = newPlacedOrder.MarginBuyBorrowAmount;
                                 existingPlacedOrder.MarginBuyBorrowAsset = newPlacedOrder.MarginBuyBorrowAsset;
                                 existingPlacedOrder.OrderListId = newPlacedOrder.OrderListId;
@@ -291,7 +291,7 @@ namespace trape.cli.trader.Market
                         }
                     }
 
-                    this._logger.Information($"{placedOrder.Data.Symbol} @ {placedOrder.Data.Price:0.00}: Issuing sell of {placedOrder.Data.QuantityFilled} / {placedOrder.Data.Quantity}");
+                    _logger.Information($"{placedOrder.Data.Symbol} @ {placedOrder.Data.Price:0.00}: Issuing sell of {placedOrder.Data.QuantityFilled} / {placedOrder.Data.Quantity}");
                 }
             }
         }

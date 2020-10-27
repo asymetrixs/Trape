@@ -11,13 +11,13 @@ namespace trape.datalayer
 
         public TrapeContextDiCreator(DbContextOptionsBuilder<TrapeContext> configuration, ILogger logger)
         {
-            this._dbContextOptionsBuilder = configuration;
-            this._logger = logger;
+            _dbContextOptionsBuilder = configuration;
+            _logger = logger;
         }
 
         public TrapeContext CreateDbContext()
         {
-            return new TrapeContext(this._dbContextOptionsBuilder.Options);
+            return new TrapeContext(_dbContextOptionsBuilder.Options);
         }
 
         public DbContextOptionsBuilder<TrapeContext> Options(DbContextOptionsBuilder optionsBuilder)

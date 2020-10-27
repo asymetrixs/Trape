@@ -13,7 +13,7 @@ namespace Trape.BinanceNet.Logger
         /// <summary>
         /// Instance of SeriLog
         /// </summary>
-        private ILogger _logger;
+        private readonly ILogger _logger;
 
         #endregion
 
@@ -26,7 +26,7 @@ namespace Trape.BinanceNet.Logger
         public Logger(ILogger logger)
             : base()
         {
-            this._logger = logger.ForContext(typeof(Binance.Net.BinanceClient));
+            _logger = logger.ForContext(typeof(Binance.Net.BinanceClient));
         }
 
         #endregion
@@ -66,27 +66,27 @@ namespace Trape.BinanceNet.Logger
                 switch (nativeLogType)
                 {
                     case LogVerbosity.Debug:
-                        this._logger.Verbose($"{prefix}: {message}");
+                        _logger.Verbose($"{prefix}: {message}");
                         break;
                     case LogVerbosity.Info:
-                        this._logger.Information($"{prefix}: {message}");
+                        _logger.Information($"{prefix}: {message}");
                         break;
                     case LogVerbosity.Warning:
-                        this._logger.Warning($"{prefix}: {message}");
+                        _logger.Warning($"{prefix}: {message}");
                         break;
                     case LogVerbosity.Error:
-                        this._logger.Error($"{prefix}: {message}");
+                        _logger.Error($"{prefix}: {message}");
                         break;
                     default:
                         // Just so that falls into the eye
-                        this._logger.Fatal($"{prefix}: {message}");
+                        _logger.Fatal($"{prefix}: {message}");
                         break;
                 }
             }
             catch (Exception e)
             {
-                this._logger.Fatal($"{prefix}: {e.Message}");
-                this._logger.Fatal($"{prefix}: Failed to log message: {value}");
+                _logger.Fatal($"{prefix}: {e.Message}");
+                _logger.Fatal($"{prefix}: Failed to log message: {value}");
             }
         }
 

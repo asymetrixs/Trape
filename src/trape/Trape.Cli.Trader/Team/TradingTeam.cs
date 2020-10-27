@@ -66,15 +66,15 @@ namespace trape.cli.trader.Team
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            this._buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             #endregion
 
-            this._logger = logger.ForContext<TradingTeam>();
-            this._team = new List<IStartable>();
+            _logger = logger.ForContext<TradingTeam>();
+            _team = new List<IStartable>();
 
             // Timer
-            this._jobMemberCheck = new Job(new TimeSpan(0, 0, 5), _memberCheck);
+            _jobMemberCheck = new Job(new TimeSpan(0, 0, 5), _memberCheck);
         }
 
         #endregion
@@ -88,9 +88,9 @@ namespace trape.cli.trader.Team
         /// <param name="e"></param>
         private async void _memberCheck()
         {
-            this.LastActive = DateTime.UtcNow;
+            LastActive = DateTime.UtcNow;
 
-            this._logger.Verbose("Checking trading team...");
+            _logger.Verbose("Checking trading team...");
 
             // Get available symbols
             var availableSymbols = new List<string>();
@@ -103,46 +103,46 @@ namespace trape.cli.trader.Team
                 }
                 catch (Exception e)
                 {
-                    this._logger.Error(e, e.Message);
+                    _logger.Error(e, e.Message);
                 }
             }
 
             // Check if any
             if (!availableSymbols.Any())
             {
-                this._logger.Error("No symbols active for trading found");
+                _logger.Error("No symbols active for trading found");
                 return;
             }
             else
             {
-                this._logger.Debug($"Found {availableSymbols.Count()} symbols to trade");
+                _logger.Debug($"Found {availableSymbols.Count()} symbols to trade");
             }
 
             // Get obsolete symbols
-            var obsoleteSymbols = this._team.Where(t => !availableSymbols.Contains(t.Symbol));
-            this._logger.Verbose($"Found {obsoleteSymbols.Count()} obsolete members");
+            var obsoleteSymbols = _team.Where(t => !availableSymbols.Contains(t.Symbol));
+            _logger.Verbose($"Found {obsoleteSymbols.Count()} obsolete members");
 
             // Remove obsolete brokers
             foreach (var obsoleteSymbol in obsoleteSymbols)
             {
-                this._logger.Information($"{obsoleteSymbol.Symbol}: Removing member from the trading team");
+                _logger.Information($"{obsoleteSymbol.Symbol}: Removing member from the trading team");
 
                 // Terminate all
-                var obsoleteMember = this._team.Where(t => t.Symbol == obsoleteSymbol.Symbol).ToArray();
+                var obsoleteMember = _team.Where(t => t.Symbol == obsoleteSymbol.Symbol).ToArray();
                 for (int i = 0; i < obsoleteMember.Count(); i++)
                 {
                     await obsoleteMember[i].Terminate().ConfigureAwait(true);
-                    this._team.Remove(obsoleteMember[i]);
+                    _team.Remove(obsoleteMember[i]);
                     obsoleteMember[i].Dispose();
                     obsoleteMember[i] = null;
                 }
             }
 
             // Get missing symbols
-            var tradedSymbols = this._team.Select(t => t.Symbol);
-            var missingSymbols = this._buffer.GetSymbols().Where(b => !tradedSymbols.Contains(b));
+            var tradedSymbols = _team.Select(t => t.Symbol);
+            var missingSymbols = _buffer.GetSymbols().Where(b => !tradedSymbols.Contains(b));
 
-            this._logger.Verbose($"Found missing/online/total {missingSymbols.Count()}/{tradedSymbols.Count()}/{availableSymbols.Count} due to incomplete stats.");
+            _logger.Verbose($"Found missing/online/total {missingSymbols.Count()}/{tradedSymbols.Count()}/{availableSymbols.Count} due to incomplete stats.");
 
             // Add new brokers
             foreach (var missingSymbol in missingSymbols)
@@ -151,17 +151,17 @@ namespace trape.cli.trader.Team
                 var broker = Program.Container.GetInstance<IBroker>();
                 var analyst = Program.Container.GetInstance<IAnalyst>();
 
-                this._logger.Information($"{missingSymbol}: Adding Broker to the trading team.");
-                this._team.Add(broker);
+                _logger.Information($"{missingSymbol}: Adding Broker to the trading team.");
+                _team.Add(broker);
                 broker.Start(missingSymbol);
 
-                this._logger.Information($"{missingSymbol}: Adding Analyst to the trading team.");
-                this._team.Add(analyst);
+                _logger.Information($"{missingSymbol}: Adding Analyst to the trading team.");
+                _team.Add(analyst);
                 analyst.Start(missingSymbol);
 
             }
 
-            this._logger.Verbose($"Trading Team checked: {this._team.Count()} Member online");
+            _logger.Verbose($"Trading Team checked: {_team.Count()} Member online");
         }
 
         #endregion
@@ -173,15 +173,15 @@ namespace trape.cli.trader.Team
         /// </summary>
         public void Start()
         {
-            this._logger.Debug("Starting trading team");
+            _logger.Debug("Starting trading team");
 
             // Call once manually to set up the traders
-            this._memberCheck();
+            _memberCheck();
 
             // Start timer for regular checks
-            this._jobMemberCheck.Start();
+            _jobMemberCheck.Start();
 
-            this._logger.Debug("Trading team started");
+            _logger.Debug("Trading team started");
         }
 
         /// <summary>
@@ -190,16 +190,16 @@ namespace trape.cli.trader.Team
         /// <returns></returns>
         public async Task Terminate()
         {
-            this._logger.Debug("Stopping trading team");
+            _logger.Debug("Stopping trading team");
 
-            this._jobMemberCheck.Terminate();
+            _jobMemberCheck.Terminate();
 
-            foreach (var member in this._team)
+            foreach (var member in _team)
             {
                 await member.Terminate().ConfigureAwait(true);
             }
 
-            this._logger.Debug("Trading team stopped");
+            _logger.Debug("Trading team stopped");
         }
 
         #endregion
@@ -221,21 +221,21 @@ namespace trape.cli.trader.Team
         /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
-            if (this._disposed)
+            if (_disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                foreach (var member in this._team)
+                foreach (var member in _team)
                 {
                     member.Dispose();
                 }
-                this._jobMemberCheck.Dispose();
+                _jobMemberCheck.Dispose();
             }
 
-            this._disposed = true;
+            _disposed = true;
         }
 
         #endregion

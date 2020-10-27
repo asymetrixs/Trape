@@ -14,7 +14,7 @@
         public static decimal XPartOf(this decimal value, decimal multiplyer)
         {
             var correction = 1;
-            if(value < 500)
+            if (value < 500)
             {
                 correction = 10;
             }

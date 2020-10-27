@@ -11,7 +11,7 @@ namespace trape.datalayer.Models
         /// </summary>
         public Tick()
         {
-            this.Id = Guid.NewGuid().ToString("N");
+            Id = Guid.NewGuid().ToString("N");
         }
 
         #endregion
@@ -56,7 +56,7 @@ namespace trape.datalayer.Models
         /// <summary>
         /// Total traded volume in the base asset
         /// </summary>
-        public decimal TotalTradedBaseAssetVolume { get; set; }
+        public decimal BaseVolume { get; set; }
 
         /// <summary>
         /// Todays low price
@@ -127,6 +127,11 @@ namespace trape.datalayer.Models
         /// The symbol this data is for
         /// </summary>
         public string Symbol { get; set; }
+
+        /// <summary>
+        /// Total traded volume in the quote asset
+        /// </summary>
+        public decimal QuoteVolume { get; set; }
 
         #endregion
     }
