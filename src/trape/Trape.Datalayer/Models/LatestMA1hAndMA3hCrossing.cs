@@ -15,25 +15,25 @@ namespace trape.datalayer.Models
         /// Symbol
         /// </summary>
         [Column("symbol")]
-        public string Symbol { get; }
+        public string Symbol { get; private set; }
 
         /// <summary>
         /// Time of crossing
         /// </summary>
         [Column("event_time")]
-        public DateTime EventTime { get; }
+        public DateTime EventTime { get; private set; }
 
         /// <summary>
         /// Slope 1h
         /// </summary>
         [Column("slope1h")]
-        public decimal Slope1h { get; }
+        public decimal Slope1h { get; private set; }
 
         /// <summary>
         /// Slope 3h
         /// </summary>
         [Column("slope3h")]
-        public decimal Slope3h { get; }
+        public decimal Slope3h { get; private set; }
 
         #endregion
     }

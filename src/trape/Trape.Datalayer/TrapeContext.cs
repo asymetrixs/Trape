@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using Npgsql.NameTranslation;
 using System;
@@ -49,7 +50,7 @@ namespace trape.datalayer
         /// <summary>
         /// Book ticks
         /// </summary>
-        public DbSet<BookPrice> BookTicks { get; set; }
+        public DbSet<BookPrice> BookPrices { get; set; }
 
         /// <summary>
         /// Orders
@@ -124,16 +125,16 @@ namespace trape.datalayer
 
             #region Stats
 
-            //modelBuilder.Entity<Stats3s>()
-            //    .HasNoKey();
-            //modelBuilder.Entity<Stats15s>()
-            //    .HasNoKey();
-            //modelBuilder.Entity<Stats2m>()
-            //    .HasNoKey();
-            //modelBuilder.Entity<Stats10m>()
-            //    .HasNoKey();
-            //modelBuilder.Entity<Stats2h>()
-            //    .HasNoKey();
+            modelBuilder.Entity<Stats3s>()
+                .HasNoKey();
+            modelBuilder.Entity<Stats15s>()
+                .HasNoKey();
+            modelBuilder.Entity<Stats2m>()
+                .HasNoKey();
+            modelBuilder.Entity<Stats10m>()
+                .HasNoKey();
+            modelBuilder.Entity<Stats2h>()
+                .HasNoKey();
             modelBuilder.Entity<LatestMA10mAndMA30mCrossing>()
                 .HasNoKey();
             modelBuilder.Entity<LatestMA30mAndMA1hCrossing>()
@@ -244,7 +245,7 @@ namespace trape.datalayer
             modelBuilder.Entity<BookPrice>()
                 .HasIndex(o => o.UpdateId);
             modelBuilder.Entity<BookPrice>()
-                .HasIndex(o => new { o.TransactionTime, o.Symbol });
+                .HasIndex(o => new { o.CreatedOn, o.Symbol });
 
             // Recommendation
             modelBuilder.Entity<Recommendation>()
@@ -328,8 +329,8 @@ namespace trape.datalayer
             // Generate names so in case of refactor they are adjusted automatically
             // And a dependency to to that elements is established
             var mapper = new NpgsqlSnakeCaseNameTranslator();
-            var tableName = mapper.TranslateMemberName(nameof(BookTicks));
-            var columName = mapper.TranslateMemberName(nameof(BookPrice.TransactionTime));
+            var tableName = mapper.TranslateMemberName(nameof(BookPrices));
+            var columName = mapper.TranslateMemberName(nameof(BookPrice.CreatedOn));
 
             // Generate SQL statement
             var sql = $"DELETE FROM {tableName} WHERE {columName} < NOW() - INTERVAL '24 hours'";
@@ -365,7 +366,7 @@ namespace trape.datalayer
 
         public Task<List<LatestMA10mAndMA30mCrossing>> GetLatestMA10mAndMA30mCrossing()
         {
-            return Set<LatestMA10mAndMA30mCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma10m_ma30m_crossing();").AsNoTracking().ToListAsync();
+            return Set<LatestMA10mAndMA30mCrossing>().FromSqlRaw("SELECT * FROM get_latest_ma10m_ma30m_crossing();").ToListAsync();
         }
 
         public Task<List<LatestMA30mAndMA1hCrossing>> GetLatestMA30mAndMA1hCrossing()

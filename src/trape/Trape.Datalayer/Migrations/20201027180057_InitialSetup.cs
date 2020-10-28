@@ -47,7 +47,7 @@ namespace Trape.Datalayer.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "book_ticks",
+                name: "book_prices",
                 columns: table => new
                 {
                     update_id = table.Column<long>(nullable: false)
@@ -57,11 +57,11 @@ namespace Trape.Datalayer.Migrations
                     best_bid_quantity = table.Column<decimal>(nullable: false),
                     best_ask_price = table.Column<decimal>(nullable: false),
                     best_ask_quantity = table.Column<decimal>(nullable: false),
-                    transaction_time = table.Column<DateTime>(nullable: false)
+                    created_on = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_book_ticks", x => x.update_id);
+                    table.PrimaryKey("PK_book_prices", x => x.update_id);
                 });
 
             migrationBuilder.CreateTable(
@@ -240,7 +240,6 @@ namespace Trape.Datalayer.Migrations
                     open_time = table.Column<DateTime>(nullable: false),
                     last_trade_id = table.Column<long>(nullable: false),
                     first_trade_id = table.Column<long>(nullable: false),
-                    total_traded_quote_asset_volume = table.Column<decimal>(nullable: false),
                     base_volume = table.Column<decimal>(nullable: false),
                     low_price = table.Column<decimal>(nullable: false),
                     high_price = table.Column<decimal>(nullable: false),
@@ -558,14 +557,14 @@ namespace Trape.Datalayer.Migrations
                 column: "id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_book_ticks_update_id",
-                table: "book_ticks",
+                name: "IX_book_prices_update_id",
+                table: "book_prices",
                 column: "update_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_book_ticks_transaction_time_symbol",
-                table: "book_ticks",
-                columns: new[] { "transaction_time", "symbol" });
+                name: "IX_book_prices_created_on_symbol",
+                table: "book_prices",
+                columns: new[] { "created_on", "symbol" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_client_order_created_on",
@@ -702,36 +701,6 @@ namespace Trape.Datalayer.Migrations
                 name: "IX_ticks_open_time_close_time",
                 table: "ticks",
                 columns: new[] { "open_time", "close_time" });
-
-
-            // EXTENSION timescaledb MUST BE INSTALLED ALREADY!
-
-            migrationBuilder.Sql(@"
-                ALTER TABLE recommendations DROP CONSTRAINT ""PK_recommendations"";
-                ALTER TABLE recommendations RENAME TO recommandations_old;
-                CREATE TABLE recommendations(LIKE recommandations_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
-                SELECT * FROM create_hypertable('recommendations', 'created_on');
-                DROP TABLE recommandations_old;
-
-                ALTER TABLE klines DROP CONSTRAINT ""PK_klines"";
-                ALTER TABLE klines RENAME TO klines_old;
-                CREATE TABLE klines(LIKE klines_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
-                SELECT * FROM create_hypertable('klines', 'open_time');
-                DROP TABLE klines_old;
-
-                ALTER TABLE ticks DROP CONSTRAINT ""PK_ticks"";
-                ALTER TABLE ticks RENAME TO ticks_old;
-                CREATE TABLE ticks(LIKE ticks_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
-                --3h chunks
-                SELECT * FROM create_hypertable('ticks', 'open_time', chunk_time_interval => interval '3 hours');
-                DROP TABLE ticks_old;
-            ");
-
-            migrationBuilder.Sql(@"
-                INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('BTCUSDT', true, false);
-                INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('ETHUSDT', false, false);
-                INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('LINKUSDT', false, false);
-            ");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
@@ -743,7 +712,7 @@ namespace Trape.Datalayer.Migrations
                 name: "balances");
 
             migrationBuilder.DropTable(
-                name: "book_ticks");
+                name: "book_prices");
 
             migrationBuilder.DropTable(
                 name: "klines");

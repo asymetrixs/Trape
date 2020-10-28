@@ -429,7 +429,7 @@ namespace trape.cli.trader.Cache
 
             if (!availableSymbols.Any())
             {
-                _logger.Error("Cannot check subscriptions");
+                _logger.Warning("No symbols active for subscription, aborting...");
                 return;
             }
 
@@ -831,7 +831,7 @@ namespace trape.cli.trader.Cache
         /// Starts a buffer
         /// </summary>
         /// <returns></returns>
-        public Task Start()
+        public async Task Start()
         {
             _logger.Information("Starting Buffer");
 
@@ -841,18 +841,16 @@ namespace trape.cli.trader.Cache
             var availableSymbols = new List<string>();
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
-                var loadingTasks = new List<Task>();
                 var database = Program.Container.GetService<TrapeContext>();
 
-                loadingTasks.Add(new Task(async () => _stats3s = await database.Get3SecondsTrendAsync().ConfigureAwait(true)));
-                loadingTasks.Add(new Task(async () => _stats15s = await database.Get15SecondsTrendAsync().ConfigureAwait(true)));
-                loadingTasks.Add(new Task(async () => _stats2m = await database.Get2MinutesTrendAsync().ConfigureAwait(true)));
-                loadingTasks.Add(new Task(async () => _stats10m = await database.Get10MinutesTrendAsync().ConfigureAwait(true)));
-                loadingTasks.Add(new Task(async () => _stats2h = await database.Get2HoursTrendAsync().ConfigureAwait(true)));
-                loadingTasks.Add(new Task(async () => _latestMA10mAnd30mCrossing = await database.GetLatestMA10mAndMA30mCrossing().ConfigureAwait(true)));
-
-                // Wait till loading completes
-                Task.WaitAll(loadingTasks.ToArray());
+                _stats3s = await database.Get3SecondsTrendAsync().ConfigureAwait(true);
+                _stats15s = await database.Get15SecondsTrendAsync().ConfigureAwait(true);
+                _stats2m = await database.Get2MinutesTrendAsync().ConfigureAwait(true);
+                _stats10m = await database.Get10MinutesTrendAsync().ConfigureAwait(true);
+                _stats2h = await database.Get2HoursTrendAsync().ConfigureAwait(true);
+                _latestMA10mAnd30mCrossing = await database.GetLatestMA10mAndMA30mCrossing().ConfigureAwait(true);
+                _latestMA30mAnd1hCrossing = await database.GetLatestMA30mAndMA1hCrossing().ConfigureAwait(true);
+                _latestMA1hAnd3hCrossing = await database.GetLatestMA1hAndMA3hCrossing().ConfigureAwait(true);
             }
 
             _logger.Debug("Buffer preloaded");
@@ -874,8 +872,6 @@ namespace trape.cli.trader.Cache
             ExchangeInfo();
 
             _logger.Information("Buffer started");
-
-            return Task.CompletedTask;
         }
 
         /// <summary>

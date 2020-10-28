@@ -11,7 +11,7 @@ namespace trape.datalayer.Models
         /// </summary>
         public BookPrice()
         {
-            TransactionTime = DateTime.UtcNow;
+            CreatedOn = DateTime.UtcNow;
         }
 
         #endregion
@@ -51,7 +51,7 @@ namespace trape.datalayer.Models
         /// <summary>
         /// Timestamp
         /// </summary>
-        public DateTime TransactionTime { get; set; }
+        public DateTime CreatedOn { get; set; }
 
         #endregion
     }

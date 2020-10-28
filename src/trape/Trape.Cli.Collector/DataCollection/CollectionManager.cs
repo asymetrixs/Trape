@@ -298,7 +298,7 @@ namespace trape.cli.collector.DataCollection
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    database.BookTicks.Add(Translator.Translate(bsbp));
+                    database.BookPrices.Add(Translator.Translate(bsbp));
                     await database.SaveChangesAsync(cancellationToken).ConfigureAwait(true);
                 }
                 catch (Exception e)

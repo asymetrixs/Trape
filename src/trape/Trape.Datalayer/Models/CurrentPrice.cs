@@ -20,7 +20,7 @@ namespace trape.datalayer.Models
         /// <param name="currentDayClosePrice">Current day close price</param>
         /// <param name="priceChangePercentage">Price change percentage</param>
         /// <param name="priceChange">Price change</param>
-        public CurrentPrice(string symbol, DateTimeOffset eventTime, decimal lowPrice, decimal highPrice, decimal openPrice,
+        public CurrentPrice(string symbol, DateTime eventTime, decimal lowPrice, decimal highPrice, decimal openPrice,
             decimal currentDayClosePrice, decimal priceChangePercentage, decimal priceChange)
         {
             CurrentDayClosePrice = currentDayClosePrice;
@@ -45,7 +45,7 @@ namespace trape.datalayer.Models
         /// <summary>
         /// Event Time
         /// </summary>
-        public DateTimeOffset EventTime { get; private set; }
+        public DateTime EventTime { get; private set; }
 
         /// <summary>
         /// Low Price in 24h

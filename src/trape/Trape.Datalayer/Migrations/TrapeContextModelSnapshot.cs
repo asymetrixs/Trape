@@ -158,21 +158,21 @@ namespace Trape.Datalayer.Migrations
                         .HasColumnName("best_bid_quantity")
                         .HasColumnType("numeric");
 
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnName("created_on")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<string>("Symbol")
                         .HasColumnName("symbol")
                         .HasColumnType("text");
-
-                    b.Property<DateTime>("TransactionTime")
-                        .HasColumnName("transaction_time")
-                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("UpdateId");
 
                     b.HasIndex("UpdateId");
 
-                    b.HasIndex("TransactionTime", "Symbol");
+                    b.HasIndex("CreatedOn", "Symbol");
 
-                    b.ToTable("book_ticks");
+                    b.ToTable("book_prices");
                 });
 
             modelBuilder.Entity("trape.datalayer.Models.ClientOrder", b =>
@@ -894,6 +894,231 @@ namespace Trape.Datalayer.Migrations
                     b.HasIndex("Id");
 
                     b.ToTable("recommendations");
+                });
+
+            modelBuilder.Entity("trape.datalayer.Models.Stats10m", b =>
+                {
+                    b.Property<int>("DataBasis")
+                        .HasColumnName("r_databasis")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MovingAverage1h")
+                        .HasColumnName("r_movav_1h")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage2h")
+                        .HasColumnName("r_movav_2h")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage30m")
+                        .HasColumnName("r_movav_30m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage3h")
+                        .HasColumnName("r_movav_3h")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope1h")
+                        .HasColumnName("r_slope_1h")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope2h")
+                        .HasColumnName("r_slope_2h")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope30m")
+                        .HasColumnName("r_slope_30m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope3h")
+                        .HasColumnName("r_slope_3h")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Symbol")
+                        .HasColumnName("r_symbol")
+                        .HasColumnType("text");
+
+                    b.ToTable("stats10m","stubs");
+                });
+
+            modelBuilder.Entity("trape.datalayer.Models.Stats15s", b =>
+                {
+                    b.Property<int>("DataBasis")
+                        .HasColumnName("r_databasis")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MovingAverage1m")
+                        .HasColumnName("r_movav_1m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage2m")
+                        .HasColumnName("r_movav_2m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage3m")
+                        .HasColumnName("r_movav_3m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage45s")
+                        .HasColumnName("r_movav_45s")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope1m")
+                        .HasColumnName("r_slope_1m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope2m")
+                        .HasColumnName("r_slope_2m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope3m")
+                        .HasColumnName("r_slope_3m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope45s")
+                        .HasColumnName("r_slope_45s")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Symbol")
+                        .HasColumnName("r_symbol")
+                        .HasColumnType("text");
+
+                    b.ToTable("stats15s","stubs");
+                });
+
+            modelBuilder.Entity("trape.datalayer.Models.Stats2h", b =>
+                {
+                    b.Property<int>("DataBasis")
+                        .HasColumnName("r_databasis")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MovingAverage12h")
+                        .HasColumnName("r_movav_12h")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage18h")
+                        .HasColumnName("r_movav_18h")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage1d")
+                        .HasColumnName("r_movav_1d")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage6h")
+                        .HasColumnName("r_movav_6h")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope12h")
+                        .HasColumnName("r_slope_12h")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope18h")
+                        .HasColumnName("r_slope_18h")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope1d")
+                        .HasColumnName("r_slope_1d")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope6h")
+                        .HasColumnName("r_slope_6h")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Symbol")
+                        .HasColumnName("r_symbol")
+                        .HasColumnType("text");
+
+                    b.ToTable("stats2h","stubs");
+                });
+
+            modelBuilder.Entity("trape.datalayer.Models.Stats2m", b =>
+                {
+                    b.Property<int>("DataBasis")
+                        .HasColumnName("r_databasis")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MovingAverage10m")
+                        .HasColumnName("r_movav_10m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage15m")
+                        .HasColumnName("r_movav_15m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage5m")
+                        .HasColumnName("r_movav_5m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage7m")
+                        .HasColumnName("r_movav_7m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope10m")
+                        .HasColumnName("r_slope_10m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope15m")
+                        .HasColumnName("r_slope_15m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope5m")
+                        .HasColumnName("r_slope_5m")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope7m")
+                        .HasColumnName("r_slope_7m")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Symbol")
+                        .HasColumnName("r_symbol")
+                        .HasColumnType("text");
+
+                    b.ToTable("stats2m","stubs");
+                });
+
+            modelBuilder.Entity("trape.datalayer.Models.Stats3s", b =>
+                {
+                    b.Property<int>("DataBasis")
+                        .HasColumnName("r_databasis")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MovingAverage10s")
+                        .HasColumnName("r_movav_10s")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage15s")
+                        .HasColumnName("r_movav_15s")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage30s")
+                        .HasColumnName("r_movav_30s")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MovingAverage5s")
+                        .HasColumnName("r_movav_5s")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope10s")
+                        .HasColumnName("r_slope_10s")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope15s")
+                        .HasColumnName("r_slope_15s")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope30s")
+                        .HasColumnName("r_slope_30s")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Slope5s")
+                        .HasColumnName("r_slope_5s")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Symbol")
+                        .HasColumnName("r_symbol")
+                        .HasColumnType("text");
+
+                    b.ToTable("stats3s","stubs");
                 });
 
             modelBuilder.Entity("trape.datalayer.Models.Symbol", b =>

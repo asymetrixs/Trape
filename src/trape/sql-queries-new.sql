@@ -1,4 +1,32 @@
 
+
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+
+
+ALTER TABLE recommendations DROP CONSTRAINT "PK_recommendations";
+ALTER TABLE recommendations RENAME TO recommandations_old;
+CREATE TABLE recommendations(LIKE recommandations_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+SELECT * FROM create_hypertable('recommendations', 'created_on');
+DROP TABLE recommandations_old;
+
+ALTER TABLE klines DROP CONSTRAINT "PK_klines";
+ALTER TABLE klines RENAME TO klines_old;
+CREATE TABLE klines(LIKE klines_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+SELECT * FROM create_hypertable('klines', 'open_time');
+DROP TABLE klines_old;
+
+ALTER TABLE ticks DROP CONSTRAINT "PK_ticks";
+ALTER TABLE ticks RENAME TO ticks_old;
+CREATE TABLE ticks(LIKE ticks_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+--3h chunks
+SELECT * FROM create_hypertable('ticks', 'open_time', chunk_time_interval => interval '3 hours');
+DROP TABLE ticks_old;
+
+ALTER TABLE public.recommendations OWNER TO trpsr;
+ALTER TABLE public.klines OWNER TO trpsr;
+ALTER TABLE public.ticks OWNER TO trpsr;
+
+
 CREATE OR REPLACE FUNCTION public.stats_3s(
 	)
     RETURNS TABLE(r_symbol text, r_databasis integer, r_slope_5s numeric, r_slope_10s numeric, r_slope_15s numeric, r_slope_30s numeric, r_movav_5s numeric, r_movav_10s numeric, r_movav_15s numeric, r_movav_30s numeric) 
@@ -22,7 +50,7 @@ BEGIN
 		ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) FILTER (WHERE created_on >= NOW() - INTERVAL '15 seconds') 
 			/ COUNT(*) FILTER (WHERE created_on >= NOW() - INTERVAL '15 seconds')), 8) AS movav_15s,
 		ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) / COUNT(*)), 8) AS movav_30s
-	FROM book_ticks
+	FROM book_prices
 	WHERE created_on >= NOW() - INTERVAL '30 seconds'
 	GROUP BY symbol
 	HAVING COUNT(*) > 25;
@@ -55,7 +83,7 @@ BEGIN
 			ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) FILTER (WHERE created_on >= NOW() - INTERVAL '2 minutes') 
 			/ COUNT(*) FILTER (WHERE created_on >= NOW() - INTERVAL '2 minutes')), 8) AS movav_2m,
 			ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) / COUNT(*)), 8) AS movav_3m
-	FROM book_ticks
+	FROM book_prices
 	WHERE created_on >= NOW() - INTERVAL '3 minutes'
 	GROUP BY symbol
 	HAVING COUNT(*) > 170;
@@ -89,7 +117,7 @@ BEGIN
 			ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) FILTER (WHERE created_on >= NOW() - INTERVAL '10 minutes') 
 			/ COUNT(*) FILTER (WHERE created_on >= NOW() - INTERVAL '10 minutes')), 8) AS movav_10m,
 			ROUND((SUM(ROUND((best_ask_price + best_bid_price ) /2, 8)) / COUNT(*)), 8) AS movav_15m
-	FROM book_ticks
+	FROM book_prices
 	WHERE created_on >= NOW() - INTERVAL '15 minutes'
 	GROUP BY symbol
 	HAVING COUNT(*) > 860;
@@ -115,19 +143,19 @@ RETURNS TABLE (
 $$
 BEGIN
 	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND(((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM statistics_close_time)) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '30 minutes'))*60*30)::NUMERIC, 8) AS slope_30m,
-		ROUND(((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM statistics_close_time)) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '1 hour'))*60*60)::NUMERIC, 8) AS slope_1h,
-		ROUND(((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM statistics_close_time)) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '2 hours'))*60*60*2)::NUMERIC, 8) AS slope_2h,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM statistics_close_time))*60*60*3)::NUMERIC, 8) AS slope_3h,
-		ROUND((SUM(current_day_close_price) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '30 minutes') 
-			/ COUNT(*) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '30 minutes')), 8) AS movav_30m,
-			ROUND((SUM(current_day_close_price) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '1 hours') 
-			/ COUNT(*) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '1 hours')), 8) AS movav_1h,
-			ROUND((SUM(current_day_close_price) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '2 hours') 
-			/ COUNT(*) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '2 hours')), 8) AS movav_2h,
-			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) AS movav_3h
+		ROUND(((REGR_SLOPE(last_price, EXTRACT(EPOCH FROM close_time)) FILTER (WHERE close_time >= NOW() - INTERVAL '30 minutes'))*60*30)::NUMERIC, 8) AS slope_30m,
+		ROUND(((REGR_SLOPE(last_price, EXTRACT(EPOCH FROM close_time)) FILTER (WHERE close_time >= NOW() - INTERVAL '1 hour'))*60*60)::NUMERIC, 8) AS slope_1h,
+		ROUND(((REGR_SLOPE(last_price, EXTRACT(EPOCH FROM close_time)) FILTER (WHERE close_time >= NOW() - INTERVAL '2 hours'))*60*60*2)::NUMERIC, 8) AS slope_2h,
+		ROUND((REGR_SLOPE(last_price, EXTRACT(EPOCH FROM close_time))*60*60*3)::NUMERIC, 8) AS slope_3h,
+		ROUND((SUM(last_price) FILTER (WHERE close_time >= NOW() - INTERVAL '30 minutes') 
+			/ COUNT(*) FILTER (WHERE close_time >= NOW() - INTERVAL '30 minutes')), 8) AS movav_30m,
+			ROUND((SUM(last_price) FILTER (WHERE close_time >= NOW() - INTERVAL '1 hours') 
+			/ COUNT(*) FILTER (WHERE close_time >= NOW() - INTERVAL '1 hours')), 8) AS movav_1h,
+			ROUND((SUM(last_price) FILTER (WHERE close_time >= NOW() - INTERVAL '2 hours') 
+			/ COUNT(*) FILTER (WHERE close_time >= NOW() - INTERVAL '2 hours')), 8) AS movav_2h,
+			ROUND((SUM(last_price) / COUNT(*)), 8) AS movav_3h
 	FROM ticks
-	WHERE statistics_close_time >= NOW() - INTERVAL '3 hours'
+	WHERE close_time >= NOW() - INTERVAL '3 hours'
 	GROUP BY symbol
 	HAVING COUNT(*) > 10300;
 	-- at least roughly 3 * 60 * 60 (3 hours) values
@@ -153,19 +181,19 @@ RETURNS TABLE (
 $$
 BEGIN
 	RETURN QUERY SELECT symbol, COUNT(*)::INT,
-		ROUND(((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM statistics_close_time)) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '6 hours'))*60*60*6)::NUMERIC, 8) AS slope_6h,
-		ROUND(((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM statistics_close_time)) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '12 hours'))*60*60*12)::NUMERIC, 8) AS slope_12h,
-		ROUND(((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM statistics_close_time)) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '18 hours'))*60*60*18)::NUMERIC, 8) AS slope_18h,
-		ROUND((REGR_SLOPE(current_day_close_price, EXTRACT(EPOCH FROM statistics_close_time))*60*60*24)::NUMERIC, 8) AS slope_1d,
-		ROUND((SUM(current_day_close_price) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '6 hours') 
-			/ COUNT(*) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '6 hours')), 8) AS movav_6h,
-			ROUND((SUM(current_day_close_price) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '12 hours') 
-			/ COUNT(*) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '12 hours')), 8) AS movav_12h,
-			ROUND((SUM(current_day_close_price) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '18 hours') 
-			/ COUNT(*) FILTER (WHERE statistics_close_time >= NOW() - INTERVAL '18 hours')), 8) AS movav_18h,
-			ROUND((SUM(current_day_close_price) / COUNT(*)), 8) AS movav_1d
+		ROUND(((REGR_SLOPE(last_price, EXTRACT(EPOCH FROM close_time)) FILTER (WHERE close_time >= NOW() - INTERVAL '6 hours'))*60*60*6)::NUMERIC, 8) AS slope_6h,
+		ROUND(((REGR_SLOPE(last_price, EXTRACT(EPOCH FROM close_time)) FILTER (WHERE close_time >= NOW() - INTERVAL '12 hours'))*60*60*12)::NUMERIC, 8) AS slope_12h,
+		ROUND(((REGR_SLOPE(last_price, EXTRACT(EPOCH FROM close_time)) FILTER (WHERE close_time >= NOW() - INTERVAL '18 hours'))*60*60*18)::NUMERIC, 8) AS slope_18h,
+		ROUND((REGR_SLOPE(last_price, EXTRACT(EPOCH FROM close_time))*60*60*24)::NUMERIC, 8) AS slope_1d,
+		ROUND((SUM(last_price) FILTER (WHERE close_time >= NOW() - INTERVAL '6 hours') 
+			/ COUNT(*) FILTER (WHERE close_time >= NOW() - INTERVAL '6 hours')), 8) AS movav_6h,
+			ROUND((SUM(last_price) FILTER (WHERE close_time >= NOW() - INTERVAL '12 hours') 
+			/ COUNT(*) FILTER (WHERE close_time >= NOW() - INTERVAL '12 hours')), 8) AS movav_12h,
+			ROUND((SUM(last_price) FILTER (WHERE close_time >= NOW() - INTERVAL '18 hours') 
+			/ COUNT(*) FILTER (WHERE close_time >= NOW() - INTERVAL '18 hours')), 8) AS movav_18h,
+			ROUND((SUM(last_price) / COUNT(*)), 8) AS movav_1d
 	FROM ticks
-	WHERE statistics_close_time >= NOW() - INTERVAL '1 day'	
+	WHERE close_time >= NOW() - INTERVAL '1 day'	
 	GROUP BY symbol
 	HAVING COUNT(*) > 86200;
 	-- at least roughly 24 * 60 * 60 (24 hours) values
@@ -176,12 +204,12 @@ LANGUAGE plpgsql STRICT;
 
 
 CREATE OR REPLACE FUNCTION get_latest_ma10m_ma30m_crossing()
-RETURNS TABLE (symbol TEXT, event_time TIMESTAMPTZ, slope10m NUMERIC, slope30m NUMERIC)
+RETURNS TABLE (symbol TEXT, event_time TIMESTAMP, slope10m NUMERIC, slope30m NUMERIC)
 AS
 $$
 BEGIN
-	RETURN QUERY SELECT DISTINCT ON (r.symbol) r.symbol, MAX(r.created_on), r.slope10m, r.slope30m FROM recommendation r
-		WHERE ROUND(r.movav10m, 2) = ROUND(r.movav30m, 2) AND r.created_on >= NOW() - INTERVAL '12 hours'
+	RETURN QUERY SELECT DISTINCT ON (r.symbol) r.symbol, MAX(r.created_on), r.slope10m, r.slope30m FROM recommendations r
+		WHERE ROUND(r.moving_average10m, 2) = ROUND(r.moving_average30m, 2) AND r.created_on >= NOW() - INTERVAL '12 hours'
 		GROUP BY r.symbol, r.slope10m, r.slope30m
 		ORDER BY r.symbol, MAX(r.created_on) DESC;
 END;
@@ -192,12 +220,12 @@ LANGUAGE plpgsql STRICT;
 
 
 CREATE OR REPLACE FUNCTION get_latest_ma30m_ma1h_crossing()
-RETURNS TABLE (symbol TEXT, event_time TIMESTAMPTZ, slope30m NUMERIC, slope1h NUMERIC)
+RETURNS TABLE (symbol TEXT, event_time TIMESTAMP, slope30m NUMERIC, slope1h NUMERIC)
 AS
 $$
 BEGIN
-	RETURN QUERY SELECT DISTINCT ON (r.symbol) r.symbol, MAX(r.created_on), r.slope30m, r.slope1h FROM recommendation r
-		WHERE ROUND(r.movav30m, 2) = ROUND(r.movav1h, 2) AND r.created_on >= NOW() - INTERVAL '12 hours'
+	RETURN QUERY SELECT DISTINCT ON (r.symbol) r.symbol, MAX(r.created_on), r.slope30m, r.slope1h FROM recommendations r
+		WHERE ROUND(r.moving_average30m, 2) = ROUND(r.moving_average1h, 2) AND r.created_on >= NOW() - INTERVAL '12 hours'
 		GROUP BY r.symbol, r.slope30m, r.slope1h
 		ORDER BY r.symbol, MAX(r.created_on) DESC;
 END;
@@ -216,8 +244,8 @@ CREATE OR REPLACE FUNCTION public.get_latest_ma1h_ma3h_crossing(
     
 AS $BODY$
 BEGIN
-	RETURN QUERY SELECT DISTINCT ON (r.symbol) r.symbol, MAX(r.created_on), r.slope1h, r.slope3h FROM recommendation r
-		WHERE ROUND(r.movav1h, 2) = ROUND(r.movav3h, 2) AND r.created_on >= NOW() - INTERVAL '12 hours'
+	RETURN QUERY SELECT DISTINCT ON (r.symbol) r.symbol, MAX(r.created_on), r.slope1h, r.slope3h FROM recommendations r
+		WHERE ROUND(r.moving_average1h, 2) = ROUND(r.moving_average3h, 2) AND r.created_on >= NOW() - INTERVAL '12 hours'
 		GROUP BY r.symbol, r.slope1h, r.slope3h
 		ORDER BY r.symbol, MAX(r.created_on) DESC;
 END;
@@ -225,7 +253,7 @@ $BODY$;
 
 
 
-CREATE OR REPLACE FUNCTION get_price_on(p_symbol TEXT, p_time TIMESTAMPTZ)
+CREATE OR REPLACE FUNCTION get_price_on(p_symbol TEXT, p_time TIMESTAMP)
 RETURNS NUMERIC AS
 $$
 	DECLARE i_avg_price NUMERIC;
@@ -237,7 +265,7 @@ BEGIN
 	-- Calculate live over average of 20 records
 	SELECT ROUND(AVG((best_ask_price + best_bid_price)/2), 8) INTO i_avg_price FROM (
 		SELECT best_ask_price, best_bid_price
-			FROM book_ticks 
+			FROM book_prices 
 			WHERE created_on <= p_time AND symbol = p_symbol
 			ORDER BY created_on DESC
 			LIMIT 20
@@ -246,7 +274,7 @@ BEGIN
 	-- Get from historical data
 	IF i_avg_price IS NULL THEN
 		RAISE NOTICE 'Not Found';
-		SELECT ROUND(current_day_close_price, 8) INTO i_avg_price
+		SELECT ROUND(last_price, 8) INTO i_avg_price
 			FROM ticks
 			WHERE created_on BETWEEN DATE_TRUNC('second', p_time) AND DATE_TRUNC('second', p_time + INTERVAL '1 second') - INTERVAL '1 microsecond'
 				AND symbol = p_symbol;
@@ -281,7 +309,7 @@ BEGIN
 		p_time = NOW();
 	END IF;
 
-	SELECT MIN(current_day_close_price) INTO i_avg_price FROM ticks WHERE symbol = p_symbol AND statistics_close_time > p_time;
+	SELECT MIN(last_price) INTO i_avg_price FROM ticks WHERE symbol = p_symbol AND close_time > p_time;
 
 	RETURN i_avg_price;
 END;
@@ -419,7 +447,7 @@ BEGIN
 		p_time = NOW();
 	END IF;
 
-	SELECT MAX(current_day_close_price) INTO i_avg_price FROM ticks WHERE symbol = p_symbol AND statistics_close_time > p_time;
+	SELECT MAX(last_price) INTO i_avg_price FROM ticks WHERE symbol = p_symbol AND close_time > p_time;
 
 	RETURN i_avg_price;
 END;
@@ -448,3 +476,9 @@ END;
 $BODY$;
 
 -- insert into symbols (name, is_collection_active, is_trading_active) values ('LINKUSDT', true, true)
+
+
+
+INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('BTCUSDT', true, false);
+INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('ETHUSDT', false, false);
+INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('LINKUSDT', false, false);
