@@ -429,7 +429,7 @@ namespace trape.cli.trader.Cache
 
             if (!availableSymbols.Any())
             {
-                _logger.Warning("No symbols active for subscription, aborting...");
+                _logger.Warning("No symbols found for subscription, aborting...");
                 return;
             }
 
