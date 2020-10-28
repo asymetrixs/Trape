@@ -110,7 +110,7 @@ namespace trape.cli.trader.Team
             // Check if any
             if (!availableSymbols.Any())
             {
-                _logger.Error("No symbols active for trading, aborting...");
+                _logger.Warning("No symbols active for trading, aborting...");
                 return;
             }
             else
