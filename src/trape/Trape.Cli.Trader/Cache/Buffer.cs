@@ -419,7 +419,7 @@ namespace trape.cli.trader.Cache
                 var database = Program.Container.GetService<TrapeContext>();
                 try
                 {
-                    availableSymbols = database.Symbols.Where(s => s.IsTradingActive).Select(s => s.Name).AsNoTracking().ToList();
+                    availableSymbols = database.Symbols.Select(s => s.Name).AsNoTracking().ToList();
                 }
                 catch (Exception e)
                 {
