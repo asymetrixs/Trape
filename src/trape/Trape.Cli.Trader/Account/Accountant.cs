@@ -222,10 +222,10 @@ namespace trape.cli.trader.Account
                     {
                         try
                         {
-                            _logger.Information($"Loading existing Client Order: {orderUpdate.ClientOrderId}");
+                            _logger.Debug($"Loading Client Order: {orderUpdate.ClientOrderId}");
                             clientOrder = database.ClientOrder.FirstOrDefault(c => c.Id == orderUpdate.ClientOrderId);
 
-                            _logger.Information($"Client Order found: {clientOrder != null}: {orderUpdate.ClientOrderId}");
+                            _logger.Debug($"Client Order {((clientOrder == null) ? "not" : string.Empty)} found: : {orderUpdate.ClientOrderId}");
 
                             if (clientOrder == null)
                             {
@@ -253,7 +253,7 @@ namespace trape.cli.trader.Account
                         {
                             attempts--;
 
-                            _logger.Information($"Failed attempt to store Client Order {clientOrder.Id}; attempt: {attempts}");
+                            _logger.Warning($"Failed attempt to store Client Order {clientOrder.Id}; attempt: {attempts}");
 
                             database.Entry(clientOrder).State = EntityState.Modified;
 

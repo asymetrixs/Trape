@@ -1,5 +1,17 @@
 
 
+CREATE DATABASE trape
+    WITH 
+    OWNER = trpsr
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'C.UTF-8'
+    LC_CTYPE = 'C.UTF-8'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1;
+
+
+-- RUN dotnet-ef update
+
 CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 
 
@@ -235,7 +247,7 @@ LANGUAGE plpgsql STRICT;
 
 CREATE OR REPLACE FUNCTION public.get_latest_ma1h_ma3h_crossing(
 	)
-    RETURNS TABLE(symbol text, event_time timestamp with time zone, slope1h numeric, slope3h numeric) 
+    RETURNS TABLE(symbol text, event_time timestamp, slope1h numeric, slope3h numeric) 
     LANGUAGE 'plpgsql'
 
     COST 100
