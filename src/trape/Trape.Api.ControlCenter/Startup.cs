@@ -74,6 +74,8 @@ namespace Trape.Api.ControlCenter
 
             services.AddLocalization();
 
+            services.AddCors();
+
             services.AddSimpleInjector(Container, options =>
             {
                 options.AddAspNetCore();
@@ -100,13 +102,17 @@ namespace Trape.Api.ControlCenter
                 app.UseDeveloperExceptionPage();
             }
 
-            
-
             app.UseHttpsRedirection();
 
             app.UseRouting();
 
             app.UseAuthorization();
+
+            app.UseCors(options => {
+                options.WithOrigins("http://localhost:8080");
+                options.AllowAnyMethod();
+                options.AllowAnyHeader();
+            });
 
             app.UseEndpoints(endpoints =>
             {
