@@ -24,7 +24,7 @@ namespace Trape.Jobs
         /// <param name="seconds">Seconds</param>
         public JobAttribute(int hours, int minutes, int seconds)
         {
-            this.Interval = new TimeSpan(hours, minutes, seconds);
+            Interval = new TimeSpan(hours, minutes, seconds);
         }
 
         #endregion

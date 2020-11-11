@@ -11,10 +11,10 @@ using SimpleInjector;
 using SimpleInjector.Lifestyles;
 using System;
 using System.Threading.Tasks;
+using Trape.BinanceNet.Logger;
 using Trape.Cli.collector.DataCollection;
 using Trape.Datalayer;
 using Trape.Jobs;
-using Trape.BinanceNet.Logger;
 
 namespace Trape.Cli.collector
 {

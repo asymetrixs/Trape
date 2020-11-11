@@ -24,7 +24,7 @@ namespace Trape.Jobs
         /// </summary>
         public JobManager()
         {
-            this._schedulers = new List<JobScheduler>();
+            _schedulers = new List<JobScheduler>();
         }
 
         #endregion
@@ -44,7 +44,7 @@ namespace Trape.Jobs
             #endregion
 
             var scheduler = new JobScheduler(job);
-            this._schedulers.Add(scheduler);
+            _schedulers.Add(scheduler);
             scheduler.Start();
         }
 
@@ -54,7 +54,7 @@ namespace Trape.Jobs
         public void StartAll()
         {
             // Start all jobs
-            foreach (var job in this._schedulers)
+            foreach (var job in _schedulers)
             {
                 job.Start();
             }
@@ -66,7 +66,7 @@ namespace Trape.Jobs
         public void StopAll()
         {
             // Start all jobs
-            foreach (var job in this._schedulers)
+            foreach (var job in _schedulers)
             {
                 job.Stop();
             }
@@ -78,13 +78,13 @@ namespace Trape.Jobs
         public void TerminateAll()
         {
             // Terminate all jobs
-            foreach (var job in this._schedulers)
+            foreach (var job in _schedulers)
             {
                 job.Stop();
                 job.Terminate();
             }
 
-            this._schedulers.Clear();
+            _schedulers.Clear();
         }
 
         #endregion

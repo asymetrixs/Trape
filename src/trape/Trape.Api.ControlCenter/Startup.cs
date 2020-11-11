@@ -100,7 +100,8 @@ namespace Trape.Api.ControlCenter
 
             app.UseAuthorization();
 
-            app.UseCors(options => {
+            app.UseCors(options =>
+            {
                 options.WithOrigins("http://localhost:8080");
                 options.AllowAnyMethod();
                 options.AllowAnyHeader();

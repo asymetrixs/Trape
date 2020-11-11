@@ -77,22 +77,22 @@ namespace Trape.Jobs
         {
             #region Argument checks
 
-            this._action = action ?? throw new ArgumentNullException(paramName: nameof(action));
+            _action = action ?? throw new ArgumentNullException(paramName: nameof(action));
 
             #endregion
 
-            this._disposed = false;
-            this.ExecutionInterval = executionInterval;
-            this._cancellationToken = cancellationToken;
-            this._synchronizer = new SemaphoreSlim(1, 1);
-            this._running = new SemaphoreSlim(1, 1);
+            _disposed = false;
+            ExecutionInterval = executionInterval;
+            _cancellationToken = cancellationToken;
+            _synchronizer = new SemaphoreSlim(1, 1);
+            _running = new SemaphoreSlim(1, 1);
 
-            this._timer = new System.Timers.Timer()
+            _timer = new System.Timers.Timer()
             {
                 AutoReset = true,
                 Interval = executionInterval.TotalMilliseconds
             };
-            this._timer.Elapsed += Timer_Elapsed;
+            _timer.Elapsed += Timer_Elapsed;
         }
 
         #endregion
@@ -126,17 +126,17 @@ namespace Trape.Jobs
         /// <param name="e"></param>
         private void Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            if (this._synchronizer.CurrentCount == 0)
+            if (_synchronizer.CurrentCount == 0)
             {
                 return;
             }
-            this._synchronizer.WaitAsync();
+            _synchronizer.WaitAsync();
 
             try
             {
-                this._cancellationToken.ThrowIfCancellationRequested();
+                _cancellationToken.ThrowIfCancellationRequested();
 
-                this._action.Invoke();
+                _action.Invoke();
             }
             catch
             {
@@ -144,7 +144,7 @@ namespace Trape.Jobs
             }
             finally
             {
-                this._synchronizer.Release();
+                _synchronizer.Release();
             }
         }
 
@@ -154,17 +154,17 @@ namespace Trape.Jobs
         public void Start()
         {
             // Start timer
-            this._timer.Start();
+            _timer.Start();
 
             // Enter running state
-            this._running.Wait();
+            _running.Wait();
         }
 
         /// <summary>
         /// Returns whether the timer is running or not
         /// </summary>
         /// <returns></returns>
-        public bool IsRunning() => this._timer.Enabled;
+        public bool IsRunning() => _timer.Enabled;
 
         /// <summary>
         /// Stop job
@@ -172,13 +172,13 @@ namespace Trape.Jobs
         public void Terminate()
         {
             // Block synchronizer
-            this._synchronizer.Wait();
+            _synchronizer.Wait();
 
             // Stop timer
-            this._timer.Stop();
+            _timer.Stop();
 
             // Release
-            this._running.Release();
+            _running.Release();
         }
 
         /// <summary>
@@ -188,7 +188,7 @@ namespace Trape.Jobs
         public Task WaitFor(CancellationToken stoppingToken)
         {
             // Wait for next time to enter, happens when task terminates
-            return this._running.WaitAsync(stoppingToken);
+            return _running.WaitAsync(stoppingToken);
         }
 
         #endregion
@@ -210,17 +210,17 @@ namespace Trape.Jobs
         /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
-            if (this._disposed)
+            if (_disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                this._timer.Dispose();
+                _timer.Dispose();
             }
 
-            this._disposed = true;
+            _disposed = true;
         }
 
         #endregion

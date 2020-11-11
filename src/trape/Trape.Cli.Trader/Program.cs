@@ -13,6 +13,7 @@ using SimpleInjector.Diagnostics;
 using SimpleInjector.Lifestyles;
 using System;
 using System.Threading.Tasks;
+using Trape.BinanceNet.Logger;
 using Trape.Cli.trader.Account;
 using Trape.Cli.trader.Analyze;
 using Trape.Cli.trader.Cache;
@@ -21,7 +22,6 @@ using Trape.Cli.trader.Market;
 using Trape.Cli.trader.Team;
 using Trape.Cli.trader.Trading;
 using Trape.Datalayer;
-using Trape.BinanceNet.Logger;
 
 namespace Trape.Cli.trader
 {
