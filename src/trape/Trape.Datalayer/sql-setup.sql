@@ -486,11 +486,3 @@ BEGIN
 					ORDER BY symbol, action, created_on DESC;
 END;
 $BODY$;
-
--- insert into symbols (name, is_collection_active, is_trading_active) values ('LINKUSDT', true, true)
-
-
-
-INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('BTCUSDT', true, false);
-INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('ETHUSDT', false, false);
-INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('LINKUSDT', false, false);
