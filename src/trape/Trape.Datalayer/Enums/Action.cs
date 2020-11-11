@@ -1,4 +1,4 @@
-﻿namespace trape.datalayer.Enums
+﻿namespace Trape.Datalayer.Enums
 {
     /// <summary>
     /// Recommendation for the Trader on how to act

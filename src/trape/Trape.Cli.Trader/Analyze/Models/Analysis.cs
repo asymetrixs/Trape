@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using trape.datalayer.Models;
-using Action = trape.datalayer.Enums.Action;
+using Trape.Datalayer.Models;
+using Action = Trape.Datalayer.Enums.Action;
 
-namespace trape.cli.trader.Analyze.Models
+namespace Trape.Cli.trader.Analyze.Models
 {
     /// <summary>
     /// <c>Analysis</c> produced by <c>Analyst</c>.

@@ -14,11 +14,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using trape.datalayer;
-using trape.jobs;
-using trape.mapper;
+using Trape.Datalayer;
+using Trape.Jobs;
+using Trape.Mapper;
 
-namespace trape.cli.collector.DataCollection
+namespace Trape.Cli.collector.DataCollection
 {
     /// <summary>
     /// Manages connections to binance to retrieve data

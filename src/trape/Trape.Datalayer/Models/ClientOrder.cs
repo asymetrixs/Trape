@@ -1,7 +1,7 @@
 ﻿using System;
-using trape.datalayer.Enums;
+using Trape.Datalayer.Enums;
 
-namespace trape.datalayer.Models
+namespace Trape.Datalayer.Models
 {
     /// <summary>
     /// Represents an order

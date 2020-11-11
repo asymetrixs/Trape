@@ -2,10 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using trape.cli.trader.Cache.Models;
-using trape.datalayer.Models;
+using Trape.Cli.trader.Cache.Models;
+using Trape.Datalayer.Models;
 
-namespace trape.cli.trader.Cache
+namespace Trape.Cli.trader.Cache
 {
     /// <summary>
     /// Interface for buffer

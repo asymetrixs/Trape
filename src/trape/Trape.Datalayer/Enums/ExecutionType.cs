@@ -1,4 +1,4 @@
-﻿namespace trape.datalayer.Enums
+﻿namespace Trape.Datalayer.Enums
 {
     public enum ExecutionType
     {

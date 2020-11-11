@@ -11,13 +11,13 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.cli.trader.Cache;
-using trape.cli.trader.Cache.Models;
-using trape.datalayer;
-using trape.datalayer.Models;
-using trape.mapper;
+using Trape.Cli.trader.Cache;
+using Trape.Cli.trader.Cache.Models;
+using Trape.Datalayer;
+using Trape.Datalayer.Models;
+using Trape.Mapper;
 
-namespace trape.cli.trader.Market
+namespace Trape.Cli.trader.Market
 {
     /// <summary>
     /// Stock exchange class

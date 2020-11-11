@@ -1,7 +1,7 @@
 ﻿using System;
-using trape.cli.trader.Team;
+using Trape.Cli.trader.Team;
 
-namespace trape.cli.trader.Trading
+namespace Trape.Cli.trader.Trading
 {
     /// <summary>
     /// Interface for the <c>Broker</c>

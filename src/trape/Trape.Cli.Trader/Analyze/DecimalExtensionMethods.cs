@@ -1,4 +1,4 @@
-﻿namespace trape.cli.trader.Analyze
+﻿namespace Trape.Cli.trader.Analyze
 {
     /// <summary>
     /// Class for decimal extension methods

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace trape.jobs
+namespace Trape.Jobs
 {
     /// <summary>
     /// Job Manager
@@ -24,7 +24,7 @@ namespace trape.jobs
         /// </summary>
         public JobManager()
         {
-            _schedulers = new List<JobScheduler>();
+            this._schedulers = new List<JobScheduler>();
         }
 
         #endregion
@@ -44,7 +44,7 @@ namespace trape.jobs
             #endregion
 
             var scheduler = new JobScheduler(job);
-            _schedulers.Add(scheduler);
+            this._schedulers.Add(scheduler);
             scheduler.Start();
         }
 
@@ -54,7 +54,7 @@ namespace trape.jobs
         public void StartAll()
         {
             // Start all jobs
-            foreach (var job in _schedulers)
+            foreach (var job in this._schedulers)
             {
                 job.Start();
             }
@@ -66,7 +66,7 @@ namespace trape.jobs
         public void StopAll()
         {
             // Start all jobs
-            foreach (var job in _schedulers)
+            foreach (var job in this._schedulers)
             {
                 job.Stop();
             }
@@ -78,13 +78,13 @@ namespace trape.jobs
         public void TerminateAll()
         {
             // Terminate all jobs
-            foreach (var job in _schedulers)
+            foreach (var job in this._schedulers)
             {
                 job.Stop();
                 job.Terminate();
             }
 
-            _schedulers.Clear();
+            this._schedulers.Clear();
         }
 
         #endregion

@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace trape.datalayer
+namespace Trape.Datalayer
 {
     public interface ITrapeContextCreator
     {

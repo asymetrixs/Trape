@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace trape.jobs
+namespace Trape.Jobs
 {
     /// <summary>
     /// Wrapper for a job
@@ -77,22 +77,22 @@ namespace trape.jobs
         {
             #region Argument checks
 
-            _action = action ?? throw new ArgumentNullException(paramName: nameof(action));
+            this._action = action ?? throw new ArgumentNullException(paramName: nameof(action));
 
             #endregion
 
-            _disposed = false;
-            ExecutionInterval = executionInterval;
-            _cancellationToken = cancellationToken;
-            _synchronizer = new SemaphoreSlim(1, 1);
-            _running = new SemaphoreSlim(1, 1);
+            this._disposed = false;
+            this.ExecutionInterval = executionInterval;
+            this._cancellationToken = cancellationToken;
+            this._synchronizer = new SemaphoreSlim(1, 1);
+            this._running = new SemaphoreSlim(1, 1);
 
-            _timer = new System.Timers.Timer()
+            this._timer = new System.Timers.Timer()
             {
                 AutoReset = true,
                 Interval = executionInterval.TotalMilliseconds
             };
-            _timer.Elapsed += Timer_Elapsed;
+            this._timer.Elapsed += Timer_Elapsed;
         }
 
         #endregion
@@ -126,17 +126,17 @@ namespace trape.jobs
         /// <param name="e"></param>
         private void Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            if (_synchronizer.CurrentCount == 0)
+            if (this._synchronizer.CurrentCount == 0)
             {
                 return;
             }
-            _synchronizer.WaitAsync();
+            this._synchronizer.WaitAsync();
 
             try
             {
-                _cancellationToken.ThrowIfCancellationRequested();
+                this._cancellationToken.ThrowIfCancellationRequested();
 
-                _action.Invoke();
+                this._action.Invoke();
             }
             catch
             {
@@ -144,7 +144,7 @@ namespace trape.jobs
             }
             finally
             {
-                _synchronizer.Release();
+                this._synchronizer.Release();
             }
         }
 
@@ -154,17 +154,17 @@ namespace trape.jobs
         public void Start()
         {
             // Start timer
-            _timer.Start();
+            this._timer.Start();
 
             // Enter running state
-            _running.Wait();
+            this._running.Wait();
         }
 
         /// <summary>
         /// Returns whether the timer is running or not
         /// </summary>
         /// <returns></returns>
-        public bool IsRunning() => _timer.Enabled;
+        public bool IsRunning() => this._timer.Enabled;
 
         /// <summary>
         /// Stop job
@@ -172,13 +172,13 @@ namespace trape.jobs
         public void Terminate()
         {
             // Block synchronizer
-            _synchronizer.Wait();
+            this._synchronizer.Wait();
 
             // Stop timer
-            _timer.Stop();
+            this._timer.Stop();
 
             // Release
-            _running.Release();
+            this._running.Release();
         }
 
         /// <summary>
@@ -188,7 +188,7 @@ namespace trape.jobs
         public Task WaitFor(CancellationToken stoppingToken)
         {
             // Wait for next time to enter, happens when task terminates
-            return _running.WaitAsync(stoppingToken);
+            return this._running.WaitAsync(stoppingToken);
         }
 
         #endregion
@@ -210,17 +210,17 @@ namespace trape.jobs
         /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
-            if (_disposed)
+            if (this._disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                _timer.Dispose();
+                this._timer.Dispose();
             }
 
-            _disposed = true;
+            this._disposed = true;
         }
 
         #endregion

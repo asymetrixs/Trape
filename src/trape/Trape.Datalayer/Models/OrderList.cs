@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using trape.datalayer.Enums;
+using Trape.Datalayer.Enums;
 
-namespace trape.datalayer.Models
+namespace Trape.Datalayer.Models
 {
     public class OrderList : AbstractKey
     {

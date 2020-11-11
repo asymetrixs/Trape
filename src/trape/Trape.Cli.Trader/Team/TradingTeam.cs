@@ -6,13 +6,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using trape.cli.trader.Analyze;
-using trape.cli.trader.Cache;
-using trape.cli.trader.Trading;
-using trape.datalayer;
-using trape.jobs;
+using Trape.Cli.trader.Analyze;
+using Trape.Cli.trader.Cache;
+using Trape.Cli.trader.Trading;
+using Trape.Datalayer;
+using Trape.Jobs;
 
-namespace trape.cli.trader.Team
+namespace Trape.Cli.trader.Team
 {
     /// <summary>
     /// Starts, stops, and manages the <c>Brokers</c>

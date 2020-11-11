@@ -1,4 +1,4 @@
-﻿namespace trape.cli.trader.Fees
+﻿namespace Trape.Cli.trader.Fees
 {
     /// <summary>
     /// Interface for <c>FeeWatchdog</c>

@@ -1,8 +1,8 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
-using trape.datalayer.Models;
+using Trape.Datalayer.Models;
 
-namespace trape.cli.trader.Market
+namespace Trape.Cli.trader.Market
 {
     /// <summary>
     /// Interface for <c>StockExchange</c>

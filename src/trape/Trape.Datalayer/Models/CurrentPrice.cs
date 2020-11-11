@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace trape.datalayer.Models
+namespace Trape.Datalayer.Models
 {
     /// <summary>
     /// This class represents the latest price for 24 hours

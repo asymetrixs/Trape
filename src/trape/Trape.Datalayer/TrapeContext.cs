@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using Npgsql.NameTranslation;
 using System;
@@ -7,9 +6,9 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.datalayer.Models;
+using Trape.Datalayer.Models;
 
-namespace trape.datalayer
+namespace Trape.Datalayer
 {
     /// <summary>
     /// Trape database context

@@ -13,12 +13,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.cli.trader.Cache.Models;
-using trape.datalayer;
-using trape.datalayer.Models;
-using trape.jobs;
+using Trape.Cli.trader.Cache.Models;
+using Trape.Datalayer;
+using Trape.Datalayer.Models;
+using Trape.Jobs;
 
-namespace trape.cli.trader.Cache
+namespace Trape.Cli.trader.Cache
 {
     /// <summary>
     /// This class is an implementation of <c>IBuffer</c>
@@ -560,7 +560,7 @@ namespace trape.cli.trader.Cache
         {
             if (!_recommendations.ContainsKey(symbol))
             {
-                return new Recommendation() { Action = datalayer.Enums.Action.Hold };
+                return new Recommendation() { Action = Datalayer.Enums.Action.Hold };
             }
 
             return _recommendations[symbol];

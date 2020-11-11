@@ -6,17 +6,17 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.cli.trader.Account;
-using trape.cli.trader.Analyze.Models;
-using trape.cli.trader.Cache;
-using trape.cli.trader.Team;
-using trape.datalayer;
-using trape.datalayer.Models;
-using trape.jobs;
-using Action = trape.datalayer.Enums.Action;
-using OrderSide = trape.datalayer.Enums.OrderSide;
+using Trape.Cli.trader.Account;
+using Trape.Cli.trader.Analyze.Models;
+using Trape.Cli.trader.Cache;
+using Trape.Cli.trader.Team;
+using Trape.Datalayer;
+using Trape.Datalayer.Models;
+using Trape.Jobs;
+using Action = Trape.Datalayer.Enums.Action;
+using OrderSide = Trape.Datalayer.Enums.OrderSide;
 
-namespace trape.cli.trader.Analyze
+namespace Trape.Cli.trader.Analyze
 {
     /// <summary>
     /// This class represents an analyst. It's task is to make recommendations on
@@ -528,7 +528,7 @@ namespace trape.cli.trader.Analyze
             {
                 _logTrendLimiter = DateTime.UtcNow.Second;
 
-                var reco = recommendation.Action == datalayer.Enums.Action.Buy ? "Buy :" : recommendation.Action.ToString();
+                var reco = recommendation.Action == Datalayer.Enums.Action.Buy ? "Buy :" : recommendation.Action.ToString();
 
                 _logger.Verbose($"{recommendation.Symbol}: {reco} | S1h: {stat10m.Slope1h:0.0000} | S2h: {stat10m.Slope2h:0.0000} | MA1h: {stat10m.MovingAverage1h:0.0000} | MA2h: {stat10m.MovingAverage2h:0.0000} | MA6h: {stat2Hours.MovingAverage6h:0.0000}");
             }

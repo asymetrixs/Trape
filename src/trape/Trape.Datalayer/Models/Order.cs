@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace trape.datalayer.Models
+namespace Trape.Datalayer.Models
 {
     public class Order : AbstractKey
     {

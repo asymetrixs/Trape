@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
 
-namespace trape.cli.collector
+namespace Trape.Cli.collector
 {
     /// <summary>
     /// This class holds the configuration

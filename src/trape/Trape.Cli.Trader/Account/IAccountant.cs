@@ -2,7 +2,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace trape.cli.trader.Account
+namespace Trape.Cli.trader.Account
 {
     public interface IAccountant : IDisposable
     {

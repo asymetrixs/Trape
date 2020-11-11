@@ -1,17 +1,17 @@
 ﻿using Serilog;
 using System;
 using System.Threading;
-using trape.cli.trader.Account;
-using trape.cli.trader.Cache;
-using trape.cli.trader.Market;
-using trape.datalayer.Models;
-using trape.jobs;
-using OrderResponseType = trape.datalayer.Enums.OrderResponseType;
-using OrderSide = trape.datalayer.Enums.OrderSide;
-using OrderType = trape.datalayer.Enums.OrderType;
-using TimeInForce = trape.datalayer.Enums.TimeInForce;
+using Trape.Cli.trader.Account;
+using Trape.Cli.trader.Cache;
+using Trape.Cli.trader.Market;
+using Trape.Datalayer.Models;
+using Trape.Jobs;
+using OrderResponseType = Trape.Datalayer.Enums.OrderResponseType;
+using OrderSide = Trape.Datalayer.Enums.OrderSide;
+using OrderType = Trape.Datalayer.Enums.OrderType;
+using TimeInForce = Trape.Datalayer.Enums.TimeInForce;
 
-namespace trape.cli.trader.Fees
+namespace Trape.Cli.trader.Fees
 {
     /// <summary>
     /// Watchdog to always have sufficient BNBs available to pay fees

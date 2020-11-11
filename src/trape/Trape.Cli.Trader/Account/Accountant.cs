@@ -10,13 +10,13 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.cli.trader.Cache;
-using trape.datalayer;
-using trape.datalayer.Models;
-using trape.jobs;
-using trape.mapper;
+using Trape.Cli.trader.Cache;
+using Trape.Datalayer;
+using Trape.Datalayer.Models;
+using Trape.Jobs;
+using Trape.Mapper;
 
-namespace trape.cli.trader.Account
+namespace Trape.Cli.trader.Account
 {
     /// <summary>
     /// Implementation of <c>IAccountant</c> managing the binance inventory
@@ -285,8 +285,8 @@ namespace trape.cli.trader.Account
                         {
                             ContingencyType = string.Empty,
                             ListClientOrderId = orderUpdate.ClientOrderId,
-                            ListStatusType = datalayer.Enums.ListStatusType.ExecutionStarted,
-                            ListOrderStatus = datalayer.Enums.ListOrderStatus.Executing,
+                            ListStatusType = Datalayer.Enums.ListStatusType.ExecutionStarted,
+                            ListOrderStatus = Datalayer.Enums.ListOrderStatus.Executing,
                             Symbol = orderUpdate.Symbol,
                             TransactionTime = DateTime.UtcNow
                         };
@@ -338,7 +338,7 @@ namespace trape.cli.trader.Account
                     {
                         // Get trades where assets were bought
                         var buyTrades = database.PlacedOrders
-                                        .Where(p => p.Side == datalayer.Enums.OrderSide.Buy
+                                        .Where(p => p.Side == Datalayer.Enums.OrderSide.Buy
                                             && p.Symbol == binanceStreamOrderUpdate.Symbol)
                                         .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity
                                                                     && f.Price <= binanceStreamOrderUpdate.Price))
@@ -377,7 +377,7 @@ namespace trape.cli.trader.Account
                         {
                             // Get trades where assets were bought
                             var overPriceBuyTrades = database.PlacedOrders
-                                            .Where(p => p.Side == datalayer.Enums.OrderSide.Buy
+                                            .Where(p => p.Side == Datalayer.Enums.OrderSide.Buy
                                                 && p.Symbol == binanceStreamOrderUpdate.Symbol)
                                             .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity
                                                                         && f.Price > binanceStreamOrderUpdate.Price))

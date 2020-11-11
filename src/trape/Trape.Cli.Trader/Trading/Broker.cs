@@ -8,22 +8,22 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.cli.trader.Account;
-using trape.cli.trader.Analyze;
-using trape.cli.trader.Cache;
-using trape.cli.trader.Market;
-using trape.cli.trader.Team;
-using trape.datalayer;
-using trape.datalayer.Models;
-using trape.jobs;
-using Action = trape.datalayer.Enums.Action;
-using OrderResponseType = trape.datalayer.Enums.OrderResponseType;
-using OrderSide = trape.datalayer.Enums.OrderSide;
-using OrderType = trape.datalayer.Enums.OrderType;
-using TimeInForce = trape.datalayer.Enums.TimeInForce;
+using Trape.Cli.trader.Account;
+using Trape.Cli.trader.Analyze;
+using Trape.Cli.trader.Cache;
+using Trape.Cli.trader.Market;
+using Trape.Cli.trader.Team;
+using Trape.Datalayer;
+using Trape.Datalayer.Models;
+using Trape.Jobs;
+using Action = Trape.Datalayer.Enums.Action;
+using OrderResponseType = Trape.Datalayer.Enums.OrderResponseType;
+using OrderSide = Trape.Datalayer.Enums.OrderSide;
+using OrderType = Trape.Datalayer.Enums.OrderType;
+using TimeInForce = Trape.Datalayer.Enums.TimeInForce;
 
 
-namespace trape.cli.trader.Trading
+namespace Trape.Cli.trader.Trading
 {
     /// <summary>
     /// Does the actual trading taking into account the <c>Recommendation</c> of the <c>Analyst</c> and previous trades
@@ -171,7 +171,7 @@ namespace trape.cli.trader.Trading
                 _logger.Verbose($"{Symbol}: No recommendation available.");
                 return;
             }
-            else if (recommendation.Action == datalayer.Enums.Action.Hold)
+            else if (recommendation.Action == Datalayer.Enums.Action.Hold)
             {
                 _logger.Verbose($"{Symbol}: Recommendation is hold.");
                 return;
@@ -458,7 +458,7 @@ namespace trape.cli.trader.Trading
             {
                 _logger.Debug($"{Symbol} nothing free");
 
-                if (recommendation.Action == datalayer.Enums.Action.PanicSell)
+                if (recommendation.Action == Datalayer.Enums.Action.PanicSell)
                 {
                     _logger.Warning($"{Symbol}: PANICKING - but no asset free to sell");
                 }

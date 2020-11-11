@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Serilog;
 
-namespace trape.datalayer
+namespace Trape.Datalayer
 {
     public class TrapeContextDiCreator : ITrapeContextCreator
     {

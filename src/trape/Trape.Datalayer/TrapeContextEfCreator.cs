@@ -1,9 +1,9 @@
-﻿namespace trape.datalayer
-{
-    using Microsoft.EntityFrameworkCore;
-    using Microsoft.EntityFrameworkCore.Design;
-    using Microsoft.Extensions.Configuration;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.Extensions.Configuration;
 
+namespace Trape.Datalayer
+{
     public class TrapeContextEfCreator : ITrapeContextCreator, IDesignTimeDbContextFactory<TrapeContext>
     {
         private readonly IConfigurationRoot _configuartion;

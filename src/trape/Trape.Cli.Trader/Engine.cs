@@ -3,12 +3,12 @@ using Serilog;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.cli.trader.Account;
-using trape.cli.trader.Cache;
-using trape.cli.trader.Fees;
-using trape.cli.trader.Team;
+using Trape.Cli.trader.Account;
+using Trape.Cli.trader.Cache;
+using Trape.Cli.trader.Fees;
+using Trape.Cli.trader.Team;
 
-namespace trape.cli.trader
+namespace Trape.Cli.trader
 {
     /// <summary>
     /// The Engine manages proper startup and shutdown of required services

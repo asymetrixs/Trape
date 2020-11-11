@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace trape.cli.trader.Team
+namespace Trape.Cli.trader.Team
 {
     /// <summary>
     /// Interface for start/stopable classes.

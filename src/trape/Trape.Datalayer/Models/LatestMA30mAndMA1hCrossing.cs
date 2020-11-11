@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace trape.datalayer.Models
+namespace Trape.Datalayer.Models
 {
     /// <summary>
     /// Has information when slope10m and slope30m last crossed

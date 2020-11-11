@@ -4,10 +4,10 @@ using SimpleInjector.Lifestyles;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using trape.datalayer;
-using trape.jobs;
+using Trape.Datalayer;
+using Trape.Jobs;
 
-namespace trape.cli.collector
+namespace Trape.Cli.collector
 {
     [Job(0, 5, 0)]
     class CleanUp : IJob

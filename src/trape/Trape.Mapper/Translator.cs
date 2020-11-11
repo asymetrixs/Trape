@@ -4,9 +4,9 @@ using Binance.Net.Objects.Spot.SpotData;
 using Binance.Net.Objects.Spot.UserStream;
 using System;
 using System.Collections.Generic;
-using trape.datalayer.Models;
+using Trape.Datalayer.Models;
 
-namespace trape.mapper
+namespace Trape.Mapper
 {
     /// <summary>
     /// Translates Binance.Net objects into Trape objects
@@ -34,12 +34,12 @@ namespace trape.mapper
                 QuantityFilled = binancePlacedOrder.QuantityFilled,
                 QuoteQuantity = binancePlacedOrder.QuoteQuantity,
                 QuoteQuantityFilled = binancePlacedOrder.QuoteQuantityFilled,
-                Side = (datalayer.Enums.OrderSide)(int)binancePlacedOrder.Side,
-                Status = (datalayer.Enums.OrderStatus)(int)binancePlacedOrder.Status,
+                Side = (Datalayer.Enums.OrderSide)(int)binancePlacedOrder.Side,
+                Status = (Datalayer.Enums.OrderStatus)(int)binancePlacedOrder.Status,
                 StopPrice = binancePlacedOrder.StopPrice,
                 Symbol = binancePlacedOrder.Symbol,
-                TimeInForce = (datalayer.Enums.TimeInForce)(int)binancePlacedOrder.TimeInForce,
-                Type = (datalayer.Enums.OrderType)(int)binancePlacedOrder.Type
+                TimeInForce = (Datalayer.Enums.TimeInForce)(int)binancePlacedOrder.TimeInForce,
+                Type = (Datalayer.Enums.OrderType)(int)binancePlacedOrder.Type
             };
 
             foreach (var fill in binancePlacedOrder.Fills)
@@ -101,8 +101,8 @@ namespace trape.mapper
             {
                 ContingencyType = binanceStreamOrderList.ContingencyType,
                 ListClientOrderId = binanceStreamOrderList.ListClientOrderId,
-                ListOrderStatus = (datalayer.Enums.ListOrderStatus)(int)binanceStreamOrderList.ListOrderStatus,
-                ListStatusType = (datalayer.Enums.ListStatusType)(int)binanceStreamOrderList.ListStatusType,
+                ListOrderStatus = (Datalayer.Enums.ListOrderStatus)(int)binanceStreamOrderList.ListOrderStatus,
+                ListStatusType = (Datalayer.Enums.ListStatusType)(int)binanceStreamOrderList.ListStatusType,
                 OrderListId = binanceStreamOrderList.OrderListId,
                 Symbol = binanceStreamOrderList.Symbol,
                 TransactionTime = binanceStreamOrderList.TransactionTime
@@ -186,7 +186,7 @@ namespace trape.mapper
                 Commission = binanceStreamOrderUpdate.Commission,
                 CommissionAsset = binanceStreamOrderUpdate.CommissionAsset,
                 CreateTime = binanceStreamOrderUpdate.CreateTime,
-                ExecutionType = (datalayer.Enums.ExecutionType)(int)binanceStreamOrderUpdate.ExecutionType,
+                ExecutionType = (Datalayer.Enums.ExecutionType)(int)binanceStreamOrderUpdate.ExecutionType,
                 I = binanceStreamOrderUpdate.I,
                 IcebergQuantity = binanceStreamOrderUpdate.IcebergQuantity,
                 IsWorking = binanceStreamOrderUpdate.IsWorking,
@@ -201,14 +201,14 @@ namespace trape.mapper
                 QuantityFilled = binanceStreamOrderUpdate.QuantityFilled,
                 QuoteQuantity = binanceStreamOrderUpdate.QuoteQuantity,
                 QuoteQuantityFilled = binanceStreamOrderUpdate.QuoteQuantityFilled,
-                RejectReason = (datalayer.Enums.OrderRejectReason)(int)binanceStreamOrderUpdate.RejectReason,
-                Side = (datalayer.Enums.OrderSide)(int)binanceStreamOrderUpdate.Side,
-                Status = (datalayer.Enums.OrderStatus)(int)binanceStreamOrderUpdate.Status,
+                RejectReason = (Datalayer.Enums.OrderRejectReason)(int)binanceStreamOrderUpdate.RejectReason,
+                Side = (Datalayer.Enums.OrderSide)(int)binanceStreamOrderUpdate.Side,
+                Status = (Datalayer.Enums.OrderStatus)(int)binanceStreamOrderUpdate.Status,
                 StopPrice = binanceStreamOrderUpdate.StopPrice,
                 Symbol = binanceStreamOrderUpdate.Symbol,
-                TimeInForce = (datalayer.Enums.TimeInForce)(int)binanceStreamOrderUpdate.TimeInForce,
+                TimeInForce = (Datalayer.Enums.TimeInForce)(int)binanceStreamOrderUpdate.TimeInForce,
                 TradeId = binanceStreamOrderUpdate.TradeId,
-                Type = (datalayer.Enums.OrderType)(int)binanceStreamOrderUpdate.Type,
+                Type = (Datalayer.Enums.OrderType)(int)binanceStreamOrderUpdate.Type,
                 UpdateTime = binanceStreamOrderUpdate.UpdateTime
             };
         }
@@ -261,7 +261,7 @@ namespace trape.mapper
                 Final = binanceStreamKlineData.Data.Final,
                 FirstTradeId = binanceStreamKlineData.Data.FirstTrade,
                 High = binanceStreamKlineData.Data.High,
-                Interval = (datalayer.Enums.KlineInterval)((int)binanceStreamKlineData.Data.Interval),
+                Interval = (Datalayer.Enums.KlineInterval)((int)binanceStreamKlineData.Data.Interval),
                 LastTradeId = binanceStreamKlineData.Data.LastTrade,
                 Low = binanceStreamKlineData.Data.Low,
                 Open = binanceStreamKlineData.Data.Open,

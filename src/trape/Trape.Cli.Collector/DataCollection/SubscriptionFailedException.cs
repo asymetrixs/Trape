@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace trape.cli.collector.DataCollection
+namespace Trape.Cli.collector.DataCollection
 {
     /// <summary>
     /// Is used in case of Binance Client cannot subscribe to symbols

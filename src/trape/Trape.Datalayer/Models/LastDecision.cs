@@ -1,8 +1,8 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations.Schema;
-using Action = trape.datalayer.Enums.Action;
+using Action = Trape.Datalayer.Enums.Action;
 
-namespace trape.datalayer.Models
+namespace Trape.Datalayer.Models
 {
     /// <summary>
     /// Holds information about when a decision was taken for the last time

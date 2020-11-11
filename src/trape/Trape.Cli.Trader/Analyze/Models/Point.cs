@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 
-namespace trape.cli.trader.Analyze.Models
+namespace Trape.Cli.trader.Analyze.Models
 {
     /// <summary>
     /// This class implements functionality for <c>Point</c>s.

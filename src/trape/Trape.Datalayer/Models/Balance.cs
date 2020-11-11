@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace trape.datalayer.Models
+namespace Trape.Datalayer.Models
 {
     public class Balance : AbstractKey
     {

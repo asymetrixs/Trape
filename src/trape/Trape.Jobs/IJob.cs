@@ -1,7 +1,7 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 
-namespace trape.jobs
+namespace Trape.Jobs
 {
     public interface IJob
     {

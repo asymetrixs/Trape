@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading;
 
-namespace trape.jobs
+namespace Trape.Jobs
 {
     /// <summary>
     /// Executes jobs regularly.

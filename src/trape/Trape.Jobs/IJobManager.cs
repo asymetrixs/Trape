@@ -1,4 +1,4 @@
-﻿namespace trape.jobs
+﻿namespace Trape.Jobs
 {
     public interface IJobManager
     {

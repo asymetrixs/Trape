@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 
-namespace trape.datalayer.Models
+namespace Trape.Datalayer.Models
 {
     /// <summary>
     /// Class for stats of based on 10 minute refresh

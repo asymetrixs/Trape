@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace trape.jobs
+namespace Trape.Jobs
 {
     [AttributeUsage(AttributeTargets.Class)]
     public sealed class JobAttribute : Attribute
@@ -24,7 +24,7 @@ namespace trape.jobs
         /// <param name="seconds">Seconds</param>
         public JobAttribute(int hours, int minutes, int seconds)
         {
-            Interval = new TimeSpan(hours, minutes, seconds);
+            this.Interval = new TimeSpan(hours, minutes, seconds);
         }
 
         #endregion
