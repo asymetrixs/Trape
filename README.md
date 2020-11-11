@@ -1,6 +1,7 @@
 # Trape - Trading Ape
 
 This is just a fun project to develop a trading bot that connects to Binance (https://binance.com) and trades asset using USDT.
+It was developed with mainly BTC/USDT in mind. So other assets/USDT (especially with a different value (lower or higher than around 13000 USDT per token might cause unexpected behavior, focus was on BTC))
 
 # How does it work?
 Trape has two main projects, Trape.Collector and Trape.Trader.
@@ -22,6 +23,40 @@ I started with a web frontend but haven't but any more effort into it due to tim
 - Simpleinjector
 - TimescaleDB (in PostgreSQL)
 
-# Build
+## Build
 Build Scripts to build on Windows and Linux (with .deb packaging) are also provided.
 On Linux, the resulting RPM also contains systemd configuration to run Trape as a service.
+
+## Installation
+1. Install both generated .deb package on Ubuntu.
+1. Copy /opt/trape/*/settings.template.json to settings.json and modify content
+1. Install TimescaleDB in PostgreSQL https://docs.timescale.com/latest/getting-started/installation
+1. Run `dotnet ef database update --project ./Trape.Datalayer/ --startup-project ./Trape.Cli.Collector/`
+1. Modify tables to support TimescaleDB
+```
+ALTER TABLE recommendations DROP CONSTRAINT ""PK_recommendations"";
+ALTER TABLE recommendations RENAME TO recommandations_old;
+CREATE TABLE recommendations(LIKE recommandations_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+SELECT * FROM create_hypertable('recommendations', 'created_on');
+DROP TABLE recommandations_old;
+
+ALTER TABLE klines DROP CONSTRAINT ""PK_klines"";
+ALTER TABLE klines RENAME TO klines_old;
+CREATE TABLE klines(LIKE klines_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+SELECT * FROM create_hypertable('klines', 'open_time');
+DROP TABLE klines_old;
+
+ALTER TABLE ticks DROP CONSTRAINT ""PK_ticks"";
+ALTER TABLE ticks RENAME TO ticks_old;
+CREATE TABLE ticks(LIKE ticks_old INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+--3h chunks
+SELECT * FROM create_hypertable('ticks', 'open_time', chunk_time_interval => interval '3 hours');
+DROP TABLE ticks_old;
+```
+
+Finally, add assets. Only asset/USDT will work at the moment. Also, I am not sure how it behaves with USDT asset values other than around 13000 USDT per token.
+```
+INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('BTCUSDT', true, false);
+INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('ETHUSDT', false, false);
+INSERT INTO symbols(name, is_collection_active, is_trading_active) VALUES('LINKUSDT', false, false);
+```
