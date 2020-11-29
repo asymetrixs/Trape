@@ -12,7 +12,7 @@ The Trader uses historical information from the database and also live informati
 It looks at 5-15 minute intervals.
 
 ## Web Frontend
-I started with a web frontend but haven't but any more effort into it due to time constraints.
+I started with a web frontend but haven't put any more effort into it due to time constraints.
 
 ## Technologies
 - .NET Core 3.1
