@@ -22,7 +22,6 @@ using OrderSide = Trape.Datalayer.Enums.OrderSide;
 using OrderType = Trape.Datalayer.Enums.OrderType;
 using TimeInForce = Trape.Datalayer.Enums.TimeInForce;
 
-
 namespace Trape.Cli.trader.Trading
 {
     /// <summary>
@@ -139,7 +138,7 @@ namespace Trape.Cli.trader.Trading
             _lastJumpBuy = default;
 
             // Set up timer
-            _jobTrading = new Job(new TimeSpan(0, 0, 0, 0, 250), _trading);
+            _jobTrading = new Job(new TimeSpan(0, 0, 0, 0, 250), Trading);
         }
 
         #endregion
@@ -151,7 +150,7 @@ namespace Trape.Cli.trader.Trading
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _trading()
+        private async void Trading()
         {
             LastActive = DateTime.UtcNow;
 
@@ -166,7 +165,7 @@ namespace Trape.Cli.trader.Trading
 
             // Get recommendation
             var recommendation = _buffer.GetRecommendation(Symbol);
-            if (null == recommendation)
+            if (recommendation == null)
             {
                 _logger.Verbose($"{Symbol}: No recommendation available.");
                 return;
@@ -221,14 +220,7 @@ namespace Trape.Cli.trader.Trading
                 }
 
                 // Log recommended action, use for strong recommendations
-                if (_lastRecommendation.ContainsKey(recommendation.Action))
-                {
-                    _lastRecommendation[recommendation.Action] = DateTime.UtcNow;
-                }
-                else
-                {
-                    _lastRecommendation.Add(recommendation.Action, DateTime.UtcNow);
-                }
+                _lastRecommendation[recommendation.Action] = DateTime.UtcNow;
             }
             // Catch All Exception
             catch (Exception cae)
@@ -251,7 +243,6 @@ namespace Trape.Cli.trader.Trading
         /// </summary>
         /// <param name="recommendation">Recommendation</param>
         /// <param name="symbolInfo">Symbol information</param>
-        /// 
         /// <returns>Placed order or null if none placed</returns>
         public async Task Buy(Recommendation recommendation, BinanceSymbol symbolInfo)
         {
@@ -267,7 +258,7 @@ namespace Trape.Cli.trader.Trading
 
             // Get remaining USDT balance for trading
             var usdt = await _accountant.GetBalance("USDT").ConfigureAwait(false);
-            if (null == usdt)
+            if (usdt == null)
             {
                 // Something is oddly wrong, wait a bit
                 _logger.Debug("Cannot retrieve account info");
@@ -336,7 +327,7 @@ namespace Trape.Cli.trader.Trading
             // Logging
             _logger.Debug($"{Symbol} Buy: {recommendation.Action} Bidding:{bestBidPrice:0.00};Quantity:{quantity}");
             _logger.Verbose($"{Symbol} Buy: Checking conditions");
-            _logger.Verbose($"{Symbol} Buy: {null == lastOrder} lastOrder is null");
+            _logger.Verbose($"{Symbol} Buy: {lastOrder == null} lastOrder is null");
             _logger.Verbose($"{Symbol} Buy: {lastOrder?.Side.ToString()} lastOrder side");
             _logger.Verbose($"{Symbol} Buy: {lastOrder?.Price * requiredPriceDropforRebuy > bestBidPrice} lastOrder Price: {lastOrder?.Price} * {requiredPriceDropforRebuy} > {bestBidPrice}");
             _logger.Verbose($"{Symbol} Buy: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
@@ -345,7 +336,6 @@ namespace Trape.Cli.trader.Trading
             _logger.Verbose($"{Symbol} Buy: {quantity * bestBidPrice >= symbolInfo.MinNotionalFilter.MinNotional} Value {quantity * bestBidPrice} > 0: {quantity * bestBidPrice > 0} and higher than minNotional {symbolInfo.MinNotionalFilter.MinNotional}");
             _logger.Verbose($"{Symbol} Buy: {symbolInfo.PriceFilter.MaxPrice >= bestBidPrice && bestBidPrice >= symbolInfo.PriceFilter.MinPrice} MaxPrice {symbolInfo.PriceFilter.MaxPrice} >= Amount {bestBidPrice} >= MinPrice {symbolInfo.PriceFilter.MinPrice}");
             _logger.Verbose($"{Symbol} Buy: {symbolInfo.LotSizeFilter.MaxQuantity >= quantity && quantity >= symbolInfo.LotSizeFilter.MinQuantity} MaxLOT {symbolInfo.LotSizeFilter.MaxQuantity} > Amount {quantity} > MinLOT {symbolInfo.LotSizeFilter.MinQuantity}");
-
 
             // For increased readability            
             var isLastOrderNull = lastOrder == null;
@@ -375,7 +365,6 @@ namespace Trape.Cli.trader.Trading
                 _lastJumpBuy = DateTime.Now;
             }
 
-
             var isLogicValid = quantity * bestBidPrice >= symbolInfo.MinNotionalFilter.MinNotional
                                 && bestBidPrice > 0;
 
@@ -384,7 +373,6 @@ namespace Trape.Cli.trader.Trading
 
             var isLOTSizeValid = quantity >= symbolInfo.LotSizeFilter.MinQuantity
                                     && quantity <= symbolInfo.LotSizeFilter.MaxQuantity;
-
 
             _logger.Verbose($"{Symbol} Buy: {isLastOrderNull} isLastOrderNull");
             _logger.Verbose($"{Symbol} Buy: {isLastOrderSell} isLastOrderSell");
@@ -395,7 +383,6 @@ namespace Trape.Cli.trader.Trading
             _logger.Verbose($"{Symbol} Buy: {isJumpBuy} isJumpBuy");
             _logger.Verbose($"{Symbol} Buy: {isPriceRangeValid} isPriceRangeValid");
             _logger.Verbose($"{Symbol} Buy: {isLOTSizeValid} isLOTSizeValid");
-
 
             // Check conditions for buy
             if (
@@ -532,11 +519,10 @@ namespace Trape.Cli.trader.Trading
                             return;
                         }
 
-
                         // Logging
                         _logger.Debug($"{Symbol} Sell: {recommendation.Action};Asking:{bestAskPrice:0.00};Free:{assetBalance?.Free:0.00######};Quantity:{quantity:0.00######};LockedOpenOrderAmount:{lockedOpenOrderQuantity:0.00}");
                         _logger.Verbose($"{Symbol} Sell: Checking conditions");
-                        _logger.Verbose($"{Symbol} Sell: {null == lastOrder} lastOrder is null");
+                        _logger.Verbose($"{Symbol} Sell:  lastOrder is null");
                         _logger.Verbose($"{Symbol} Sell: {lastOrder?.Side.ToString()} lastOrder side");
                         _logger.Verbose($"{Symbol} Sell: {lastOrder?.Price * requiredPriceGainForResell < bestAskPrice} lastOrder Price: {lastOrder?.Price} * {requiredPriceGainForResell} < {bestAskPrice}");
                         _logger.Verbose($"{Symbol} Sell: {lastOrder?.TransactionTime.AddMinutes(15) < DateTime.UtcNow} Transaction Time: {lastOrder?.TransactionTime} + 15 minutes ({lastOrder?.TransactionTime.AddMinutes(5)}) < {DateTime.UtcNow}");
@@ -595,7 +581,6 @@ namespace Trape.Cli.trader.Trading
 
                         // Last check that amount is available
                         var isAmountAvailable = assetBalance.Free >= quantity;
-
 
                         _logger.Verbose($"{Symbol} Sell: {isLastOrderNull} isLastOrderNull");
                         _logger.Verbose($"{Symbol} Sell: {isLastOrderBuy} isLastOrderBuy");

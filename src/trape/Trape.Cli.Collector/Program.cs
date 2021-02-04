@@ -34,7 +34,7 @@ namespace Trape.Cli.collector
         /// </summary>
         /// <param name="args"></param>
         /// <returns></returns>
-        public static async Task Main(string[] args)
+        public static async Task Main()
         {
             // Setup configuration
             Config.SetUp();

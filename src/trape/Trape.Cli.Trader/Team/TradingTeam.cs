@@ -74,7 +74,7 @@ namespace Trape.Cli.trader.Team
             _team = new List<IStartable>();
 
             // Timer
-            _jobMemberCheck = new Job(new TimeSpan(0, 0, 5), _memberCheck);
+            _jobMemberCheck = new Job(new TimeSpan(0, 0, 5), MemberCheck);
         }
 
         #endregion
@@ -86,7 +86,7 @@ namespace Trape.Cli.trader.Team
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void _memberCheck()
+        private async void MemberCheck()
         {
             LastActive = DateTime.UtcNow;
 
@@ -108,14 +108,14 @@ namespace Trape.Cli.trader.Team
             }
 
             // Check if any
-            if (!availableSymbols.Any())
+            if (availableSymbols.Count == 0)
             {
                 _logger.Warning("No symbols active for trading, aborting...");
                 return;
             }
             else
             {
-                _logger.Debug($"Found {availableSymbols.Count()} symbols to trade");
+                _logger.Debug($"Found {availableSymbols.Count} symbols to trade");
             }
 
             // Get obsolete symbols
@@ -129,7 +129,7 @@ namespace Trape.Cli.trader.Team
 
                 // Terminate all
                 var obsoleteMember = _team.Where(t => t.Symbol == obsoleteSymbol.Symbol).ToArray();
-                for (int i = 0; i < obsoleteMember.Count(); i++)
+                for (int i = 0; i < obsoleteMember.Length; i++)
                 {
                     await obsoleteMember[i].Terminate().ConfigureAwait(true);
                     _team.Remove(obsoleteMember[i]);
@@ -158,10 +158,9 @@ namespace Trape.Cli.trader.Team
                 _logger.Information($"{missingSymbol}: Adding Analyst to the trading team.");
                 _team.Add(analyst);
                 analyst.Start(missingSymbol);
-
             }
 
-            _logger.Verbose($"Trading Team checked: {_team.Count()} Member online");
+            _logger.Verbose($"Trading Team checked: {_team.Count} Member online");
         }
 
         #endregion
@@ -176,7 +175,7 @@ namespace Trape.Cli.trader.Team
             _logger.Debug("Starting trading team");
 
             // Call once manually to set up the traders
-            _memberCheck();
+            MemberCheck();
 
             // Start timer for regular checks
             _jobMemberCheck.Start();
