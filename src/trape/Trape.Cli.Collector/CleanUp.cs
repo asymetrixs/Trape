@@ -10,7 +10,7 @@ using Trape.Jobs;
 namespace Trape.Cli.collector
 {
     [Job(0, 5, 0)]
-    class CleanUp : IJob
+    public class CleanUp : IJob
     {
         /// <summary>
         /// Runs a database clean up job that clean book tick records from the binance_book_tick table

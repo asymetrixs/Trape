@@ -18,7 +18,7 @@ using Trape.Jobs;
 
 namespace Trape.Cli.collector
 {
-    class Program
+    public class Program
     {
         #region Properties
 
@@ -34,7 +34,7 @@ namespace Trape.Cli.collector
         /// </summary>
         /// <param name="args"></param>
         /// <returns></returns>
-        static async Task Main(string[] args)
+        public static async Task Main(string[] args)
         {
             // Setup configuration
             Config.SetUp();
@@ -119,7 +119,7 @@ namespace Trape.Cli.collector
             var host = Host.CreateDefaultBuilder()
                 .ConfigureLogging(configure => configure.AddSerilog(Log.Logger))
                 .UseSystemd()
-                .ConfigureServices((hostContext, services) =>
+                .ConfigureServices((_, services) =>
                 {
                     services.BuildServiceProvider(new ServiceProviderOptions() { ValidateOnBuild = true, ValidateScopes = true });
                     services.AddLogging();

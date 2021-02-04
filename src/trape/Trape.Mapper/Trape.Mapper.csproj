@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Binance.Net" Version="6.3.2" />
+    <PackageReference Include="Binance.Net" Version="6.6.4" />
   </ItemGroup>
 
   <ItemGroup>
