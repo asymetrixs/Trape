@@ -1,0 +1,15 @@
+﻿<Project>
+  <PropertyGroup>
+    <Authors>Damian Wolgast</Authors>
+    <Version>1.0.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Copyright>Copyright 2021</Copyright>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Nullable>enable</Nullable>
+    <AppOutputBase>$(MSBuildProjectDirectory)\</AppOutputBase>
+    <PathMap>$(AppOutputBase)=$(MSBuildProjectName)/</PathMap>
+    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+    <NoWarn>CA1014</NoWarn>
+  </PropertyGroup>
+
+</Project>
