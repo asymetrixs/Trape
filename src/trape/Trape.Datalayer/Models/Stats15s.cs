@@ -10,13 +10,14 @@ namespace Trape.Datalayer.Models
     {
         #region Constructor
 
-        /// <summary>
-        /// Initializes a new instance of the <c>Stats15s</c> class.
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        public Stats15s(string symbol = null)
+        public Stats15s() { }
+
+        public Stats15s(decimal slope45s, decimal slope1m, decimal slope2m, decimal slope3m)
         {
-            Symbol = symbol;
+            this.Slope45s = slope45s;
+            this.Slope1m = slope1m;
+            this.Slope2m = slope2m;
+            this.Slope3m = slope3m;
         }
 
         #endregion

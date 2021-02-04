@@ -74,41 +74,6 @@ namespace Trape.Cli.trader.Cache
         decimal GetOpenOrderValue(string symbol);
 
         /// <summary>
-        /// Stats3s
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <returns></returns>
-        Stats3s Stats3sFor(string symbol);
-
-        /// <summary>
-        /// Stats15s
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <returns></returns>
-        Stats15s Stats15sFor(string symbol);
-
-        /// <summary>
-        /// Stats2m
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <returns></returns>
-        Stats2m Stats2mFor(string symbol);
-
-        /// <summary>
-        /// Stats10m
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <returns></returns>
-        Stats10m Stats10mFor(string symbol);
-
-        /// <summary>
-        /// Stats2h
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <returns></returns>
-        Stats2h Stats2hFor(string symbol);
-
-        /// <summary>
         /// Returns exchange information for a symbol
         /// </summary>
         /// <param name="symbol">Symbol</param>
@@ -116,24 +81,36 @@ namespace Trape.Cli.trader.Cache
         BinanceSymbol? GetSymbolInfoFor(string symbol);
 
         /// <summary>
-        /// Returns the last time moving average 10m and moving average 30m were crossing
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <returns></returns>
-        LatestMA10mAndMA30mCrossing? GetLatest10mAnd30mCrossing(string symbol);
-
-        /// <summary>
-        /// Returns the last time moving average 1h and moving average 3h were crossing
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <returns></returns>
-        LatestMA1hAndMA3hCrossing? GetLatest1hAnd3hCrossing(string symbol);
-
-        /// <summary>
         /// Returns the last falling price
         /// </summary>
         /// <param name="symbol">Symbol</param>
         /// <returns></returns>
         FallingPrice? GetLastFallingPrice(string symbol);
+
+        /// <summary>
+        /// Checks if enough data for processing is available
+        /// </summary>
+        /// <param name="symbol">Symbol to check</param>
+        /// <returns></returns>
+        bool IsReady(string symbol);
+
+        /// <summary>
+        /// Returns the change in percent in a given timespan compared to now.
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <param name="timespan">Interval</param>
+        /// <returns></returns>
+        decimal? Slope(string symbol, TimeSpan timespan);
+
+
+        /// <summary>
+        /// Returns the lowest price in the given timespan
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <param name="timeSpan">Interval</param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="InvalidOperationException"/>
+        decimal GetLowestPrice(string symbol, TimeSpan timespan);
     }
 }

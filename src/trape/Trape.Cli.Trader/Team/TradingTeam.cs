@@ -1,15 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
-using SimpleInjector.Lifestyles;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Trape.Cli.trader.Analyze;
 using Trape.Cli.trader.Cache;
 using Trape.Cli.trader.Trading;
-using Trape.Datalayer;
 using Trape.Jobs;
 
 namespace Trape.Cli.trader.Team
@@ -47,6 +45,11 @@ namespace Trape.Cli.trader.Team
         private readonly Job _jobMemberCheck;
 
         /// <summary>
+        /// Checks that only one check method is running at a time
+        /// </summary>
+        private SemaphoreSlim _tradingTeamSetup;
+
+        /// <summary>
         /// Last active
         /// </summary>
         public DateTime LastActive { get; private set; }
@@ -72,6 +75,7 @@ namespace Trape.Cli.trader.Team
 
             _logger = logger.ForContext<TradingTeam>();
             _team = new List<IStartable>();
+            _tradingTeamSetup = new SemaphoreSlim(1);
 
             // Timer
             _jobMemberCheck = new Job(new TimeSpan(0, 0, 5), MemberCheck);
@@ -86,34 +90,28 @@ namespace Trape.Cli.trader.Team
         /// </summary>
         private async void MemberCheck()
         {
+            if (!await _tradingTeamSetup.WaitAsync(100))
+            {
+                return;
+            }
+
             LastActive = DateTime.UtcNow;
 
             _logger.Verbose("Checking trading team...");
 
             // Get available symbols
-            var availableSymbols = new List<string>();
-            using (AsyncScopedLifestyle.BeginScope(Program.Container))
-            {
-                var database = Program.Container.GetService<TrapeContext>();
-                try
-                {
-                    availableSymbols = database.Symbols.Where(s => s.IsTradingActive).Select(s => s.Name).ToList();
-                }
-                catch (Exception e)
-                {
-                    _logger.Error(e, e.Message);
-                }
-            }
+            var availableSymbols = _buffer.GetSymbols();
 
             // Check if any
-            if (availableSymbols.Count == 0)
+            if (!availableSymbols.Any())
             {
                 _logger.Warning("No symbols active for trading, aborting...");
+                _tradingTeamSetup.Release();
                 return;
             }
             else
             {
-                _logger.Debug($"Found {availableSymbols.Count} symbols to trade");
+                _logger.Debug($"Found {availableSymbols.Count()} symbols to trade");
             }
 
             // Get obsolete symbols
@@ -136,10 +134,8 @@ namespace Trape.Cli.trader.Team
             }
 
             // Get missing symbols
-            var tradedSymbols = _team.Select(t => t.Symbol);
+            var tradedSymbols = _team.Select(t => t.Symbol).Distinct();
             var missingSymbols = _buffer.GetSymbols().Where(b => !tradedSymbols.Contains(b));
-
-            _logger.Verbose($"Found missing/online/total {missingSymbols.Count()}/{tradedSymbols.Count()}/{availableSymbols.Count} due to incomplete stats.");
 
             // Add new brokers
             foreach (var missingSymbol in missingSymbols)
@@ -157,7 +153,11 @@ namespace Trape.Cli.trader.Team
                 analyst.Start(missingSymbol);
             }
 
-            _logger.Verbose($"Trading Team checked: {_team.Count} Member online");
+            _logger.Information($"Found missing/online/total {missingSymbols.Count()}/{tradedSymbols.Count()}/{availableSymbols.Count()} due to incomplete stats.");
+
+            _logger.Information($"Trading Team checked: {_team.Count} Member online");
+
+            _tradingTeamSetup.Release();
         }
 
         #endregion
@@ -190,10 +190,7 @@ namespace Trape.Cli.trader.Team
 
             _jobMemberCheck.Terminate();
 
-            foreach (var member in _team)
-            {
-                await member.Terminate().ConfigureAwait(true);
-            }
+            Parallel.ForEach(_team, async (team) => await team.Terminate().ConfigureAwait(false));
 
             _logger.Debug("Trading team stopped");
         }

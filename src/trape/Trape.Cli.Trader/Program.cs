@@ -108,14 +108,14 @@ namespace Trape.Cli.trader
                 .Destructure.ToMaximumDepth(4)
                 .Destructure.ToMaximumStringLength(100)
                 .Destructure.ToMaximumCollectionCount(10)
-                .WriteTo.Console(
-#if DEBUG
-                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
-#else
-                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
-#endif
-                    outputTemplate: Config.GetValue("Serilog:OutputTemplateConsole")
-                )
+//                .WriteTo.Console(
+//#if DEBUG
+//                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
+//#else
+//                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
+//#endif
+//                    outputTemplate: Config.GetValue("Serilog:OutputTemplateConsole")
+//                )
                 .WriteTo.File(
                     path: Config.GetValue("Serilog:LogFileLocation"), retainedFileCountLimit: 7, rollingInterval: RollingInterval.Day, buffered: false,
                     outputTemplate: Config.GetValue("Serilog:OutputTemplateFile")

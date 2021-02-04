@@ -8,6 +8,16 @@ namespace Trape.Datalayer.Models
     [Table("stats3s", Schema = "stubs")]
     public sealed class Stats3s
     {
+        public Stats3s() { }
+
+        public Stats3s(decimal slope5s, decimal slope10s, decimal slope15s, decimal slope30s)
+        {
+            this.Slope5s = slope5s;
+            this.Slope10s = slope10s;
+            this.Slope15s = slope15s;
+            this.Slope30s = slope30s;
+        }
+
         #region Properties
 
         /// <summary>

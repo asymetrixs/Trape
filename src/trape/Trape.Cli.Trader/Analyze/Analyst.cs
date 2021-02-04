@@ -14,7 +14,6 @@ using Trape.Datalayer;
 using Trape.Datalayer.Models;
 using Trape.Jobs;
 using Action = Trape.Datalayer.Enums.Action;
-using OrderSide = Trape.Datalayer.Enums.OrderSide;
 
 namespace Trape.Cli.trader.Analyze
 {
@@ -66,6 +65,16 @@ namespace Trape.Cli.trader.Analyze
         /// </summary>
         private int _logTrendLimiter;
 
+        private static readonly TimeSpan _5s = new TimeSpan(0, 0, -5);
+        private static readonly TimeSpan _10s = new TimeSpan(0, 0, -10);
+        private static readonly TimeSpan _15s = new TimeSpan(0, 0, -15);
+        private static readonly TimeSpan _30s = new TimeSpan(0, 0, -30);
+        private static readonly TimeSpan _45s = new TimeSpan(0, 0, -45);
+        private static readonly TimeSpan _60s = new TimeSpan(0, -1, 0);
+        private static readonly TimeSpan _120s = new TimeSpan(0, -2, 0);
+        private static readonly TimeSpan _180s = new TimeSpan(0, -3, 0);
+        private static readonly TimeSpan _300s = new TimeSpan(0, -5, 0);
+
         #endregion
 
         #region Constructor
@@ -89,7 +98,7 @@ namespace Trape.Cli.trader.Analyze
             #endregion
 
             _logger = logger.ForContext<Analyst>();
-            _cancellationTokenSource = new System.Threading.CancellationTokenSource();
+            _cancellationTokenSource = new CancellationTokenSource();
             _disposed = false;
             _logTrendLimiter = 61;
 
@@ -121,6 +130,8 @@ namespace Trape.Cli.trader.Analyze
         /// </summary>
         public DateTime LastActive { get; private set; }
 
+        private int whatever = 0;
+
         #endregion
 
         #region Methods
@@ -138,30 +149,41 @@ namespace Trape.Cli.trader.Analyze
                 return;
             }
 
+            // Check if buffer is ready
+            if (!_buffer.IsReady(Symbol))
+            {
+                _logger.Verbose($"No data for {nameof(Symbol)}.");
+                return;
+            }
+
             _lastAnalysis.PrepareForUpdate();
 
             // Get stats
-            var stat3s = _buffer.Stats3sFor(Symbol);
-            var stat15s = _buffer.Stats15sFor(Symbol);
-            var stat2m = _buffer.Stats2mFor(Symbol);
-            var stat10m = _buffer.Stats10mFor(Symbol);
-            var stat2h = _buffer.Stats2hFor(Symbol);
 
-            // Check that data is valid
-            if (stat3s == null
-                || stat15s == null
-                || stat2m == null
-                || stat10m == null)
+            var last5s = _buffer.Slope(Symbol, _5s);
+            var last10s = _buffer.Slope(Symbol, _10s);
+            var last15s = _buffer.Slope(Symbol, _15s);
+            var last30s = _buffer.Slope(Symbol, _30s);
+
+
+            var last45s = _buffer.Slope(Symbol, _45s);
+            var last60s = _buffer.Slope(Symbol, _60s);
+            var last120s = _buffer.Slope(Symbol, _120s);
+            var last180s = _buffer.Slope(Symbol, _180s);
+
+            if (last5s is null || last10s is null || last15s is null || last30s is null
+                || last45s is null || last60s is null || last120s is null || last180s is null)
             {
-                _logger.Verbose($"Skipped {Symbol} due to old or incomplete data: 3s:{(stat3s == null)} " +
-                    $"15s:{(stat15s == null)} " +
-                    $"2m:{(stat2m == null)} " +
-                    $"10m:{(stat10m == null)}" +
-                    $"2h:{(stat2h == null)}");
-
+                _logger.Verbose($"No change for {nameof(Symbol)}.");
                 _buffer.UpdateRecommendation(new Recommendation() { Symbol = Symbol, Action = Action.Hold });
                 return;
             }
+
+            var stat3s = new Stats3s(last5s.Value, last10s.Value, last15s.Value, last30s.Value);
+            var stat15s = new Stats15s(last45s.Value, last60s.Value, last120s.Value, last180s.Value);
+
+            if (++whatever % 50 == 0)
+                Console.WriteLine($"{Symbol} a: {last5s.Value,3}\t{last10s.Value,3}\t{last15s.Value,3}\t{last30s.Value,3}\t{last45s.Value,3}\t{last60s.Value,3}\t{last120s.Value,3}\t{last180s.Value,3}");
 
             // Use regular approach
             // Get current symbol price
@@ -173,21 +195,6 @@ namespace Trape.Cli.trader.Analyze
 
                 _buffer.UpdateRecommendation(new Recommendation() { Symbol = Symbol, Action = Action.Hold });
                 return;
-            }
-
-            var movingAverage1h = new Point(price: stat10m.MovingAverage1h, slope: stat10m.Slope1h, slopeBase: TimeSpan.FromHours(1));
-            var movingAverage3h = new Point(price: stat10m.MovingAverage3h, slope: stat10m.Slope3h, slopeBase: TimeSpan.FromHours(3));
-            var panicLimit = movingAverage3h * 0.9975M;
-            var movav1hInterceptingPrice = currentPrice.WillInterceptWith(movingAverage1h);
-            var priceInterceptingMovAv1h = movingAverage1h.WillInterceptWith(currentPrice.Value, slope: stat2m.Slope10m, slopeBase: 10 * 60);
-
-            if (movav1hInterceptingPrice != null)
-            {
-                _logger.Verbose($"{Symbol}: movav1hInterceptingPrice: {movav1hInterceptingPrice.Value:0.00} {movav1hInterceptingPrice.Time.TotalMinutes:#0.00}m");
-            }
-            if (priceInterceptingMovAv1h != null)
-            {
-                _logger.Verbose($"{Symbol}: priceInterceptingMovAv1h: {priceInterceptingMovAv1h.Value:0.00} {priceInterceptingMovAv1h.Time.TotalMinutes:#0.00}m");
             }
 
             // Make the decision
@@ -204,17 +211,7 @@ namespace Trape.Cli.trader.Analyze
             if (stat3s.Slope5s < -currentPrice.Value.XPartOf(8)
                 && stat3s.Slope10s < -currentPrice.Value.XPartOf(5)
                 && stat3s.Slope15s < -currentPrice.Value.XPartOf(6)
-                && stat3s.Slope30s < -currentPrice.Value.XPartOf(15)
-                && stat15s.Slope45s < -currentPrice.Value.XPartOf(12)
-                && stat15s.Slope1m < -currentPrice.Value.XPartOf(10)
-                && stat15s.Slope2m < -currentPrice.Value.XPartOf(5)
-                && stat15s.Slope3m < -currentPrice.Value.XPartOf(1)
-                // Define threshhold from when on panic mode is active
-                && panicLimit < movingAverage3h
-                // Price has to drop for more than 10 seconds
-                && lastFallingPrice != null
-                    && lastFallingPrice.Since < DateTime.UtcNow.AddSeconds(-10)
-                )
+                && stat3s.Slope30s < -currentPrice.Value.XPartOf(15))
             {
                 // Panic sell
                 action = Action.PanicSell;
@@ -228,97 +225,15 @@ namespace Trape.Cli.trader.Analyze
             else if (stat3s.Slope5s > currentPrice.Value.XPartOf(15)
                     && stat3s.Slope10s > currentPrice.Value.XPartOf(1)
                     && stat3s.Slope15s > currentPrice.Value.XPartOf(15)
-                    && stat3s.Slope30s > currentPrice.Value.XPartOf(9)
-                    && stat15s.Slope1m > 0)
+                    && stat3s.Slope30s > currentPrice.Value.XPartOf(9))
             {
-                decimal stockQuantity = 0;
-                // Check what is in stock
-                using (AsyncScopedLifestyle.BeginScope(Program.Container))
-                {
-                    var database = Program.Container.GetService<TrapeContext>();
-                    try
-                    {
-                        var recordedStockQuantity = database.PlacedOrders
-                                                .Where(p => p.Side == OrderSide.Buy
-                                                    && p.Symbol == Symbol
-                                                    && p.QuantityFilled > 0)
-                                                .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity))
-                                                .Sum(f => f.Quantity - f.ConsumedQuantity);
-
-                        var binanceBalance = await _accountant.GetBalance(Asset).ConfigureAwait(true);
-                        decimal actualStockQuantity = binanceBalance?.Free ?? 0;
-
-                        stockQuantity = Math.Max(recordedStockQuantity, actualStockQuantity);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.Error(ex.Message, ex);
-                    }
-                }
-
-                var usdt = await _accountant.GetBalance("USDT").ConfigureAwait(false);
-
-                // Calculate value
-                var stockValue = stockQuantity * currentPrice.Value;
-                var totalValue = stockValue + usdt?.Free;
-
-                // Check if more than 50% of assets are USDT, only then jumpbuy
-                if (totalValue.HasValue && totalValue.Value * 0.5M < usdt?.Free)
-                {
-                    path.Append("jump");
-                    // If Slope1h is negative, then only join the jumping trend if the current price
-                    // is higher than the value of the Slope1h in 15 minutes
-                    if (stat10m.Slope1h < -currentPrice.Value.XPartOf(10))
-                    {
-                        path.Append("a");
-                        // Only jump if price goes higher than intercept with Slope1h in 15 minutes
-                        var intercept15min = movingAverage1h.WillInterceptWith(currentPrice);
-                        // 15 minutes
-                        if (intercept15min?.Time < TimeSpan.FromMinutes(15))
-                        {
-                            _logger.Verbose("[jump]");
-                            action = Action.JumpBuy;
-                            _lastAnalysis.JumpDetected();
-                            path.Append("|b");
-                        }
-                    }
-                    // Slope1h is (almost) positive, always jump
-                    else
-                    {
-                        path.Append("|b");
-                        _logger.Verbose("[jump]");
-                        action = Action.JumpBuy;
-                        _lastAnalysis.JumpDetected();
-                    }
-                }
-            }
-            else if (currentPrice > movingAverage1h)
-            {
-                if (movingAverage1h.IsClose(movingAverage3h) && stat2m.Slope5m < 0)
-                {
-                    action = Action.StrongSell;
-                    path.Append("|strongsell");
-                }
-                else if (!movingAverage1h.IsClose(movingAverage3h) && stat2m.Slope5m < 0)
-                {
-                    action = Action.Sell;
-                    path.Append("|sell");
-                }
-            }
-            else if (currentPrice < movingAverage1h)
-            {
-                if (movingAverage1h.IsClose(movingAverage3h) && stat2m.Slope5m > 0)
-                {
-                    action = Action.StrongBuy;
-                    path.Append("|strongbuy");
-                }
-                else if (!movingAverage1h.IsClose(movingAverage3h) && stat2m.Slope5m > 0)
-                {
-                    action = Action.Buy;
-                    path.Append("|buy");
-                }
+                path.Append("jump");
+                _logger.Verbose("[jump]");
+                action = Action.JumpBuy;
+                _lastAnalysis.JumpDetected();
             }
 
+            // Cache action
             var calcAction = action;
 
             // If a race is ongoing or after it has stopped wait for 5 minutes for market to cool down
@@ -331,7 +246,6 @@ namespace Trape.Cli.trader.Analyze
                 path.Append("_|race");
             }
 
-
             // If Panic mode ended, wait for 5 minutes before start buying again, except if jump
             if (_lastAnalysis.LastPanicModeEnded.AddMinutes(5) > DateTime.UtcNow)
             {
@@ -343,25 +257,9 @@ namespace Trape.Cli.trader.Analyze
                     path.Append("|a");
                 }
             }
-            // If Panic mode ended and action is not buy but trend is strongly upwards
-            else if (_lastAnalysis.LastPanicModeEnded.AddMinutes(7) > DateTime.UtcNow
-                && action != Action.Buy
-                && stat3s.Slope5s > currentPrice.Value.XPartOf(10)
-                && stat3s.Slope10s > currentPrice.Value.XPartOf(10)
-                && stat3s.Slope15s > currentPrice.Value.XPartOf(7.5M)
-                && stat3s.Slope30s > 0
-                && stat3s.Slope30s > 0
-                && stat10m.Slope3h > -currentPrice.Value.XPartOf(64.8M)
-                && currentPrice < movingAverage1h)
-            {
-                _logger.Verbose($"{Symbol}: Panic mode ended more than 7 minutes ago and trend is strongly upwards, buy.");
-                action = Action.Buy;
-                path.Append("_|panicend");
-            }
-
 
             // If strong sell happened or slope is too negative, do not buy immediately
-            if ((_lastAnalysis.GetLastDateOf(Action.StrongSell).AddMinutes(2) > DateTime.UtcNow || stat10m.Slope30m < -currentPrice.Value.XPartOf(20))
+            if ((_lastAnalysis.GetLastDateOf(Action.StrongSell).AddMinutes(2) > DateTime.UtcNow)
                 && (action == Action.Buy || action == Action.JumpBuy || action == Action.StrongBuy))
             {
                 _logger.Verbose($"{Symbol}: Last strong sell was less than 1 minutes ago, don't buy.");
@@ -370,25 +268,21 @@ namespace Trape.Cli.trader.Analyze
             }
 
             Point raceStartingPrice;
-            using (AsyncScopedLifestyle.BeginScope(Program.Container))
+            try
             {
-                var database = Program.Container.GetService<TrapeContext>();
-                try
-                {
-                    // Check if price has gained a lot over the last 30 minutes
-                    // Get Price from 30 minutes ago
-                    raceStartingPrice = new Point(time: TimeSpan.FromMinutes(-1),
-                                                    price: await database.GetLowestPrice(Symbol, DateTime.UtcNow.AddMinutes(-30), _cancellationTokenSource.Token).ConfigureAwait(false),
-                                                    slope: 0);
-                }
-                catch (Exception e)
-                {
-                    _logger.Error(e, e.Message);
-                    raceStartingPrice = new Point();
-                }
+                // Check if price has gained a lot over the last 30 minutes
+                // Get Price from 30 minutes ago
+                raceStartingPrice = new Point(time: TimeSpan.FromMinutes(-5),
+                                                price: _buffer.GetLowestPrice(Symbol, _300s),
+                                                slope: 0);
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e, e.Message);
+                raceStartingPrice = new Point();
             }
 
-            // Advise to sell on <see cref="TakeProfitLimit"/> % gain
+            /// Advise to sell on <see cref="TakeProfitLimit"/> % gain
             var raceIdentifier = TakeProfitLimit;
             if (currentPrice.Value < 100)
             {
@@ -410,17 +304,6 @@ namespace Trape.Cli.trader.Analyze
                     _lastAnalysis.RaceEnded();
                 }
             }
-
-            // Buy after PanicSell
-            if (_lastAnalysis.PanicSellHasEnded
-                && (action != Action.StrongSell && action != Action.PanicSell)
-                && currentPrice < movingAverage1h
-                && _lastAnalysis.BuyAfterPanicSell())
-            {
-                action = Action.Buy;
-                path.Append("_|panicbuy");
-            }
-
 
             // Print strategy changes
             if (_lastAnalysis.Action != action)
@@ -451,18 +334,18 @@ namespace Trape.Cli.trader.Analyze
                 Slope1m = stat15s.Slope1m,
                 Slope2m = stat15s.Slope2m,
                 Slope3m = stat15s.Slope3m,
-                Slope5m = stat2m.Slope5m,
-                Slope7m = stat2m.Slope7m,
-                Slope10m = stat2m.Slope10m,
-                Slope15m = stat2m.Slope15m,
-                Slope30m = stat10m.Slope30m,
-                Slope1h = stat10m.Slope1h,
-                Slope2h = stat10m.Slope2h,
-                Slope3h = stat10m.Slope3h,
-                Slope6h = stat2h.Slope6h,
-                Slope12h = stat2h.Slope12h,
-                Slope18h = stat2h.Slope18h,
-                Slope1d = stat2h.Slope1d,
+                Slope5m = 0,
+                Slope7m = 0,
+                Slope10m = 0,
+                Slope15m = 0,
+                Slope30m = 0,
+                Slope1h = 0,
+                Slope2h = 0,
+                Slope3h = 0,
+                Slope6h = 0,
+                Slope12h = 0,
+                Slope18h = 0,
+                Slope1d = 0,
                 MovingAverage5s = stat3s.MovingAverage5s,
                 MovingAverage10s = stat3s.MovingAverage10s,
                 MovingAverage15s = stat3s.MovingAverage15s,
@@ -471,20 +354,19 @@ namespace Trape.Cli.trader.Analyze
                 MovingAverage1m = stat15s.MovingAverage1m,
                 MovingAverage2m = stat15s.MovingAverage2m,
                 MovingAverage3m = stat15s.MovingAverage3m,
-                MovingAverage5m = stat2m.MovingAverage5m,
-                MovingAverage7m = stat2m.MovingAverage7m,
-                MovingAverage10m = stat2m.MovingAverage10m,
-                MovingAverage15m = stat2m.MovingAverage15m,
-                MovingAverage30m = stat10m.MovingAverage30m,
-                MovingAverage1h = stat10m.MovingAverage1h,
-                MovingAverage2h = stat10m.MovingAverage2h,
-                MovingAverage3h = stat10m.MovingAverage3h,
-                MovingAverage6h = stat2h.MovingAverage6h,
-                MovingAverage12h = stat2h.MovingAverage12h,
-                MovingAverage18h = stat2h.MovingAverage18h,
-                MovingAverage1d = stat2h.MovingAverage1d
+                MovingAverage5m = 0,
+                MovingAverage7m = 0,
+                MovingAverage10m = 0,
+                MovingAverage15m = 0,
+                MovingAverage30m = 0,
+                MovingAverage1h = 0,
+                MovingAverage2h = 0,
+                MovingAverage3h = 0,
+                MovingAverage6h = 0,
+                MovingAverage12h = 0,
+                MovingAverage18h = 0,
+                MovingAverage1d = 0,
             };
-
 
             var oldRecommendation = _buffer.GetRecommendation(Symbol);
             _buffer.UpdateRecommendation(newRecommendation);
@@ -510,28 +392,6 @@ namespace Trape.Cli.trader.Analyze
                     _logger.Error(e, e.Message);
                 }
             }
-
-            LogTrend(newRecommendation, stat10m, stat2h);
-        }
-
-        /// <summary>
-        /// Returns a string representing current trend data
-        /// </summary>
-        /// <param name="recommendation">The recommendation that was calculated</param>
-        /// <param name="stat10m">10 minutes stats</param>
-        /// <param name="stat2Hours">2 hours stats</param>
-        /// <returns>String that returns current trends</returns>
-        private void LogTrend(Recommendation recommendation, Stats10m stat10m, Stats2h stat2Hours)
-        {
-            // Announce the trend every second for reduced log spamming
-            if (DateTime.UtcNow.Second != _logTrendLimiter)
-            {
-                _logTrendLimiter = DateTime.UtcNow.Second;
-
-                var reco = recommendation.Action == Datalayer.Enums.Action.Buy ? "Buy :" : recommendation.Action.ToString();
-
-                _logger.Verbose($"{recommendation.Symbol}: {reco} | S1h: {stat10m.Slope1h:0.0000} | S2h: {stat10m.Slope2h:0.0000} | MA1h: {stat10m.MovingAverage1h:0.0000} | MA2h: {stat10m.MovingAverage2h:0.0000} | MA6h: {stat2Hours.MovingAverage6h:0.0000}");
-            }
         }
 
         #endregion
@@ -554,7 +414,7 @@ namespace Trape.Cli.trader.Analyze
             _logger.Information($"{Symbol}: Starting Analyst");
 
             Symbol = symbol;
-            Asset = symbol.Replace("USDT", string.Empty);
+            Asset = symbol.Replace("USDT", string.Empty, StringComparison.InvariantCulture);
 
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
@@ -590,7 +450,7 @@ namespace Trape.Cli.trader.Analyze
 
             _logger.Information("Analyst stopped");
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
 
         #endregion

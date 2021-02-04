@@ -85,8 +85,17 @@ namespace Trape.BinanceNet.Logger
             }
             catch (Exception e)
             {
-                _logger.Fatal($"{prefix}: {e.Message}");
-                _logger.Fatal($"{prefix}: Failed to log message: {value}");
+                if (value.Length > 30)
+                {
+                    value = value.Substring(0, 30) + "...";
+                }
+
+                if(e.Message.Contains("was not found", StringComparison.InvariantCulture))
+                {
+                    return;
+                }
+
+                _logger.Fatal($"{prefix}: {e.Message} - {value}");
             }
         }
 
