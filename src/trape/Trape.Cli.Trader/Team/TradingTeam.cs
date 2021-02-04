@@ -84,8 +84,6 @@ namespace Trape.Cli.trader.Team
         /// <summary>
         /// Checks for new and obsolete Symbols and creates new <c>Broker</c>s or disposes them.
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private async void MemberCheck()
         {
             LastActive = DateTime.UtcNow;
@@ -134,7 +132,6 @@ namespace Trape.Cli.trader.Team
                     await obsoleteMember[i].Terminate().ConfigureAwait(true);
                     _team.Remove(obsoleteMember[i]);
                     obsoleteMember[i].Dispose();
-                    obsoleteMember[i] = null;
                 }
             }
 

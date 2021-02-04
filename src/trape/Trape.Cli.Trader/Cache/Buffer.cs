@@ -427,7 +427,7 @@ namespace Trape.Cli.trader.Cache
                 }
             }
 
-            if (!availableSymbols.Any())
+            if (availableSymbols.Count == 0)
             {
                 _logger.Warning("No symbols found for subscription, aborting...");
                 return;
@@ -523,13 +523,13 @@ namespace Trape.Cli.trader.Cache
                     }
                     catch (Exception e)
                     {
-                        _logger.Fatal($"Connecting to Binance failed, retrying...");
+                        _logger.Fatal("Connecting to Binance failed, retrying...");
                         _logger.Fatal(e, e.Message);
                     }
                 }
             }
 
-            _logger.Debug($"Subscriptions checked");
+            _logger.Debug("Subscriptions checked");
         }
 
         #endregion
@@ -548,7 +548,7 @@ namespace Trape.Cli.trader.Cache
 
             #endregion
 
-            _recommendations.AddOrUpdate(recommendation.Symbol, recommendation, (key, value) => value = recommendation);
+            _recommendations.AddOrUpdate(recommendation.Symbol, recommendation, (_, value) => value = recommendation);
         }
 
         /// <summary>
@@ -753,7 +753,7 @@ namespace Trape.Cli.trader.Cache
         /// </summary>
         /// <param name="symbol">Symbol</param>
         /// <returns>Exchange information</returns>
-        public BinanceSymbol GetSymbolInfoFor(string symbol)
+        public BinanceSymbol? GetSymbolInfoFor(string symbol)
         {
             if (_binanceExchangeInfo == null || string.IsNullOrEmpty(symbol))
             {
@@ -776,7 +776,7 @@ namespace Trape.Cli.trader.Cache
         /// </summary>
         /// <param name="symbol">Symbol</param>
         /// <returns></returns>
-        public LatestMA10mAndMA30mCrossing GetLatest10mAnd30mCrossing(string symbol)
+        public LatestMA10mAndMA30mCrossing? GetLatest10mAnd30mCrossing(string symbol)
         {
             // Save ref
             var latest = _latestMA10mAnd30mCrossing;
@@ -788,7 +788,7 @@ namespace Trape.Cli.trader.Cache
         /// </summary>
         /// <param name="symbol">Symbol</param>
         /// <returns></returns>
-        public LatestMA30mAndMA1hCrossing GetLatest30mAnd1hCrossing(string symbol)
+        public LatestMA30mAndMA1hCrossing? GetLatest30mAnd1hCrossing(string symbol)
         {
             // Save ref
             var latest = _latestMA30mAnd1hCrossing;
@@ -800,7 +800,7 @@ namespace Trape.Cli.trader.Cache
         /// </summary>
         /// <param name="symbol">Symbol</param>
         /// <returns></returns>
-        public LatestMA1hAndMA3hCrossing GetLatest1hAnd3hCrossing(string symbol)
+        public LatestMA1hAndMA3hCrossing? GetLatest1hAnd3hCrossing(string symbol)
         {
             //Save ref
             var latest = _latestMA1hAnd3hCrossing;
@@ -812,15 +812,10 @@ namespace Trape.Cli.trader.Cache
         /// </summary>
         /// <param name="symbol">Symbol</param>
         /// <returns></returns>
-        public FallingPrice GetLastFallingPrice(string symbol)
+        public FallingPrice? GetLastFallingPrice(string symbol)
         {
             var fallingPrice = _fallingPrices.GetValueOrDefault(symbol);
-            if (fallingPrice == default)
-            {
-                return null;
-            }
-
-            return fallingPrice;
+            return fallingPrice ?? null;
         }
 
         #endregion
@@ -838,7 +833,6 @@ namespace Trape.Cli.trader.Cache
             // Initial loading
             _logger.Debug("Preloading buffer");
 
-            var availableSymbols = new List<string>();
             using (AsyncScopedLifestyle.BeginScope(Program.Container))
             {
                 var database = Program.Container.GetService<TrapeContext>();

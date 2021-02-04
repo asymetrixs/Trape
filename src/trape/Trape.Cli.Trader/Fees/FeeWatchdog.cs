@@ -81,14 +81,14 @@ namespace Trape.Cli.trader.Fees
             _cancellationTokenSource = new CancellationTokenSource();
             _feeSymbol = "BNBUSDT";
 
-            _jobFeeFundsChecker = new Job(new TimeSpan(0, 5, 0), _feesChecker);
+            _jobFeeFundsChecker = new Job(new TimeSpan(0, 5, 0), FeesChecker);
         }
 
         #endregion
 
         #region Timer
 
-        private async void _feesChecker()
+        private async void FeesChecker()
         {
             // Get remaining BNB balance for trading
             var bnb = await _accountant.GetBalance(_feeSymbol.Replace("USDT", string.Empty)).ConfigureAwait(true);
@@ -107,7 +107,7 @@ namespace Trape.Cli.trader.Fees
                 _logger.Information($"Fees NOT OK at {bnb.Free} - issuing buy");
 
                 // Fixed for now, buy for 55 USDT
-                var buy = 3;
+                const int buy = 3;
 
                 // Get merchant and place order
                 var merchant = Program.Container.GetInstance<IStockExchange>();
@@ -128,7 +128,6 @@ namespace Trape.Cli.trader.Fees
             {
                 _logger.Debug($"Fees OK at {bnb.Free}");
             }
-
         }
 
         #endregion

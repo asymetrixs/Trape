@@ -439,7 +439,7 @@ namespace Trape.Cli.trader.Trading
 
             _logger.Debug($"{Symbol}: Preparing to sell");
 
-            var assetBalance = await _accountant.GetBalance(Symbol.Replace("USDT", string.Empty)).ConfigureAwait(true);
+            var assetBalance = await _accountant.GetBalance(Symbol.Replace("USDT", string.Empty, StringComparison.InvariantCulture)).ConfigureAwait(true);
 
             if (assetBalance == null || assetBalance?.Free == 0)
             {

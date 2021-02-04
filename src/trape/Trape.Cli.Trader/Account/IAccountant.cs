@@ -12,7 +12,7 @@ namespace Trape.Cli.trader.Account
 
         Task Terminate();
 
-        Task<BinanceBalance> GetBalance(string symbol);
+        Task<BinanceBalance?> GetBalance(string asset);
 
         #endregion
     }

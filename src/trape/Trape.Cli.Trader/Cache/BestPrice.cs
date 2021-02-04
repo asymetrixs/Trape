@@ -45,7 +45,7 @@ namespace Trape.Cli.trader.Cache
         /// <summary>
         /// Symbol
         /// </summary>
-        public string Symbol { get; private set; }
+        public string Symbol { get; }
 
         #endregion
 
@@ -103,8 +103,6 @@ namespace Trape.Cli.trader.Cache
         /// <returns>Returns -1 if there is no recent (3 seconds) data, otherwise the average over the last 30 prices.</returns>
         public decimal GetAverage()
         {
-            decimal average;
-
             // Check if last value is more recent than 3 seconds ago
             if (_lastUpdate < (DateTime.UtcNow.Ticks - _3secondsInTicks))
             {
@@ -112,9 +110,7 @@ namespace Trape.Cli.trader.Cache
             }
 
             // Calculate average over array
-            average = _prices.Average();
-
-            return average;
+            return _prices.Average();
         }
 
         #endregion

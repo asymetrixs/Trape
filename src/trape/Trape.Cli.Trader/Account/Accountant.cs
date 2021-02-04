@@ -217,7 +217,7 @@ namespace Trape.Cli.trader.Account
 
                     // Client Order, add if does not already exists
                     var attempts = 5;
-                    ClientOrder clientOrder = default;
+                    ClientOrder clientOrder = new();
                     while (attempts > 0)
                     {
                         try
@@ -330,8 +330,6 @@ namespace Trape.Cli.trader.Account
                     // Add order update
                     orderList.OrderUpdates.Add(orderUpdate);
                     orderUpdate.OrderList = orderList;
-
-
 
                     // If sell and filled, remove quantity from buy
                     if (binanceStreamOrderUpdate.Side == OrderSide.Sell && binanceStreamOrderUpdate.Status == OrderStatus.Filled)
@@ -553,7 +551,7 @@ namespace Trape.Cli.trader.Account
         /// </summary>
         /// <param name="asset"></param>
         /// <returns>Returns the balance or null if no balance available for the asset</returns>
-        public async Task<BinanceBalance> GetBalance(string asset)
+        public async Task<BinanceBalance?> GetBalance(string asset)
         {
             // Take reference to original instance in case _binanceAccountInfo is updated
             var bac = await GetAccountInfo().ConfigureAwait(true);
@@ -578,7 +576,7 @@ namespace Trape.Cli.trader.Account
                     _binanceAccountInfo = accountInfoRequest.Data;
                     _binanceAccountInfoUpdated = DateTime.UtcNow;
 
-                    _logger.Information($"Requested account info");
+                    _logger.Information("Requested account info");
                 }
                 else
                 {
@@ -634,7 +632,7 @@ namespace Trape.Cli.trader.Account
                         // Add or update balances
                         foreach (var newBalance in _binanceAccountInfo.Balances)
                         {
-                            var oldBalance = accountInfo.Balances.FirstOrDefault(b => b.Asset == newBalance.Asset);
+                            var oldBalance = accountInfo.Balances.Find(b => b.Asset == newBalance.Asset);
                             if (oldBalance == null)
                             {
                                 accountInfo.Balances.Add(Translator.Translate(newBalance, accountInfo));
@@ -686,12 +684,11 @@ namespace Trape.Cli.trader.Account
 
             // Subscribe to socket events
             await _binanceSocketClient.Spot.SubscribeToUserDataUpdatesAsync(_binanceListenKey,
-                (bsai) => SaveBinanceStreamAccountInfo(bsai),
-                (bsou) => SaveBinanceStreamOrderUpdate(bsou),
-                (bsol) => SaveBinanceStreamOrderList(bsol),
-                (bspu) => SaveBinanceStreamPositionUpdate(bspu),
-                (bsbu) => SaveBinanceStreamBalanceUpdate(bsbu)
-                ).ConfigureAwait(true);
+                SaveBinanceStreamAccountInfo,
+                SaveBinanceStreamOrderUpdate,
+                SaveBinanceStreamOrderList,
+                SaveBinanceStreamPositionUpdate,
+                SaveBinanceStreamBalanceUpdate).ConfigureAwait(true);
 
             _logger.Information("Binance Client is online");
 
@@ -756,6 +753,8 @@ namespace Trape.Cli.trader.Account
             {
                 _jobSynchronizeAccountInfo.Dispose();
                 _binanceClient.Dispose();
+                _syncBinanceStreamOrderUpdate.Dispose();
+                _cancellationTokenSource.Dispose();
             }
 
             _disposed = true;

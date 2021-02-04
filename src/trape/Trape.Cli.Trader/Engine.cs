@@ -91,13 +91,15 @@ namespace Trape.Cli.trader
         /// <summary>
         /// Starts all processes to begin trading
         /// </summary>
-        /// <param name="stoppingToken"></param>
+        /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public override async Task StartAsync(CancellationToken stoppingToken)
+        public override async Task StartAsync(CancellationToken cancellationToken = default)
         {
             _logger.Information("Engine is starting");
 
-            _running.Wait();
+            _running.Wait(cancellationToken);
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             await _buffer.Start().ConfigureAwait(true);
 
@@ -115,7 +117,7 @@ namespace Trape.Cli.trader
         /// </summary>
         /// <param name="stoppingToken"></param>
         /// <returns></returns>
-        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override Task ExecuteAsync(CancellationToken stoppingToken = default)
         {
             _logger.Verbose("Waiting...");
 
