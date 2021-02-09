@@ -4,7 +4,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Trape.Cli.trader.Account;
-using Trape.Cli.trader.Cache;
+using Trape.Cli.trader.Listener;
 using Trape.Cli.trader.Fees;
 using Trape.Cli.trader.Team;
 
@@ -25,7 +25,7 @@ namespace Trape.Cli.trader
         /// <summary>
         /// Buffer
         /// </summary>
-        private readonly IBuffer _buffer;
+        private readonly IListener _buffer;
 
         /// <summary>
         /// Trading Team
@@ -64,7 +64,7 @@ namespace Trape.Cli.trader
         /// <param name="tradingTeam">Trading Team</param>
         /// <param name="accountant">Accountant</param>
         /// <param name="feeWatchdog">Fee Watchdog</param>
-        public Engine(ILogger logger, IBuffer buffer, ITradingTeam tradingTeam, IAccountant accountant, IFeeWatchdog feeWatchdog)
+        public Engine(ILogger logger, IListener buffer, ITradingTeam tradingTeam, IAccountant accountant, IFeeWatchdog feeWatchdog)
         {
             #region Argument checks
 
@@ -136,7 +136,7 @@ namespace Trape.Cli.trader
 
             _feeWatchdog.Terminate();
 
-            await _tradingTeam.Terminate().ConfigureAwait(true);
+            _tradingTeam.Terminate();
 
             await _accountant.Terminate().ConfigureAwait(true);
 

@@ -50,17 +50,6 @@ namespace Trape.Jobs
         /// </summary>
         /// <param name="executionInterval">Execution interval</param>
         /// <param name="action">Action to execute</param>
-        public Job(TimeSpan executionInterval, Action action)
-        {
-            Setup(executionInterval, action, new CancellationToken());
-        }
-
-
-        /// <summary>
-        /// Initializes a new instance of the <c>Job</c> class.
-        /// </summary>
-        /// <param name="executionInterval">Execution interval</param>
-        /// <param name="action">Action to execute</param>
         /// <param name="cancellationToken">Cancellation Token</param>
         public Job(TimeSpan executionInterval, Action action, CancellationToken cancellationToken = default)
         {

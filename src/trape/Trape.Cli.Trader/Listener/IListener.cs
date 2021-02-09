@@ -1,16 +1,17 @@
 ﻿using Binance.Net.Objects.Spot.MarketData;
 using System;
 using System.Collections.Generic;
+using System.Reactive.Subjects;
 using System.Threading.Tasks;
-using Trape.Cli.trader.Cache.Models;
+using Trape.Cli.trader.Listener.Models;
 using Trape.Datalayer.Models;
 
-namespace Trape.Cli.trader.Cache
+namespace Trape.Cli.trader.Listener
 {
     /// <summary>
     /// Interface for buffer
     /// </summary>
-    public interface IBuffer : IDisposable
+    public interface IListener : IDisposable
     {
         /// <summary>
         /// Starts a buffer
@@ -22,12 +23,6 @@ namespace Trape.Cli.trader.Cache
         /// Stops a buffer
         /// </summary>
         void Terminate();
-
-        /// <summary>
-        /// Returns the available symbols the buffer has data for
-        /// </summary>
-        /// <returns>List of symbols</returns>
-        IEnumerable<string> GetSymbols();
 
         /// <summary>
         /// Returns the latest ask price for a symbol
@@ -88,29 +83,8 @@ namespace Trape.Cli.trader.Cache
         FallingPrice? GetLastFallingPrice(string symbol);
 
         /// <summary>
-        /// Checks if enough data for processing is available
+        /// Informs about new assets
         /// </summary>
-        /// <param name="symbol">Symbol to check</param>
-        /// <returns></returns>
-        bool IsReady(string symbol);
-
-        /// <summary>
-        /// Returns the change in percent in a given timespan compared to now.
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <param name="timespan">Interval</param>
-        /// <returns></returns>
-        decimal? Slope(string symbol, TimeSpan timespan);
-
-
-        /// <summary>
-        /// Returns the lowest price in the given timespan
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <param name="timeSpan">Interval</param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentNullException"/>
-        /// <exception cref="InvalidOperationException"/>
-        decimal GetLowestPrice(string symbol, TimeSpan timespan);
+        IObservable<BinanceSymbol> NewAssets { get; }
     }
 }

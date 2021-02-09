@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 using Trape.BinanceNet.Logger;
 using Trape.Cli.trader.Account;
 using Trape.Cli.trader.Analyze;
-using Trape.Cli.trader.Cache;
+using Trape.Cli.trader.Listener;
 using Trape.Cli.trader.Fees;
 using Trape.Cli.trader.Market;
 using Trape.Cli.trader.Team;
@@ -152,7 +152,6 @@ namespace Trape.Cli.trader
 
             Container.Register<TrapeContext, TrapeContext>(Lifestyle.Scoped);
 
-            Container.Register<IStockExchange, StockExchange>(Lifestyle.Transient);
             Container.Register<IBroker, Broker>(Lifestyle.Transient);
             Container.Register<IAnalyst, Analyst>(Lifestyle.Transient);
 
@@ -161,7 +160,8 @@ namespace Trape.Cli.trader
             registration = Container.GetRegistration(typeof(IAnalyst)).Registration;
             registration.SuppressDiagnosticWarning(DiagnosticType.DisposableTransientComponent, "Application takes care of disposal.");
 
-            Container.Register<IBuffer, Cache.Buffer>(Lifestyle.Singleton);
+            Container.Register<IStockExchange, StockExchange>(Lifestyle.Singleton);
+            Container.Register<IListener, Listener.Listener>(Lifestyle.Singleton);
             Container.Register<IAccountant, Accountant>(Lifestyle.Singleton);
             Container.Register<IFeeWatchdog, FeeWatchdog>(Lifestyle.Singleton);
             Container.Register<ITradingTeam, TradingTeam>(Lifestyle.Singleton);

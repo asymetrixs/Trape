@@ -10,7 +10,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Trape.Cli.trader.Cache;
+using Trape.Cli.trader.Listener;
 using Trape.Datalayer;
 using Trape.Datalayer.Models;
 using Trape.Jobs;
@@ -73,7 +73,7 @@ namespace Trape.Cli.trader.Account
         /// <summary>
         /// Buffer
         /// </summary>
-        private readonly IBuffer _buffer;
+        private readonly IListener _buffer;
 
         /// <summary>
         /// Cancellation Token Source
@@ -100,7 +100,7 @@ namespace Trape.Cli.trader.Account
         /// <param name="logger">Logger</param>
         /// <param name="binanceClient">Binance Client</param>
         /// <param name="binanceSocketClient">Binance Socket Client</param>
-        public Accountant(ILogger logger, IBuffer buffer, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
+        public Accountant(ILogger logger, IListener buffer, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
         {
             #region Argument checks
 

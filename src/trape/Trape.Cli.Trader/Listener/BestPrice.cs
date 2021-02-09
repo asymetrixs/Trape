@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Trape.Cli.trader.Cache
+namespace Trape.Cli.trader.Listener
 {
     /// <summary>
     /// This class hols information about a best price

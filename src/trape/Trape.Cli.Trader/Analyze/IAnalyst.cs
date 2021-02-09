@@ -1,5 +1,6 @@
 ﻿using System;
 using Trape.Cli.trader.Team;
+using Trape.Datalayer.Models;
 
 namespace Trape.Cli.trader.Analyze
 {
@@ -8,6 +9,6 @@ namespace Trape.Cli.trader.Analyze
     /// </summary>
     public interface IAnalyst : IDisposable, IStartable
     {
-        // TODO: Specify Broker and Analyst interface
+        IObservable<Recommendation> NewRecommendation { get; }
     }
 }

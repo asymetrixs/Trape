@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Binance.Net.Objects.Spot.MarketData;
+using System;
 using System.Threading.Tasks;
 
 namespace Trape.Cli.trader.Team
@@ -11,13 +12,28 @@ namespace Trape.Cli.trader.Team
         /// <summary>
         /// Symbol
         /// </summary>
-        string Symbol { get; }
+        BinanceSymbol Symbol { get; }
+
+        /// <summary>
+        /// Base Asset
+        /// </summary>
+        string BaseAsset { get; }
+
+        /// <summary>
+        /// Name
+        /// </summary>
+        string Name { get; }
+
+        /// <summary>
+        /// Indicates if agent is faulty
+        /// </summary>
+        bool IsFaulty { get; }
 
         /// <summary>
         /// Starts an instance
         /// </summary>
         /// <param name="symbol">Symbol</param>
-        void Start(string symbol);
+        Task Start(BinanceSymbol symbol);
 
         /// <summary>
         /// Stops an instance

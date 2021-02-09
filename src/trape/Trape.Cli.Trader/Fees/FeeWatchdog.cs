@@ -1,11 +1,11 @@
-﻿using Serilog;
+﻿using Binance.Net.Objects.Spot.SpotData;
+using Serilog;
 using System;
 using System.Threading;
 using Trape.Cli.trader.Account;
-using Trape.Cli.trader.Cache;
+using Trape.Cli.trader.Listener;
 using Trape.Cli.trader.Market;
 using Trape.Datalayer.Models;
-using Trape.Jobs;
 using OrderResponseType = Trape.Datalayer.Enums.OrderResponseType;
 using OrderSide = Trape.Datalayer.Enums.OrderSide;
 using OrderType = Trape.Datalayer.Enums.OrderType;
@@ -36,14 +36,9 @@ namespace Trape.Cli.trader.Fees
         private IAccountant _accountant;
 
         /// <summary>
-        /// Buffer
+        /// Listener
         /// </summary>
-        private IBuffer _buffer;
-
-        /// <summary>
-        /// Job to check available BNB fees
-        /// </summary>
-        private readonly Job _jobFeeFundsChecker;
+        private IListener _listener;
 
         /// <summary>
         /// Cancellation Token Source
@@ -55,6 +50,11 @@ namespace Trape.Cli.trader.Fees
         /// </summary>
         private readonly string _feeSymbol;
 
+        /// <summary>
+        /// Stock Exchange subscriber
+        /// </summary>
+        private IDisposable _stockExchangeSubscriber;
+
         #endregion
 
         #region Constructor
@@ -65,7 +65,7 @@ namespace Trape.Cli.trader.Fees
         /// <param name="logger">Logger</param>
         /// <param name="accountant">Accountant</param>
         /// <param name="buffer">Buffer</param>
-        public FeeWatchdog(ILogger logger, IAccountant accountant, IBuffer buffer)
+        public FeeWatchdog(ILogger logger, IAccountant accountant, IListener buffer, IStockExchange stockExchange)
         {
             #region Arguments check
 
@@ -73,7 +73,7 @@ namespace Trape.Cli.trader.Fees
 
             _accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            _buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _listener = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             #endregion
 
@@ -81,17 +81,17 @@ namespace Trape.Cli.trader.Fees
             _cancellationTokenSource = new CancellationTokenSource();
             _feeSymbol = "BNBUSDT";
 
-            _jobFeeFundsChecker = new Job(new TimeSpan(0, 5, 0), FeesChecker);
+            _stockExchangeSubscriber = stockExchange.NewOrder.Subscribe(CheckBNB);
         }
 
         #endregion
 
-        #region Timer
+        #region BNB Checker
 
-        private async void FeesChecker()
+        private async void CheckBNB(BinancePlacedOrder _)
         {
             // Get remaining BNB balance for trading
-            var bnb = await _accountant.GetBalance(_feeSymbol.Replace("USDT", string.Empty)).ConfigureAwait(true);
+            var bnb = await _accountant.GetBalance(_feeSymbol.Replace("USDT", string.Empty, StringComparison.InvariantCulture)).ConfigureAwait(true);
             if (bnb == null)
             {
                 // Something is oddly wrong, wait a bit
@@ -99,10 +99,10 @@ namespace Trape.Cli.trader.Fees
                 return;
             }
 
-            var currentPrice = _buffer.GetAskPrice(_feeSymbol);
+            var currentPrice = _listener.GetAskPrice(_feeSymbol);
 
             // Threshold for buy is 53
-            if (bnb.Free < 53)
+            if (bnb.Free < 30)
             {
                 _logger.Information($"Fees NOT OK at {bnb.Free} - issuing buy");
 
@@ -141,7 +141,7 @@ namespace Trape.Cli.trader.Fees
         {
             _logger.Information("Starting Fee Watchdog");
 
-            _jobFeeFundsChecker.Start();
+            // nothing
 
             _logger.Information("Fee Watchdog started");
         }
@@ -152,8 +152,6 @@ namespace Trape.Cli.trader.Fees
         public void Terminate()
         {
             _logger.Information("Fee Watchdog stopping");
-
-            _jobFeeFundsChecker.Terminate();
 
             _cancellationTokenSource.Cancel();
 
@@ -187,8 +185,9 @@ namespace Trape.Cli.trader.Fees
             if (disposing)
             {
                 _accountant = null;
-                _buffer = null;
+                _listener = null;
                 _cancellationTokenSource.Dispose();
+                _stockExchangeSubscriber.Dispose();
             }
 
             _disposed = true;

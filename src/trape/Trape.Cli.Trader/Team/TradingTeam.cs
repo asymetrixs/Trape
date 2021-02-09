@@ -1,14 +1,13 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Binance.Net.Objects.Spot.MarketData;
 using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
+using System.Reactive.Disposables;
 using System.Threading.Tasks;
 using Trape.Cli.trader.Analyze;
-using Trape.Cli.trader.Cache;
+using Trape.Cli.trader.Listener;
 using Trape.Cli.trader.Trading;
-using Trape.Jobs;
 
 namespace Trape.Cli.trader.Team
 {
@@ -35,24 +34,19 @@ namespace Trape.Cli.trader.Team
         private readonly List<IStartable> _team;
 
         /// <summary>
-        /// Buffer
+        /// Listener
         /// </summary>
-        private readonly IBuffer _buffer;
-
-        /// <summary>
-        /// Job to check for new/obsolete Symbols
-        /// </summary>
-        private readonly Job _jobMemberCheck;
-
-        /// <summary>
-        /// Checks that only one check method is running at a time
-        /// </summary>
-        private SemaphoreSlim _tradingTeamSetup;
+        private readonly IListener _listener;
 
         /// <summary>
         /// Last active
         /// </summary>
         public DateTime LastActive { get; private set; }
+
+        /// <summary>
+        /// Subscriptions to subjects
+        /// </summary>
+        private IDisposable _listenerSubscription = Disposable.Empty;
 
         #endregion
 
@@ -63,22 +57,18 @@ namespace Trape.Cli.trader.Team
         /// </summary>
         /// <param name="logger"></param>
         /// <param name="buffer"></param>
-        public TradingTeam(ILogger logger, IBuffer buffer)
+        public TradingTeam(ILogger logger, IListener buffer)
         {
             #region Argument checks
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _listener = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             #endregion
 
             _logger = logger.ForContext<TradingTeam>();
             _team = new List<IStartable>();
-            _tradingTeamSetup = new SemaphoreSlim(1);
-
-            // Timer
-            _jobMemberCheck = new Job(new TimeSpan(0, 0, 5), MemberCheck);
         }
 
         #endregion
@@ -86,78 +76,41 @@ namespace Trape.Cli.trader.Team
         #region Jobs
 
         /// <summary>
-        /// Checks for new and obsolete Symbols and creates new <c>Broker</c>s or disposes them.
+        /// Spawns an analyst to listen for that symbol
         /// </summary>
-        private async void MemberCheck()
+        private async void SpawnAnalyst(BinanceSymbol binanceSymbol)
         {
-            if (!await _tradingTeamSetup.WaitAsync(100))
-            {
-                return;
-            }
-
             LastActive = DateTime.UtcNow;
 
             _logger.Verbose("Checking trading team...");
 
-            // Get available symbols
-            var availableSymbols = _buffer.GetSymbols();
 
-            // Check if any
-            if (!availableSymbols.Any())
+            if (_team.Any(t => t.BaseAsset == binanceSymbol.BaseAsset))
             {
-                _logger.Warning("No symbols active for trading, aborting...");
-                _tradingTeamSetup.Release();
+                _logger.Verbose($"Team for {binanceSymbol.BaseAsset} is already spawned...");
                 return;
             }
-            else
-            {
-                _logger.Debug($"Found {availableSymbols.Count()} symbols to trade");
-            }
 
-            // Get obsolete symbols
-            var obsoleteSymbols = _team.Where(t => !availableSymbols.Contains(t.Symbol));
-            _logger.Verbose($"Found {obsoleteSymbols.Count()} obsolete members");
+            // Instantiate pair of broker and analyst
+            var broker = Program.Container.GetInstance<IBroker>();
+            var analyst = Program.Container.GetInstance<IAnalyst>();
 
-            // Remove obsolete brokers
-            foreach (var obsoleteSymbol in obsoleteSymbols)
-            {
-                _logger.Information($"{obsoleteSymbol.Symbol}: Removing member from the trading team");
+            _logger.Information($"{binanceSymbol.BaseAsset}: Adding Broker to the trading team.");
+            _team.Add(broker);
 
-                // Terminate all
-                var obsoleteMember = _team.Where(t => t.Symbol == obsoleteSymbol.Symbol).ToArray();
-                for (int i = 0; i < obsoleteMember.Length; i++)
-                {
-                    await obsoleteMember[i].Terminate().ConfigureAwait(true);
-                    _team.Remove(obsoleteMember[i]);
-                    obsoleteMember[i].Dispose();
-                }
-            }
+            _logger.Information($"{binanceSymbol.BaseAsset}: Adding Analyst to the trading team.");
+            _team.Add(analyst);
 
-            // Get missing symbols
-            var tradedSymbols = _team.Select(t => t.Symbol).Distinct();
-            var missingSymbols = _buffer.GetSymbols().Where(b => !tradedSymbols.Contains(b));
+            var analystStart = analyst.Start(binanceSymbol);
+            var brokerStart = broker.Start(binanceSymbol);
+            
+            await Task.WhenAll(new Task[] { analystStart, brokerStart }).ConfigureAwait(true);
 
-            // Add new brokers
-            foreach (var missingSymbol in missingSymbols)
-            {
-                // Instantiate pair of broker and analyst
-                var broker = Program.Container.GetInstance<IBroker>();
-                var analyst = Program.Container.GetInstance<IAnalyst>();
+            broker.SubscribeTo(analyst);
 
-                _logger.Information($"{missingSymbol}: Adding Broker to the trading team.");
-                _team.Add(broker);
-                broker.Start(missingSymbol);
+            // TODO: Faulty check
 
-                _logger.Information($"{missingSymbol}: Adding Analyst to the trading team.");
-                _team.Add(analyst);
-                analyst.Start(missingSymbol);
-            }
-
-            _logger.Information($"Found missing/online/total {missingSymbols.Count()}/{tradedSymbols.Count()}/{availableSymbols.Count()} due to incomplete stats.");
-
-            _logger.Information($"Trading Team checked: {_team.Count} Member online");
-
-            _tradingTeamSetup.Release();
+            _logger.Information($"Trading Team checked: {_team.Count} Member online"); ;
         }
 
         #endregion
@@ -171,11 +124,7 @@ namespace Trape.Cli.trader.Team
         {
             _logger.Debug("Starting trading team");
 
-            // Call once manually to set up the traders
-            MemberCheck();
-
-            // Start timer for regular checks
-            _jobMemberCheck.Start();
+            _listenerSubscription = _listener.NewAssets.Subscribe(SpawnAnalyst);
 
             _logger.Debug("Trading team started");
         }
@@ -184,11 +133,9 @@ namespace Trape.Cli.trader.Team
         /// Terminate
         /// </summary>
         /// <returns></returns>
-        public async Task Terminate()
+        public void Terminate()
         {
             _logger.Debug("Stopping trading team");
-
-            _jobMemberCheck.Terminate();
 
             Parallel.ForEach(_team, async (team) => await team.Terminate().ConfigureAwait(false));
 
@@ -225,7 +172,8 @@ namespace Trape.Cli.trader.Team
                 {
                     member.Dispose();
                 }
-                _jobMemberCheck.Dispose();
+
+                _listenerSubscription.Dispose();
             }
 
             _disposed = true;

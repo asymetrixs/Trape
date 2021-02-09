@@ -53,13 +53,13 @@ namespace Trape.BinanceNet.Logger
 
             try
             {
-                // Format is: $"{DateTime.Now:yyyy/MM/dd HH:mm:ss:fff} | {logType} | {message}";
+                // Format is: $"{DateTime.Now:yyyy/MM/dd HH:mm:ss:fff} | Binance | {logType} | {message}";
                 var parts = value.Split('|');
 
                 // Split values so that they fit into Serilog
                 var date = parts[0].Trim();
-                var logType = parts[1].Trim();
-                var message = parts[2].Trim();
+                var logType = parts[2].Trim();
+                var message = parts[3].Trim();
 
                 var nativeLogType = (LogVerbosity)Enum.Parse(typeof(LogVerbosity), logType);
 

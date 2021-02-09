@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Trape.Cli.trader.Cache.Models
+namespace Trape.Cli.trader.Listener.Models
 {
     /// <summary>
     /// Class for caching of open orders
