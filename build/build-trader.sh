@@ -68,6 +68,7 @@ md5sum $(find * -type f -not -path 'DEBIAN/*') > DEBIAN/md5sums
 cp $DEBIANDIR/* $METADIR/
 sed -i 's/\$VERSION/'$VERSION'/' $METADIR/control
 
+chmod u+x $BASEDIR/packaging/trape-trader_0.1-1/opt/trape/trader/ref
 cd $BASEDIR/packaging
 dpkg-deb -v --build trape-trader_$VERSION
 
