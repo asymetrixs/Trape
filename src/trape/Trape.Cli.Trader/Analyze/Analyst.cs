@@ -178,11 +178,6 @@ namespace Trape.Cli.trader.Analyze
         public string BaseAsset => Symbol.BaseAsset;
 
         /// <summary>
-        /// Take Profit threshold
-        /// </summary>
-        public const decimal TakeProfitLimit = 1.5M;
-
-        /// <summary>
         /// Last time <c>Broker</c> was active
         /// </summary>
         public DateTime LastActive { get; private set; }
@@ -321,9 +316,9 @@ namespace Trape.Cli.trader.Analyze
             Point raceStartingPrice;
             try
             {
-                var s45Ago = DateTime.Now.AddSeconds(-45);
+                var s20Ago = DateTime.Now.AddSeconds(-25);
                 raceStartingPrice = new Point(time: TimeSpan.FromMinutes(-1),
-                                                price: _currentPrices.Where(c => c.On > s45Ago).Min(c => c.BestAskPrice),
+                                                price: _currentPrices.Where(c => c.On > s20Ago).Min(c => c.BestAskPrice),
                                                 slope: 0);
             }
             catch (Exception e)
@@ -332,9 +327,7 @@ namespace Trape.Cli.trader.Analyze
                 raceStartingPrice = new Point();
             }
 
-            /// Advise to sell on <see cref="TakeProfitLimit"/> gain
-            var raceIdentifier = TakeProfitLimit;
-
+            var raceIdentifier = 0.7M;
             if (raceStartingPrice.Value != default && raceStartingPrice < (currentPrice * raceIdentifier))
             {
                 _logger.Verbose($"{BaseAsset}: Race detected at {currentPrice.Value:0.00}.");
@@ -342,28 +335,23 @@ namespace Trape.Cli.trader.Analyze
                 path.Append("_racestart");
 
                 // Check market movement, if a huge sell is detected advice to take profits
-                if (stat3s.Slope10s < -currentPrice.Value.XPartOf(10))
+                if (slope10s < -currentPrice.Value.XPartOf(10))
                 {
-                    action = Action.TakeProfitsSell;
+                    action = ActionType.Sell;
                     _logger.Verbose($"{BaseAsset}: Race ended at {currentPrice.Value:0.00}.");
                     path.Append("|raceend");
                     _lastAnalysis.RaceEnded();
                 }
             }
 
-            //// Print strategy changes
-            //if (_lastAnalysis.Action != action)
-            //{
-            //    _logger.Information($"{BaseAsset}: {currentPrice.Value:0.00} - Switching stategy: {_lastAnalysis.Action} -> {action}");
-            //    _lastAnalysis.UpdateAction(action);
-            //}
-            //// Print strategy every hour in log
-            //else if (_lastAnalysis.Now.Minute == 0 && _lastAnalysis.Now.Second == 0 && _lastAnalysis.Now.Millisecond < 100)
-            //{
-            //    _logger.Information($"{BaseAsset}: Stategy: {action}");
-            //}
+            // Print strategy changes
+            if (_lastAnalysis.Action != action)
+            {
+                _logger.Information($"{BaseAsset}: {currentPrice.Value:0.00} - Switching stategy: {_lastAnalysis.Action} -> {action}");
+                _lastAnalysis.UpdateAction(action);
+            }
 
-            //_logger.Debug($"{BaseAsset}: {currentPrice.Value:0.00} Decision - Calculated / Final: {calcAction} / {action} - {path}");
+            _logger.Debug($"{BaseAsset}: {currentPrice.Value:0.00} Decision - Calculated / Final: {calcAction} / {action} - {path}");
 
             //// Instantiate new recommendation
             var newRecommendation = new Recommendation()
