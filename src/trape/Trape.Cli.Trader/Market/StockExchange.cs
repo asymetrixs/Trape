@@ -1,5 +1,4 @@
-﻿using Binance.Net.Enums;
-using Binance.Net.Interfaces;
+﻿using Binance.Net.Interfaces;
 using Binance.Net.Objects.Spot.SpotData;
 using CryptoExchange.Net.Objects;
 using Serilog;
@@ -7,11 +6,10 @@ using System;
 using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
-using Trape.Cli.trader.Cache.Models;
 using Trape.Cli.Trader.Cache;
 using Trape.Cli.Trader.Cache.Models;
 
-namespace Trape.Cli.trader.Market
+namespace Trape.Cli.Trader.Market
 {
     /// <summary>
     /// Stock exchange class
@@ -106,37 +104,37 @@ namespace Trape.Cli.trader.Market
 
             using var token = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource.Token, cancellationToken);
 
-            // Market does not require parameter 'timeInForce' and 'price'
-            if (clientOrder.Type == OrderType.Market)
-            {
-                placedOrder = await _binanceClient.Spot.Order.PlaceTestOrderAsync(
-                    clientOrder.Symbol,
-                    clientOrder.Side,
-                    clientOrder.Type,
-                    quantity: clientOrder.Quantity,
-                    newClientOrderId: clientOrder.Id,
-                    orderResponseType: clientOrder.OrderResponseType,
-                    ct: token.Token).ConfigureAwait(true);
-            }
-            else
-            {
-                placedOrder = await _binanceClient.Spot.Order.PlaceTestOrderAsync(
-                    clientOrder.Symbol,
-                    clientOrder.Side,
-                    clientOrder.Type,
-                    price: clientOrder.Price,
-                    quantity: clientOrder.Quantity,
-                    newClientOrderId: clientOrder.Id,
-                    orderResponseType: clientOrder.OrderResponseType,
-                    timeInForce: clientOrder.TimeInForce,
-                    ct: token.Token).ConfigureAwait(true);
-            }
+            //// Market does not require parameter 'timeInForce' and 'price'
+            //if (clientOrder.Type == OrderType.Market)
+            //{
+            //    placedOrder = await _binanceClient.Spot.Order.PlaceTestOrderAsync(
+            //        clientOrder.Symbol,
+            //        clientOrder.Side,
+            //        clientOrder.Type,
+            //        quantity: clientOrder.Quantity,
+            //        newClientOrderId: clientOrder.Id,
+            //        orderResponseType: clientOrder.OrderResponseType,
+            //        ct: token.Token).ConfigureAwait(true);
+            //}
+            //else
+            //{
+            //    placedOrder = await _binanceClient.Spot.Order.PlaceTestOrderAsync(
+            //        clientOrder.Symbol,
+            //        clientOrder.Side,
+            //        clientOrder.Type,
+            //        price: clientOrder.Price,
+            //        quantity: clientOrder.Quantity,
+            //        newClientOrderId: clientOrder.Id,
+            //        orderResponseType: clientOrder.OrderResponseType,
+            //        timeInForce: clientOrder.TimeInForce,
+            //        ct: token.Token).ConfigureAwait(true);
+            //}
 
-            if (placedOrder.Success)
-            {
-                _newOrder.OnNext(placedOrder.Data);
-                _logger.Debug($"{clientOrder.Symbol}: {clientOrder.Side} {clientOrder.Quantity} {clientOrder.Price:0.00} {clientOrder.Id}");
-            }
+            //if (placedOrder.Success)
+            //{
+            //    _newOrder.OnNext(placedOrder.Data);
+            //    _logger.Debug($"{clientOrder.Symbol}: {clientOrder.Side} {clientOrder.Quantity} {clientOrder.Price:0.00} {clientOrder.Id}");
+            //}
         }
 
         #endregion

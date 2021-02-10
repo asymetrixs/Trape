@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Trape.Cli.Trader.Cache.Models;
 
-namespace Trape.Cli.trader.Market
+namespace Trape.Cli.Trader.Market
 {
     /// <summary>
     /// Interface for <c>StockExchange</c>

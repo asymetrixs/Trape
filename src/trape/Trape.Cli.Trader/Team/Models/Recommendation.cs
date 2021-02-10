@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Trape.Cli.Trader.Analyze.Models
+﻿namespace Trape.Cli.Trader.Team.Models
 {
     public class Recommendation
     {
@@ -15,11 +13,6 @@ namespace Trape.Cli.Trader.Analyze.Models
         /// Best Bid Price
         /// </summary>
         public decimal BestBidPrice { get; set; }
-
-        /// <summary>
-        /// Created on
-        /// </summary>
-        public DateTime CreatedOn { get; set; }
 
         /// <summary>
         /// Action

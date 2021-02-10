@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
 
-namespace Trape.Cli.trader
+namespace Trape.Cli.Trader
 {
     /// <summary>
     /// This class holds settings.json

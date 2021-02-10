@@ -10,7 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Trape.Jobs;
 
-namespace Trape.Cli.trader.Listener
+namespace Trape.Cli.Trader.Listener
 {
     /// <summary>
     /// This class is an implementation of <c>IBuffer</c>
@@ -154,7 +154,7 @@ namespace Trape.Cli.trader.Listener
                         if (!_starting)
                         {
                             _logger.Information($"{current.BaseAsset}: New asset detected");
-                            _newAssets.OnNext(current);
+                            //_newAssets.OnNext(current);
                         }
                     }
                 }

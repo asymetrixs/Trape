@@ -3,8 +3,8 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Trape.Cli.trader.Cache.Models;
-using Trape.Cli.trader.Listener;
+using Trape.Cli.Trader.Cache.Models;
+using Trape.Cli.Trader.Listener;
 
 namespace Trape.Cli.Trader.Cache
 {

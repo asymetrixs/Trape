@@ -3,7 +3,7 @@ using System;
 using System.Threading.Tasks;
 using Trape.Cli.Trader.Account.Models;
 
-namespace Trape.Cli.trader.Account
+namespace Trape.Cli.Trader.Account
 {
     public interface IAccountant : IDisposable
     {

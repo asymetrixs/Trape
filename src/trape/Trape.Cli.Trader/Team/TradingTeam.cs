@@ -5,11 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Threading.Tasks;
-using Trape.Cli.trader.Analyze;
-using Trape.Cli.trader.Listener;
-using Trape.Cli.trader.Trading;
+using Trape.Cli.Trader.Listener;
 
-namespace Trape.Cli.trader.Team
+namespace Trape.Cli.Trader.Team
 {
     /// <summary>
     /// Starts, stops, and manages the <c>Brokers</c>

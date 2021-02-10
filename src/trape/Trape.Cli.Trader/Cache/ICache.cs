@@ -1,4 +1,4 @@
-﻿using Trape.Cli.trader.Cache.Models;
+﻿using Trape.Cli.Trader.Cache.Models;
 
 namespace Trape.Cli.Trader.Cache
 {

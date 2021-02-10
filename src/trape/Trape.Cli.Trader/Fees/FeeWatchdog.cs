@@ -5,12 +5,11 @@ using Serilog;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Trape.Cli.trader.Account;
-using Trape.Cli.trader.Listener;
-using Trape.Cli.trader.Market;
+using Trape.Cli.Trader.Account;
 using Trape.Cli.Trader.Cache.Models;
+using Trape.Cli.Trader.Market;
 
-namespace Trape.Cli.trader.Fees
+namespace Trape.Cli.Trader.Fees
 {
     /// <summary>
     /// Watchdog to always have sufficient BNBs available to pay fees

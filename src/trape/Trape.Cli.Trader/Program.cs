@@ -13,16 +13,16 @@ using SimpleInjector.Lifestyles;
 using System;
 using System.Threading.Tasks;
 using Trape.BinanceNet.Logger;
-using Trape.Cli.trader.Account;
-using Trape.Cli.trader.Analyze;
-using Trape.Cli.trader.Fees;
-using Trape.Cli.trader.Listener;
-using Trape.Cli.trader.Market;
-using Trape.Cli.trader.Team;
-using Trape.Cli.trader.Trading;
+using Trape.Cli.Trader.Account;
+using Trape.Cli.Trader.Team;
+using Trape.Cli.Trader.Fees;
+using Trape.Cli.Trader.Listener;
+using Trape.Cli.Trader.Market;
+using Trape.Cli.Trader.Team;
+using Trape.Cli.Trader.Team;
 using Trape.Cli.Trader.Cache;
 
-namespace Trape.Cli.trader
+namespace Trape.Cli.Trader
 {
     public class Program
     {

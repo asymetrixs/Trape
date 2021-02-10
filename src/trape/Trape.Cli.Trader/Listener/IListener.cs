@@ -2,7 +2,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Trape.Cli.trader.Listener
+namespace Trape.Cli.Trader.Listener
 {
     /// <summary>
     /// Interface for buffer

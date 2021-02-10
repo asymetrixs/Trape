@@ -1,4 +1,4 @@
-﻿namespace Trape.Cli.Trader.Analyze.Models
+﻿namespace Trape.Cli.Trader.Team.Models
 {
     public enum ActionType
     {

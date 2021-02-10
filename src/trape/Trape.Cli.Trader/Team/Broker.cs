@@ -5,15 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Trape.Cli.trader.Account;
-using Trape.Cli.trader.Analyze;
-using Trape.Cli.trader.Market;
-using Trape.Cli.trader.Team;
-using Trape.Cli.Trader.Analyze.Models;
+using Trape.Cli.Trader.Account;
 using Trape.Cli.Trader.Cache;
 using Trape.Cli.Trader.Cache.Models;
+using Trape.Cli.Trader.Market;
+using Trape.Cli.Trader.Team.Models;
 
-namespace Trape.Cli.trader.Trading
+namespace Trape.Cli.Trader.Team
 {
     /// <summary>
     /// Does the actual trading taking into account the <c>Recommendation</c> of the <c>Analyst</c> and previous trades
@@ -149,7 +147,7 @@ namespace Trape.Cli.trader.Trading
             }
 
             // Check if there is an open order
-            if(_cache.HasOpenOrder(Symbol.Name))
+            if (_cache.HasOpenOrder(Symbol.Name))
             {
                 return;
             }
@@ -204,7 +202,6 @@ namespace Trape.Cli.trader.Trading
         /// Runs some checks and places an order if possible
         /// </summary>
         /// <param name="recommendation">Recommendation</param>
-        /// <param name="symbolInfo">Symbol information</param>
         /// <returns>Placed order or null if none placed</returns>
         public async Task Buy(Recommendation recommendation)
         {
@@ -221,10 +218,10 @@ namespace Trape.Cli.trader.Trading
 
             // Check if it was not bought before
             var assetBalance = await _accountant.GetBalance(BaseAsset).ConfigureAwait(true);
-
-            if (assetBalance.Total > 0)
+            if (assetBalance?.Total > 0)
             {
                 _logger.Debug($"{BaseAsset}: Asset already in stock");
+                return;
             }
 
             // Max 20 USDT or what is available 
@@ -241,7 +238,7 @@ namespace Trape.Cli.trader.Trading
             }
 
             // Get ask price
-            var bestBidPrice = recommendation.BestBidPrice;
+            var bestBidPrice = recommendation.BestAskPrice;
             var quantity = buyForUSDT / bestBidPrice;
             quantity = Math.Round(quantity, Symbol.BaseAssetPrecision);
 
@@ -310,11 +307,11 @@ namespace Trape.Cli.trader.Trading
         {
             _logger.Debug($"{BaseAsset}: Preparing to sell");
 
+            // Check if asset can be sold
             var assetBalance = await _accountant.GetBalance(BaseAsset).ConfigureAwait(true);
-
-            if (assetBalance == null || assetBalance?.Free == 0)
+            if (assetBalance is null || assetBalance.Free == 0)
             {
-                _logger.Debug($"{BaseAsset} nothing free");
+                _logger.Debug($"{BaseAsset}: Nothing free");
                 return;
             }
 
@@ -336,7 +333,7 @@ namespace Trape.Cli.trader.Trading
             }
 
             // Logging
-            _logger.Debug($"{BaseAsset} Sell: {recommendation.Action};Asking:{bestAskPrice:0.00};Free:{assetBalance?.Free:0.00######};Quantity:{quantity:0.00######};LockedOpenOrderAmount:{lockedOpenOrderQuantity:0.00}");
+            _logger.Debug($"{BaseAsset} Sell: {recommendation.Action};Asking:{bestAskPrice:0.00};Free:{assetBalance.Free:0.00######};Quantity:{quantity:0.00######};LockedOpenOrderAmount:{lockedOpenOrderQuantity:0.00}");
             _logger.Verbose($"{BaseAsset} Sell: Checking conditions");
             _logger.Verbose($"{BaseAsset} Sell:  lastOrder is null");
             _logger.Verbose($"{BaseAsset} Sell: {quantity:0.00000000} quantity");

@@ -12,7 +12,7 @@ using Trape.Cli.Trader.Account.Models;
 using Trape.Cli.Trader.Cache;
 using Trape.Jobs;
 
-namespace Trape.Cli.trader.Account
+namespace Trape.Cli.Trader.Account
 {
     /// <summary>
     /// Implementation of <c>IAccountant</c> managing the binance inventory
