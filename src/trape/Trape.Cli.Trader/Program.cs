@@ -14,13 +14,11 @@ using System;
 using System.Threading.Tasks;
 using Trape.BinanceNet.Logger;
 using Trape.Cli.Trader.Account;
-using Trape.Cli.Trader.Team;
+using Trape.Cli.Trader.Cache;
 using Trape.Cli.Trader.Fees;
 using Trape.Cli.Trader.Listener;
 using Trape.Cli.Trader.Market;
 using Trape.Cli.Trader.Team;
-using Trape.Cli.Trader.Team;
-using Trape.Cli.Trader.Cache;
 
 namespace Trape.Cli.Trader
 {
