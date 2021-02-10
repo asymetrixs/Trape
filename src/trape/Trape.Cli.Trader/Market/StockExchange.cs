@@ -29,11 +29,6 @@ namespace Trape.Cli.Trader.Market
         private readonly ICache _cache;
 
         /// <summary>
-        /// Binance Client
-        /// </summary>
-        private readonly IBinanceClient _binanceClient;
-
-        /// <summary>
         /// Orders
         /// </summary>
         private readonly Subject<BinancePlacedOrder> _newOrder;

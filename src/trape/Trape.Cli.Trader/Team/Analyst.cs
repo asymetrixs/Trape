@@ -5,7 +5,6 @@ using CryptoExchange.Net.Sockets;
 using Serilog;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -48,7 +47,7 @@ namespace Trape.Cli.Trader.Team
         /// <summary>
         /// Subscriptions
         /// </summary>
-        private readonly List<UpdateSubscription> _subscriptions;
+        private UpdateSubscription? _subscription;
 
         /// <summary>
         /// Timer when Analyst makes a new decision
@@ -64,11 +63,6 @@ namespace Trape.Cli.Trader.Team
         /// Disposed
         /// </summary>
         private bool _disposed;
-
-        /// <summary>
-        /// Binance Stream Tick Buffer
-        /// </summary>
-        private readonly ConcurrentBag<IBinanceTick> _binanceStreamTickBuffer;
 
         /// <summary>
         /// Recommendations
@@ -89,16 +83,6 @@ namespace Trape.Cli.Trader.Team
         /// Best ask price
         /// </summary>
         private readonly BestPrice _bestAskPrice;
-
-        private static readonly TimeSpan _5s = TimeSpan.FromSeconds(5);
-
-        private static readonly TimeSpan _10s = TimeSpan.FromSeconds(10);
-
-        private static readonly TimeSpan _15s = TimeSpan.FromSeconds(15);
-
-        private static readonly TimeSpan _30s = TimeSpan.FromSeconds(30);
-
-        private static readonly TimeSpan _45s = TimeSpan.FromSeconds(45);
 
         #endregion
 
@@ -123,8 +107,6 @@ namespace Trape.Cli.Trader.Team
             _logger = logger.ForContext<Analyst>();
             _binanceSocketClient = binanceSocketClient;
             _cancellationTokenSource = new CancellationTokenSource();
-            _binanceStreamTickBuffer = new ConcurrentBag<IBinanceTick>();
-            _subscriptions = new List<UpdateSubscription>();
             _newRecommendation = new Subject<Recommendation>();
             _currentPrices = new ConcurrentQueue<CurrentBookPrice>();
             _bestBidPrice = new BestPrice();
@@ -243,6 +225,8 @@ namespace Trape.Cli.Trader.Team
 
             if (action != ActionType.Hold)
             {
+                _logger.Debug($"{Symbol.Name}: {action} @ {currentPrice.Value}");
+
                 // Instantiate new recommendation
                 _newRecommendation.OnNext(new Recommendation()
                 {
@@ -282,7 +266,7 @@ namespace Trape.Cli.Trader.Team
             #region Subscriptions
 
             // Subscribe to symbol
-            var updateSubscription = await _binanceSocketClient.Spot.SubscribeToBookTickerUpdatesAsync(Symbol.Name,
+            var result = await _binanceSocketClient.Spot.SubscribeToBookTickerUpdatesAsync(Symbol.Name,
                 async (BinanceStreamBookPrice bsbp) =>
                 {
                     _currentPrices.Enqueue(new CurrentBookPrice(bsbp));
@@ -308,13 +292,15 @@ namespace Trape.Cli.Trader.Team
 
             #endregion
 
-            if (!updateSubscription.Success)
+            if (!result.Success)
             {
                 IsFaulty = true;
                 _logger.Warning($"{BaseAsset}: Analyst is FAULTY");
             }
             else
             {
+                _subscription = result.Data;
+
                 // Do not start recommender when state is faulty
                 _jobRecommender.Start();
                 _logger.Information($"{BaseAsset}: Analyst started");
@@ -333,6 +319,11 @@ namespace Trape.Cli.Trader.Team
 
             // Terminate possible running tasks
             _cancellationTokenSource.Cancel();
+
+            if (_subscription is not null)
+            {
+                await _binanceSocketClient.Unsubscribe(_subscription).ConfigureAwait(true);
+            }
 
             _logger.Information("Analyst stopped");
 

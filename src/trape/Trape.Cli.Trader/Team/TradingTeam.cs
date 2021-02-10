@@ -82,7 +82,6 @@ namespace Trape.Cli.Trader.Team
 
             _logger.Verbose("Checking trading team...");
 
-
             if (_team.Any(t => t.BaseAsset == binanceSymbol.BaseAsset))
             {
                 _logger.Verbose($"Team for {binanceSymbol.BaseAsset} is already spawned...");
