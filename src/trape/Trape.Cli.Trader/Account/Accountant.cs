@@ -2,19 +2,15 @@
 using Binance.Net.Interfaces;
 using Binance.Net.Objects.Spot.SpotData;
 using Binance.Net.Objects.Spot.UserStream;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
-using SimpleInjector.Lifestyles;
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Trape.Cli.trader.Listener;
-using Trape.Datalayer;
-using Trape.Datalayer.Models;
+using Trape.Cli.Trader.Account.Models;
+using Trape.Cli.Trader.Cache;
 using Trape.Jobs;
-using Trape.Mapper;
 
 namespace Trape.Cli.trader.Account
 {
@@ -71,9 +67,9 @@ namespace Trape.Cli.trader.Account
         private readonly ILogger _logger;
 
         /// <summary>
-        /// Buffer
+        /// Cache
         /// </summary>
-        private readonly IListener _buffer;
+        private readonly ICache _cache;
 
         /// <summary>
         /// Cancellation Token Source
@@ -90,6 +86,11 @@ namespace Trape.Cli.trader.Account
         /// </summary>
         private readonly SemaphoreSlim _syncBinanceStreamOrderUpdate;
 
+        /// <summary>
+        /// Trade summaries
+        /// </summary>
+        private readonly ConcurrentDictionary<string, TradeSummary> _tradeSummaries;
+
         #endregion
 
         #region Constructor
@@ -98,15 +99,16 @@ namespace Trape.Cli.trader.Account
         /// Initializes a new instance of the <c>Accountant</c> class.
         /// </summary>
         /// <param name="logger">Logger</param>
+        /// <param name="cache">Cache</param>
         /// <param name="binanceClient">Binance Client</param>
         /// <param name="binanceSocketClient">Binance Socket Client</param>
-        public Accountant(ILogger logger, IListener buffer, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
+        public Accountant(ILogger logger, ICache cache, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
         {
             #region Argument checks
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _cache = cache ?? throw new ArgumentNullException(paramName: nameof(cache));
 
             _binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
 
@@ -118,11 +120,12 @@ namespace Trape.Cli.trader.Account
             _cancellationTokenSource = new CancellationTokenSource();
             _binanceAccountInfoUpdated = default;
             _syncBinanceStreamOrderUpdate = new SemaphoreSlim(1, 1);
+            _tradeSummaries = new ConcurrentDictionary<string, TradeSummary>();
 
             #region Job Setup
 
             // Create timer for account info synchronization
-            _jobSynchronizeAccountInfo = new Job(new TimeSpan(0, 0, 5), SynchronizeAccountInfo);
+            _jobSynchronizeAccountInfo = new Job(new TimeSpan(0, 0, 5), async () => await SynchronizeAccountInfo().ConfigureAwait(true));
 
             // Create timer for connection keep alive
             _jobConnectionKeepAlive = new Job(new TimeSpan(0, 15, 0), ConnectionKeepAlive);
@@ -170,7 +173,7 @@ namespace Trape.Cli.trader.Account
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private async void SynchronizeAccountInfo()
+        private async Task SynchronizeAccountInfo()
         {
             // Get latest account information
             var accountInfo = await _binanceClient.General.GetAccountInfoAsync(ct: _cancellationTokenSource.Token).ConfigureAwait(false);
@@ -201,235 +204,55 @@ namespace Trape.Cli.trader.Account
         /// Receives Binance order updates
         /// </summary>
         /// <param name="binanceStreamOrderUpdate"></param>
-        private async void SaveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
+        private void SaveBinanceStreamOrderUpdate(BinanceStreamOrderUpdate binanceStreamOrderUpdate)
         {
-            try
-            {
-                // Synchronize access
-                await _syncBinanceStreamOrderUpdate.WaitAsync().ConfigureAwait(false);
-
-                using (AsyncScopedLifestyle.BeginScope(Program.Container))
-                {
-                    var database = Program.Container.GetService<TrapeContext>();
-
-                    // Parse the order update
-                    var orderUpdate = Translator.Translate(binanceStreamOrderUpdate);
-
-                    // Client Order, add if does not already exists
-                    var attempts = 5;
-                    ClientOrder clientOrder = new();
-                    while (attempts > 0)
-                    {
-                        try
-                        {
-                            _logger.Debug($"Loading Client Order: {orderUpdate.ClientOrderId}");
-                            clientOrder = database.ClientOrder.FirstOrDefault(c => c.Id == orderUpdate.ClientOrderId);
-
-                            _logger.Debug($"Client Order {((clientOrder == null) ? "not" : string.Empty)} found: : {orderUpdate.ClientOrderId}");
-
-                            if (clientOrder == null)
-                            {
-                                _logger.Information($"Adding new Client Order: {orderUpdate.ClientOrderId}");
-
-                                clientOrder = new ClientOrder(orderUpdate.ClientOrderId)
-                                {
-                                    CreatedOn = DateTime.Now,
-                                    Price = orderUpdate.Price,
-                                    Quantity = orderUpdate.Quantity,
-                                    Side = orderUpdate.Side,
-                                    Type = orderUpdate.Type,
-                                    TimeInForce = orderUpdate.TimeInForce,
-                                    Symbol = orderUpdate.Symbol
-                                };
-
-                                database.ClientOrder.Add(clientOrder);
-
-                                await database.SaveChangesAsync().ConfigureAwait(true);
-                            }
-
-                            break;
-                        }
-                        catch (Exception coe)
-                        {
-                            attempts--;
-
-                            _logger.Warning($"Failed attempt to store Client Order {clientOrder.Id}; attempt: {attempts}");
-
-                            database.Entry(clientOrder).State = EntityState.Modified;
-
-                            try
-                            {
-                                await database.SaveChangesAsync().ConfigureAwait(true);
-                                _logger.Warning($"Modified state accepted for: {clientOrder.Id}");
-                            }
-                            catch (Exception coe2)
-                            {
-                                _logger.Error(coe, $"Finally attempt to store Client Order {clientOrder.Id} failed");
-
-                                _logger.Warning(coe2, $"Modified state not accepted for: {clientOrder.Id}");
-                            }
-
-                            if (attempts == 0)
-                            {
-                                throw;
-                            }
-                        }
-                    }
-
-                    // Find existing order list
-                    var orderList = await database.OrderLists.FirstOrDefaultAsync(o => o.OrderListId == orderUpdate.OrderListId).ConfigureAwait(false);
-                    if (orderList == null)
-                    {
-                        // Create new order list
-                        orderList = new OrderList()
-                        {
-                            ContingencyType = string.Empty,
-                            ListClientOrderId = orderUpdate.ClientOrderId,
-                            ListStatusType = Datalayer.Enums.ListStatusType.ExecutionStarted,
-                            ListOrderStatus = Datalayer.Enums.ListOrderStatus.Executing,
-                            Symbol = orderUpdate.Symbol,
-                            TransactionTime = DateTime.UtcNow
-                        };
-
-                        // Add orderlist
-                        database.OrderLists.Add(orderList);
-                    }
-
-                    // Find existing order
-                    var order = await database.Orders.FirstOrDefaultAsync(o => o.ClientOrderId == orderUpdate.ClientOrderId).ConfigureAwait(true);
-                    if (order == null)
-                    {
-                        // Create new order
-                        order = new Order()
-                        {
-                            OrderId = orderUpdate.OrderId,
-                            ClientOrderId = orderUpdate.ClientOrderId,
-                            Symbol = orderUpdate.Symbol,
-                            CreatedOn = DateTime.UtcNow,
-                            ClientOrder = clientOrder,
-                            OrderList = orderList
-                        };
-
-                        // Add order
-                        database.Orders.Add(order);
-                    }
-                    // Add order update to new/old order
-                    order.OrderUpdates.Add(orderUpdate);
-                    orderUpdate.Order = order;
-
-                    // Add the order update
-                    database.OrderUpdates.Add(orderUpdate);
-
-                    // Add order to order list
-                    if (!orderList.Orders.Contains(order))
-                    {
-                        orderList.Orders.Add(order);
-                        order.OrderList = orderList;
-                    }
-
-                    // Add order update
-                    orderList.OrderUpdates.Add(orderUpdate);
-                    orderUpdate.OrderList = orderList;
-
-                    // If sell and filled, remove quantity from buy
-                    if (binanceStreamOrderUpdate.Side == OrderSide.Sell && binanceStreamOrderUpdate.Status == OrderStatus.Filled)
-                    {
-                        // Get trades where assets were bought
-                        var buyTrades = database.PlacedOrders
-                                        .Where(p => p.Side == Datalayer.Enums.OrderSide.Buy
-                                            && p.Symbol == binanceStreamOrderUpdate.Symbol)
-                                        .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity
-                                                                    && f.Price <= binanceStreamOrderUpdate.Price))
-                                        .OrderByDescending(t => t.Price);
-
-                        var soldQuantity = binanceStreamOrderUpdate.QuantityFilled;
-
-                        // Fill trades with sold quantity
-                        foreach (var trade in buyTrades)
-                        {
-                            var freeQuantity = trade.Quantity - trade.ConsumedQuantity;
-
-                            // Free quantity is more than soldQuantity, substract all from one trade
-                            if (freeQuantity > soldQuantity)
-                            {
-                                trade.ConsumedQuantity -= soldQuantity;
-                                soldQuantity = 0;
-                                break;
-                            }
-                            else
-                            {
-                                // Substract what is available
-                                // Substract what can be used for the trade
-                                soldQuantity -= (trade.Quantity - trade.ConsumedQuantity);
-                                trade.ConsumedQuantity = trade.Quantity;
-                            }
-
-                            if (soldQuantity == 0)
-                            {
-                                break;
-                            }
-                        }
-
-                        // In case it was sold over price, remove from smallest over price first
-                        if (soldQuantity != 0)
-                        {
-                            // Get trades where assets were bought
-                            var overPriceBuyTrades = database.PlacedOrders
-                                            .Where(p => p.Side == Datalayer.Enums.OrderSide.Buy
-                                                && p.Symbol == binanceStreamOrderUpdate.Symbol)
-                                            .SelectMany(f => f.Fills.Where(f => f.Quantity > f.ConsumedQuantity
-                                                                        && f.Price > binanceStreamOrderUpdate.Price))
-                                            .OrderBy(t => t.Price);
-
-                            // Fill trades with sold quantity
-                            foreach (var trade in overPriceBuyTrades)
-                            {
-                                var freeQuantity = trade.Quantity - trade.ConsumedQuantity;
-
-                                // Free quantity is more than soldQuantity, substract all from one trade
-                                if (freeQuantity > soldQuantity)
-                                {
-                                    trade.ConsumedQuantity -= soldQuantity;
-                                    soldQuantity = 0;
-                                    break;
-                                }
-                                else
-                                {
-                                    // Substract what is available
-                                    // Substract what can be used for the trade
-                                    soldQuantity -= (trade.Quantity - trade.ConsumedQuantity);
-                                    trade.ConsumedQuantity = trade.Quantity;
-                                }
-
-                                if (soldQuantity == 0)
-                                {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    await database.SaveChangesAsync().ConfigureAwait(false);
-                }
-            }
-            catch (Exception e)
-            {
-                _logger.ForContext(typeof(Accountant));
-                _logger.Error(e, e.Message);
-            }
-            finally
-            {
-                _syncBinanceStreamOrderUpdate.Release();
-            }
-
             // Clear blocked amount
             if (binanceStreamOrderUpdate.Status == OrderStatus.Filled
                 || binanceStreamOrderUpdate.Status == OrderStatus.Rejected
                 || binanceStreamOrderUpdate.Status == OrderStatus.Expired
                 || binanceStreamOrderUpdate.Status == OrderStatus.Canceled)
             {
-                _buffer.RemoveOpenOrder(binanceStreamOrderUpdate.ClientOrderId);
+                _cache.RemoveOpenOrder(binanceStreamOrderUpdate.ClientOrderId);
             }
+
+            // Run trade summary update task on thread pool
+            Task.Run(() =>
+            {
+                var order = _binanceClient.Spot.Order.GetMyTrades(binanceStreamOrderUpdate.Symbol);
+
+                if (!order.Success)
+                {
+                    return;
+                }
+
+                decimal quoteQuantity = 0;
+                decimal quantity = 0;
+
+                var tradesSorted = order.Data.OrderBy(o => o.TradeTime).ToArray();
+
+                // Calculate quantities by following the trade history
+                for (int i = 0; i < tradesSorted.Length; i++)
+                {
+                    var current = tradesSorted[i];
+                    if (current.IsBuyer)
+                    {
+                        quantity += current.Quantity;
+                        quoteQuantity += current.QuoteQuantity;
+                    }
+                    else
+                    {
+                        quantity -= current.Quantity;
+                        quoteQuantity -= current.QuoteQuantity;
+                    }
+                }
+
+                _tradeSummaries[binanceStreamOrderUpdate.Symbol] = new TradeSummary()
+                {
+                    Quantity = quantity,
+                    QuoteQuantity = quoteQuantity,
+                    Symbol = binanceStreamOrderUpdate.Symbol,
+                };
+            });
 
             _logger.Verbose("Received Binance Stream Order Update");
         }
@@ -438,43 +261,8 @@ namespace Trape.Cli.trader.Account
         /// Receives Binance order lists
         /// </summary>
         /// <param name="binanceStreamOrderList"></param>
-        private async void SaveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)
+        private void SaveBinanceStreamOrderList(BinanceStreamOrderList binanceStreamOrderList)
         {
-            using (AsyncScopedLifestyle.BeginScope(Program.Container))
-            {
-                var database = Program.Container.GetService<TrapeContext>();
-                try
-                {
-                    // Parse the new one
-                    var newOrderList = Translator.Translate(binanceStreamOrderList);
-
-                    // Check if there is an old one
-                    var oldOrderList = await database.OrderLists.FirstOrDefaultAsync(o => o.OrderListId == newOrderList.OrderListId).ConfigureAwait(false);
-                    if (oldOrderList == null)
-                    {
-                        // Add the new one
-                        database.OrderLists.Add(newOrderList);
-                    }
-                    else
-                    {
-                        // Update the old one
-                        oldOrderList.ContingencyType = newOrderList.ContingencyType;
-                        oldOrderList.ListClientOrderId = newOrderList.ListClientOrderId;
-                        oldOrderList.ListOrderStatus = newOrderList.ListOrderStatus;
-                        oldOrderList.ListStatusType = newOrderList.ListStatusType;
-                        oldOrderList.OrderListId = newOrderList.OrderListId;
-                        oldOrderList.TransactionTime = newOrderList.TransactionTime;
-                    }
-
-                    await database.SaveChangesAsync().ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    _logger.ForContext(typeof(Accountant));
-                    _logger.Error(e, e.Message);
-                }
-            }
-
             _logger.Verbose("Received Binance Stream Order List");
         }
 
@@ -482,43 +270,8 @@ namespace Trape.Cli.trader.Account
         /// Receives Binance balances
         /// </summary>
         /// <param name="binanceStreamPositionsUpdate"></param>
-        private async void SaveBinanceStreamPositionUpdate(BinanceStreamPositionsUpdate binanceStreamPositionsUpdate)
+        private void SaveBinanceStreamPositionUpdate(BinanceStreamPositionsUpdate binanceStreamPositionsUpdate)
         {
-            using (AsyncScopedLifestyle.BeginScope(Program.Container))
-            {
-                var database = Program.Container.GetService<TrapeContext>();
-                try
-                {
-                    // Get account info, has to be present because is loaded already when Accountant is started.
-                    var accountInfo = await database.AccountInfos.FirstAsync().ConfigureAwait(true);
-
-                    var balances = Translator.Translate(binanceStreamPositionsUpdate);
-                    foreach (var balance in balances)
-                    {
-                        var oldBalance = await database.Balances.FirstOrDefaultAsync(b => b.Asset == balance.Asset).ConfigureAwait(true);
-                        if (oldBalance == null)
-                        {
-                            balance.AccountInfo = accountInfo;
-                            accountInfo.Balances.Add(balance);
-                            database.Balances.Add(balance);
-                        }
-                        else
-                        {
-                            oldBalance.Free = balance.Free;
-                            oldBalance.Locked = balance.Locked;
-                            oldBalance.Total = balance.Total;
-                        }
-                    }
-
-                    await database.SaveChangesAsync().ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    _logger.ForContext(typeof(Accountant));
-                    _logger.Error(e, e.Message);
-                }
-            }
-
             _logger.Verbose("Received Binance Stream Balances");
         }
 
@@ -526,23 +279,8 @@ namespace Trape.Cli.trader.Account
         /// Receives Binance balance updates
         /// </summary>
         /// <param name="binanceStreamBalanceUpdate"></param>
-        private async void SaveBinanceStreamBalanceUpdate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
+        private void SaveBinanceStreamBalanceUpdate(BinanceStreamBalanceUpdate binanceStreamBalanceUpdate)
         {
-            using (AsyncScopedLifestyle.BeginScope(Program.Container))
-            {
-                var database = Program.Container.GetService<TrapeContext>();
-                try
-                {
-                    database.BalanceUpdates.AddRange(Translator.Translate(binanceStreamBalanceUpdate));
-                    await database.SaveChangesAsync().ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    _logger.ForContext(typeof(Accountant));
-                    _logger.Error(e, e.Message);
-                }
-            }
-
             _logger.Verbose("Received Binance Stream Balance Update");
         }
 
@@ -569,94 +307,25 @@ namespace Trape.Cli.trader.Account
 
             if (bac == null || _binanceAccountInfoUpdated < DateTime.UtcNow.AddSeconds(-6))
             {
-                var accountInfoRequest = await _binanceClient.General.GetAccountInfoAsync(ct: _cancellationTokenSource.Token).ConfigureAwait(true);
-
-                if (accountInfoRequest.Success)
-                {
-                    _binanceAccountInfo = accountInfoRequest.Data;
-                    _binanceAccountInfoUpdated = DateTime.UtcNow;
-
-                    _logger.Information("Requested account info");
-                }
-                else
-                {
-                    // Something is oddly wrong, wait a bit
-                    _logger.Warning("Cannot retrieve account info");
-                    await Task.Delay(200).ConfigureAwait(false);
-                }
-            }
-
-            // Save account info
-            using (AsyncScopedLifestyle.BeginScope(Program.Container))
-            {
-                var database = Program.Container.GetService<TrapeContext>();
-                try
-                {
-                    // Check if account info is present
-                    var accountInfo = await database.AccountInfos.FirstOrDefaultAsync().ConfigureAwait(false);
-                    if (accountInfo == null)
-                    {
-                        // Add new account info
-                        accountInfo = new AccountInfo()
-                        {
-                            BuyerCommission = _binanceAccountInfo.BuyerCommission,
-                            CanDeposit = _binanceAccountInfo.CanDeposit,
-                            CanTrade = _binanceAccountInfo.CanTrade,
-                            CanWithdraw = _binanceAccountInfo.CanWithdraw,
-                            MakerCommission = _binanceAccountInfo.MakerCommission,
-                            SellerCommission = _binanceAccountInfo.SellerCommission,
-                            TakerCommission = _binanceAccountInfo.TakerCommission,
-                            UpdatedOn = _binanceAccountInfo.UpdateTime.ToUniversalTime()
-                        };
-
-                        database.AccountInfos.Add(accountInfo);
-
-                        // Add balances
-                        foreach (var balance in _binanceAccountInfo.Balances)
-                        {
-                            accountInfo.Balances.Add(Translator.Translate(balance, accountInfo));
-                        }
-                    }
-                    else
-                    {
-                        // Update existing account info
-                        accountInfo.BuyerCommission = _binanceAccountInfo.BuyerCommission;
-                        accountInfo.CanDeposit = _binanceAccountInfo.CanDeposit;
-                        accountInfo.CanTrade = _binanceAccountInfo.CanTrade;
-                        accountInfo.CanWithdraw = _binanceAccountInfo.CanWithdraw;
-                        accountInfo.MakerCommission = _binanceAccountInfo.MakerCommission;
-                        accountInfo.SellerCommission = _binanceAccountInfo.SellerCommission;
-                        accountInfo.TakerCommission = _binanceAccountInfo.TakerCommission;
-                        accountInfo.UpdatedOn = _binanceAccountInfo.UpdateTime.ToUniversalTime();
-
-                        // Add or update balances
-                        foreach (var newBalance in _binanceAccountInfo.Balances)
-                        {
-                            var oldBalance = accountInfo.Balances.Find(b => b.Asset == newBalance.Asset);
-                            if (oldBalance == null)
-                            {
-                                accountInfo.Balances.Add(Translator.Translate(newBalance, accountInfo));
-                            }
-                            else
-                            {
-                                oldBalance.Free = newBalance.Free;
-                                oldBalance.Locked = newBalance.Locked;
-                                oldBalance.Total = newBalance.Total;
-                            }
-                        }
-                    }
-
-                    // Save changes
-                    await database.SaveChangesAsync().ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    _logger.ForContext(typeof(Accountant));
-                    _logger.Error(e, e.Message);
-                }
+                await SynchronizeAccountInfo().ConfigureAwait(true);
             }
 
             return _binanceAccountInfo;
+        }
+
+        /// <summary>
+        /// Returns trade summary for symbol
+        /// </summary>
+        /// <param name="symbol"></param>
+        /// <returns></returns>
+        public TradeSummary? GetTradeSummary(string symbol)
+        {
+            if (_tradeSummaries.TryGetValue(symbol, out TradeSummary value))
+            {
+                return value;
+            }
+
+            return null;
         }
 
         #endregion
@@ -755,6 +424,7 @@ namespace Trape.Cli.trader.Account
                 _binanceClient.Dispose();
                 _syncBinanceStreamOrderUpdate.Dispose();
                 _cancellationTokenSource.Dispose();
+                _jobConnectionKeepAlive.Dispose();
             }
 
             _disposed = true;

@@ -8,14 +8,19 @@ namespace Trape.Cli.trader.Listener
     /// <summary>
     /// This class hols information about a best price
     /// </summary>
-    public class BestPrice
+    public class BestPrice : IDisposable
     {
         #region Fields
 
         /// <summary>
+        /// Disposed
+        /// </summary>
+        private bool _disposed;
+
+        /// <summary>
         /// Buffer size for the price buffer
         /// </summary>
-        private const long _bufferSize = 15;
+        private const long _bufferSize = 10;
 
         /// <summary>
         /// Current position in the buffer
@@ -42,11 +47,6 @@ namespace Trape.Cli.trader.Listener
         /// </summary>
         private static readonly long _3secondsInTicks = new TimeSpan(0, 0, 3).Ticks;
 
-        /// <summary>
-        /// Symbol
-        /// </summary>
-        public string Symbol { get; }
-
         #endregion
 
         #region Constructor
@@ -55,9 +55,9 @@ namespace Trape.Cli.trader.Listener
         /// Initializes a new instance of the <c>BestPrice</c> class
         /// </summary>
         /// <param name="symbol"></param>
-        public BestPrice(string symbol)
+        public BestPrice()
         {
-            Symbol = symbol;
+            _disposed = false;
             _position = -1;
             _prices = new decimal[_bufferSize];
             _syncAdd = new SemaphoreSlim(1, 1);
@@ -111,6 +111,44 @@ namespace Trape.Cli.trader.Listener
 
             // Calculate average over array
             return _prices.Average();
+        }
+
+        /// <summary>
+        /// Returns the latest price
+        /// </summary>
+        /// <returns></returns>
+        public decimal? Latest => _prices[_position];
+
+        #endregion
+
+        #region Dispose
+
+        /// <summary>
+        /// Public implementation of Dispose pattern callable by consumers.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Protected implementation of Dispose pattern.
+        /// </summary>
+        /// <param name="disposing"></param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                _syncAdd.Dispose();
+            }
+
+            _disposed = true;
         }
 
         #endregion

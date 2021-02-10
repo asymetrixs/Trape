@@ -1,15 +1,14 @@
-﻿using Binance.Net.Objects.Spot.SpotData;
+﻿using Binance.Net.Enums;
+using Binance.Net.Interfaces;
+using Binance.Net.Objects.Spot.SpotData;
 using Serilog;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Trape.Cli.trader.Account;
 using Trape.Cli.trader.Listener;
 using Trape.Cli.trader.Market;
-using Trape.Datalayer.Models;
-using OrderResponseType = Trape.Datalayer.Enums.OrderResponseType;
-using OrderSide = Trape.Datalayer.Enums.OrderSide;
-using OrderType = Trape.Datalayer.Enums.OrderType;
-using TimeInForce = Trape.Datalayer.Enums.TimeInForce;
+using Trape.Cli.Trader.Cache.Models;
 
 namespace Trape.Cli.trader.Fees
 {
@@ -33,17 +32,22 @@ namespace Trape.Cli.trader.Fees
         /// <summary>
         /// Accountant
         /// </summary>
-        private IAccountant _accountant;
+        private readonly IAccountant _accountant;
 
         /// <summary>
-        /// Listener
+        /// Binance Client
         /// </summary>
-        private IListener _listener;
+        private readonly IBinanceClient _binanceClient;
 
         /// <summary>
         /// Cancellation Token Source
         /// </summary>
         private readonly CancellationTokenSource _cancellationTokenSource;
+
+        /// <summary>
+        /// Stock Exchange
+        /// </summary>
+        private readonly IStockExchange _stockExchange;
 
         /// <summary>
         /// Symbol for fees
@@ -53,7 +57,7 @@ namespace Trape.Cli.trader.Fees
         /// <summary>
         /// Stock Exchange subscriber
         /// </summary>
-        private IDisposable _stockExchangeSubscriber;
+        private readonly IDisposable _stockExchangeSubscriber;
 
         #endregion
 
@@ -64,8 +68,8 @@ namespace Trape.Cli.trader.Fees
         /// </summary>
         /// <param name="logger">Logger</param>
         /// <param name="accountant">Accountant</param>
-        /// <param name="buffer">Buffer</param>
-        public FeeWatchdog(ILogger logger, IAccountant accountant, IListener buffer, IStockExchange stockExchange)
+        /// <param name="binanceClient">Binance Client</param>
+        public FeeWatchdog(ILogger logger, IAccountant accountant, IBinanceClient binanceClient, IStockExchange stockExchange)
         {
             #region Arguments check
 
@@ -73,7 +77,9 @@ namespace Trape.Cli.trader.Fees
 
             _accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            _listener = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
+
+            _stockExchange = stockExchange ?? throw new ArgumentNullException(paramName: nameof(stockExchange));
 
             #endregion
 
@@ -81,14 +87,14 @@ namespace Trape.Cli.trader.Fees
             _cancellationTokenSource = new CancellationTokenSource();
             _feeSymbol = "BNBUSDT";
 
-            _stockExchangeSubscriber = stockExchange.NewOrder.Subscribe(CheckBNB);
+            _stockExchangeSubscriber = stockExchange.NewOrder.Subscribe(async (bpo) => await CheckBNB(bpo).ConfigureAwait(false));
         }
 
         #endregion
 
         #region BNB Checker
 
-        private async void CheckBNB(BinancePlacedOrder _)
+        private async Task CheckBNB(BinancePlacedOrder _)
         {
             // Get remaining BNB balance for trading
             var bnb = await _accountant.GetBalance(_feeSymbol.Replace("USDT", string.Empty, StringComparison.InvariantCulture)).ConfigureAwait(true);
@@ -99,21 +105,27 @@ namespace Trape.Cli.trader.Fees
                 return;
             }
 
-            var currentPrice = _listener.GetAskPrice(_feeSymbol);
+            var priceQuery = await _binanceClient.Spot.Market.GetPriceAsync(_feeSymbol).ConfigureAwait(true);
 
-            // Threshold for buy is 53
+            if (!priceQuery.Success)
+            {
+                _logger.Warning($"{_feeSymbol}: Cannot retrieve price {priceQuery.Error?.Message}");
+                return;
+            }
+
+            var currentPrice = priceQuery.Data.Price;
+
+            // Threshold for buy is 30
             if (bnb.Free < 30)
             {
-                _logger.Information($"Fees NOT OK at {bnb.Free} - issuing buy");
+                _logger.Information($"{_feeSymbol}: Low. {bnb.Free} - issuing buy");
 
                 // Fixed for now, buy for 55 USDT
-                const int buy = 3;
+                const int buy = 1;
 
                 // Get merchant and place order
-                var merchant = Program.Container.GetInstance<IStockExchange>();
-                await merchant.PlaceOrder(new ClientOrder()
+                await _stockExchange.PlaceOrder(new ClientOrder(_feeSymbol)
                 {
-                    Symbol = _feeSymbol,
                     Side = OrderSide.Buy,
                     Type = OrderType.Limit,
                     OrderResponseType = OrderResponseType.Full,
@@ -184,8 +196,6 @@ namespace Trape.Cli.trader.Fees
 
             if (disposing)
             {
-                _accountant = null;
-                _listener = null;
                 _cancellationTokenSource.Dispose();
                 _stockExchangeSubscriber.Dispose();
             }

@@ -3,7 +3,6 @@ using Binance.Net.Enums;
 using Binance.Net.Interfaces;
 using Binance.Net.Objects.Spot;
 using CryptoExchange.Net.Authentication;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -16,12 +15,12 @@ using System.Threading.Tasks;
 using Trape.BinanceNet.Logger;
 using Trape.Cli.trader.Account;
 using Trape.Cli.trader.Analyze;
-using Trape.Cli.trader.Listener;
 using Trape.Cli.trader.Fees;
+using Trape.Cli.trader.Listener;
 using Trape.Cli.trader.Market;
 using Trape.Cli.trader.Team;
 using Trape.Cli.trader.Trading;
-using Trape.Datalayer;
+using Trape.Cli.Trader.Cache;
 
 namespace Trape.Cli.trader
 {
@@ -108,24 +107,19 @@ namespace Trape.Cli.trader
                 .Destructure.ToMaximumDepth(4)
                 .Destructure.ToMaximumStringLength(100)
                 .Destructure.ToMaximumCollectionCount(10)
-//                .WriteTo.Console(
-//#if DEBUG
-//                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
-//#else
-//                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
-//#endif
-//                    outputTemplate: Config.GetValue("Serilog:OutputTemplateConsole")
-//                )
+                //                .WriteTo.Console(
+                //#if DEBUG
+                //                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
+                //#else
+                //                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
+                //#endif
+                //                    outputTemplate: Config.GetValue("Serilog:OutputTemplateConsole")
+                //                )
                 .WriteTo.File(
                     path: Config.GetValue("Serilog:LogFileLocation"), retainedFileCountLimit: 7, rollingInterval: RollingInterval.Day, buffered: false,
                     outputTemplate: Config.GetValue("Serilog:OutputTemplateFile")
                 )
                 .CreateLogger();
-
-            var dbContextOptionsBuilder = new DbContextOptionsBuilder<TrapeContext>();
-            dbContextOptionsBuilder.UseNpgsql(Config.GetConnectionString("trape-db"));
-            dbContextOptionsBuilder.EnableDetailedErrors(false);
-            dbContextOptionsBuilder.EnableSensitiveDataLogging(false);
 
             // Setup container and register defauld scope as first thing
             Container.Options.DefaultScopedLifestyle = new AsyncScopedLifestyle();
@@ -150,8 +144,6 @@ namespace Trape.Cli.trader
 
             // Registration
 
-            Container.Register<TrapeContext, TrapeContext>(Lifestyle.Scoped);
-
             Container.Register<IBroker, Broker>(Lifestyle.Transient);
             Container.Register<IAnalyst, Analyst>(Lifestyle.Transient);
 
@@ -162,15 +154,13 @@ namespace Trape.Cli.trader
 
             Container.Register<IStockExchange, StockExchange>(Lifestyle.Singleton);
             Container.Register<IListener, Listener.Listener>(Lifestyle.Singleton);
+            Container.Register<ICache, Trader.Cache.Cache>(Lifestyle.Singleton);
             Container.Register<IAccountant, Accountant>(Lifestyle.Singleton);
             Container.Register<IFeeWatchdog, FeeWatchdog>(Lifestyle.Singleton);
             Container.Register<ITradingTeam, TradingTeam>(Lifestyle.Singleton);
-            Container.Register<ITrapeContextCreator, TrapeContextDiCreator>(Lifestyle.Singleton);
 
             Container.RegisterInstance(Log.Logger);
             Container.RegisterInstance(Config.Current);
-            Container.RegisterInstance(dbContextOptionsBuilder);
-            Container.RegisterInstance(dbContextOptionsBuilder.Options);
 
             // Set up Binance Client
             var apiCredentials = new ApiCredentials(Config.GetValue("binance:apikey"),

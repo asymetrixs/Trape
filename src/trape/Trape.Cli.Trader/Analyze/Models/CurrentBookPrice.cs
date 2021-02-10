@@ -1,7 +1,7 @@
 ﻿using Binance.Net.Objects.Spot.MarketStream;
 using System;
 
-namespace Trape.Cli.Trader.Cache.Models
+namespace Trape.Cli.Trader.Analyze.Models
 {
     public class CurrentBookPrice
     {

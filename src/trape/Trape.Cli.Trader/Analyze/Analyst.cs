@@ -1,11 +1,10 @@
 ﻿using Binance.Net.Enums;
 using Binance.Net.Interfaces;
 using Binance.Net.Objects.Spot.MarketData;
+using Binance.Net.Objects.Spot.MarketStream;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.Sockets;
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
-using SimpleInjector.Lifestyles;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -18,10 +17,8 @@ using Trape.Cli.trader.Account;
 using Trape.Cli.trader.Analyze.Models;
 using Trape.Cli.trader.Listener;
 using Trape.Cli.trader.Team;
-using Trape.Datalayer;
-using Trape.Datalayer.Models;
+using Trape.Cli.Trader.Analyze.Models;
 using Trape.Jobs;
-using Action = Trape.Datalayer.Enums.Action;
 
 namespace Trape.Cli.trader.Analyze
 {
@@ -37,11 +34,6 @@ namespace Trape.Cli.trader.Analyze
         /// Logger
         /// </summary>
         private readonly ILogger _logger;
-
-        /// <summary>
-        /// Listener
-        /// </summary>
-        private readonly IListener _listener;
 
         /// <summary>
         /// Accountant
@@ -91,12 +83,42 @@ namespace Trape.Cli.trader.Analyze
         /// <summary>
         /// Binance Stream Kline Data Buffer
         /// </summary>
-        private readonly ConcurrentBag<IBinanceStreamKlineData> _binanceStreamKlineDataBuffer;
+        private readonly KLineDiagrams _binanceStreamKlineDataBuffer;
 
         /// <summary>
         /// Recommendations
         /// </summary>
         private readonly Subject<Recommendation> _newRecommendation;
+
+        /// <summary>
+        /// Current prices
+        /// </summary>
+        private readonly ConcurrentQueue<CurrentBookPrice> _currentPrices;
+
+        /// <summary>
+        /// Holds the last time per symbol when the price dropped for the first time
+        /// </summary>
+        private readonly FallingPrice? _fallingPrices;
+
+        /// <summary>
+        /// Best bid price
+        /// </summary>
+        private readonly BestPrice _bestBidPrice;
+
+        /// <summary>
+        /// Best ask price
+        /// </summary>
+        private readonly BestPrice _bestAskPrice;
+
+        private static readonly TimeSpan _5s = TimeSpan.FromSeconds(5);
+
+        private static readonly TimeSpan _10s = TimeSpan.FromSeconds(10);
+
+        private static readonly TimeSpan _15s = TimeSpan.FromSeconds(15);
+
+        private static readonly TimeSpan _30s = TimeSpan.FromSeconds(30);
+
+        private static readonly TimeSpan _45s = TimeSpan.FromSeconds(45);
 
         #endregion
 
@@ -106,15 +128,13 @@ namespace Trape.Cli.trader.Analyze
         /// Constructs a new instance of the <c>Analyst</c> class
         /// </summary>
         /// <param name="logger">Logger</param>
-        /// <param name="buffer">Buffer</param>
-        /// /// <param name="accountant">Accountant</param>
-        public Analyst(ILogger logger, IListener buffer, IAccountant accountant, IBinanceSocketClient binanceSocketClient)
+        /// <param name="accountant">Accountant</param>
+        /// <param name="binanceSocketClient">Binance Socket Client</param>
+        public Analyst(ILogger logger, IAccountant accountant, IBinanceSocketClient binanceSocketClient)
         {
             #region Argument checks
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
-
-            _listener = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             _accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
@@ -126,10 +146,13 @@ namespace Trape.Cli.trader.Analyze
             _disposed = false;
             _logTrendLimiter = 61;
             _binanceStreamTickBuffer = new ConcurrentBag<IBinanceTick>();
-            _binanceStreamKlineDataBuffer = new ConcurrentBag<IBinanceStreamKlineData>();
+            _binanceStreamKlineDataBuffer = new KLineDiagrams();
             _subscriptions = new List<UpdateSubscription>();
             _newRecommendation = new Subject<Recommendation>();
+            _currentPrices = new ConcurrentQueue<CurrentBookPrice>();
             IsFaulty = false;
+            _bestBidPrice = new BestPrice();
+            _bestAskPrice = new BestPrice();
 
             // Set up timer that makes decisions, every second
             _jobRecommender = new Job(new TimeSpan(0, 0, 0, 0, 100), Recommending, _cancellationTokenSource.Token);
@@ -157,7 +180,7 @@ namespace Trape.Cli.trader.Analyze
         /// <summary>
         /// Take Profit threshold
         /// </summary>
-        public const decimal TakeProfitLimit = 0.991M;
+        public const decimal TakeProfitLimit = 1.5M;
 
         /// <summary>
         /// Last time <c>Broker</c> was active
@@ -185,129 +208,148 @@ namespace Trape.Cli.trader.Analyze
         {
             LastActive = DateTime.UtcNow;
 
-            _lastAnalysis.PrepareForUpdate();
+            // First thing is to issue a buy if this asset it not in stock yet
+            var stockAmount = await _accountant.GetBalance(BaseAsset).ConfigureAwait(true);
+
+            if (stockAmount is null || stockAmount.Total == 0)
+            {
+                var latestAskPrice = _bestAskPrice.Latest;
+                var latestBidPrice = _bestBidPrice.Latest;
+
+                if (latestAskPrice is null || latestBidPrice is null)
+                {
+                    _logger.Verbose($"{Symbol.Name}: No price available");
+                    return;
+                }
+
+                _newRecommendation.OnNext(new Recommendation()
+                {
+                    Action = ActionType.Buy,
+                    BestAskPrice = latestAskPrice.Value,
+                    BestBidPrice = latestBidPrice.Value,
+                });
+
+                _logger.Information($"{Symbol.Name}: Recommended to buy");
+
+                return;
+            }
 
             // Use regular approach
             // Get current symbol price
-            var currentPrice = new Point(time: default, price: _listener.GetBidPrice(BaseAsset), slope: 0);
+            var currentPrice = new Point(time: default, price: _bestBidPrice.GetAverage(), slope: 0);
 
             if (currentPrice.Value < 0)
             {
-                _logger.Verbose($"Skipped {BaseAsset} due to old or incomplete data: {currentPrice.Value:0.00}");
+                _logger.Verbose($"Skipped {Symbol.Name} due to old or incomplete data: {currentPrice.Value:0.00}");
 
-                _listener.UpdateRecommendation(new Recommendation() { Symbol = BaseAsset, Action = Action.Hold });
                 return;
             }
 
             // Make the decision
-            var action = Action.Hold;
-            var lastFallingPrice = _listener.GetLastFallingPrice(BaseAsset);
+            var action = ActionType.Hold;
+            var lastFallingPrice = _fallingPrices;
             if (lastFallingPrice != null)
             {
-                _logger.Verbose($"{BaseAsset}: Last Falling Price Original: {lastFallingPrice.OriginalPrice:0.00} | Since: {lastFallingPrice.Since.ToShortTimeString()}");
+                _logger.Verbose($"{Symbol.Name}: Last Falling Price Original: {lastFallingPrice.OriginalPrice:0.00} | Since: {lastFallingPrice.Since.ToShortTimeString()}");
             }
 
-            var x = this._binanceStreamKlineDataBuffer.Where(b => b.Data.Interval == KlineInterval.OneMinute);
+            var tradeSummary = _accountant.GetTradeSummary(Symbol.Name);
+
+            if (tradeSummary is null)
+            {
+                _logger.Verbose($"{Symbol.Name}: No Trade Summary available");
+                return;
+            }
+
+            _logger.Debug($"{Symbol.Name}: Trade Summary {tradeSummary.Quantity} @ {tradeSummary.PricePerUnit} (eff. {tradeSummary.QuoteQuantity,2}");
+
+            _lastAnalysis.PrepareForUpdate();
 
             var path = new StringBuilder();
 
-            //// Panic, threshold is relative to price 
-            //if (stat3s.Slope5s < -currentPrice.Value.XPartOf(8)
-            //    && stat3s.Slope10s < -currentPrice.Value.XPartOf(5)
-            //    && stat3s.Slope15s < -currentPrice.Value.XPartOf(6)
-            //    && stat3s.Slope30s < -currentPrice.Value.XPartOf(15))
-            //{
-            //    // Panic sell
-            //    action = Action.PanicSell;
+            var slope5s = Slope(_5s);
+            var slope10s = Slope(_10s);
+            var slope15s = Slope(_15s);
+            var slope30s = Slope(_30s);
+            var slope45s = Slope(_45s);
 
-            //    _lastAnalysis.PanicDetected();
 
-            //    _logger.Warning($"{BaseAsset}: {currentPrice.Value:0.00} - Panic Mode");
-            //    path.Append("|panic");
-            //}
-            //// Jump increase
-            //else if (stat3s.Slope5s > currentPrice.Value.XPartOf(15)
-            //        && stat3s.Slope10s > currentPrice.Value.XPartOf(1)
-            //        && stat3s.Slope15s > currentPrice.Value.XPartOf(15)
-            //        && stat3s.Slope30s > currentPrice.Value.XPartOf(9))
-            //{
-            //    path.Append("jump");
-            //    _logger.Verbose("[jump]");
-            //    action = Action.JumpBuy;
-            //    _lastAnalysis.JumpDetected();
-            //}
+            // Panic, threshold is relative to price 
+            if (slope5s < -currentPrice.Value.XPartOf(8)
+                && slope10s < -currentPrice.Value.XPartOf(5)
+                && slope15s < -currentPrice.Value.XPartOf(6)
+                && slope30s < -currentPrice.Value.XPartOf(15))
+            {
+                // Panic sell
+                action = ActionType.Sell;
 
-            //// Cache action
-            //var calcAction = action;
+                _lastAnalysis.PanicDetected();
 
-            //// If a race is ongoing or after it has stopped wait for 5 minutes for market to cool down
-            //// before another buy is made
-            //if (_lastAnalysis.LastRaceEnded.AddMinutes(5) > DateTime.UtcNow
-            //    && (action == Action.Buy || action == Action.JumpBuy || action == Action.StrongBuy))
-            //{
-            //    _logger.Verbose($"{BaseAsset}: Race ended less than 9 minutes ago, don't buy.");
-            //    action = Action.Hold;
-            //    path.Append("_|race");
-            //}
+                _logger.Warning($"{Symbol.Name}: {currentPrice.Value:0.00} - Panic Mode");
+                path.Append("|panic");
+            }
+            // Jump increase
+            else if (slope5s > currentPrice.Value.XPartOf(15)
+                    && slope10s > currentPrice.Value.XPartOf(1)
+                    && slope15s > currentPrice.Value.XPartOf(15)
+                    && slope30s > currentPrice.Value.XPartOf(9))
+            {
+                path.Append("jump");
+                _logger.Verbose("[jump]");
+                action = ActionType.Buy;
+                _lastAnalysis.JumpDetected();
+            }
 
-            //// If Panic mode ended, wait for 5 minutes before start buying again, except if jump
-            //if (_lastAnalysis.LastPanicModeEnded.AddMinutes(5) > DateTime.UtcNow)
-            //{
-            //    path.Append("_panicend");
-            //    if (action == Action.Buy || action == Action.StrongBuy)
-            //    {
-            //        _logger.Verbose($"{BaseAsset}: Panic mode ended less than 5 minutes ago, don't buy.");
-            //        action = Action.Hold;
-            //        path.Append("|a");
-            //    }
-            //}
+            // Cache action
+            var calcAction = action;
 
-            //// If strong sell happened or slope is too negative, do not buy immediately
-            //if ((_lastAnalysis.GetLastDateOf(Action.StrongSell).AddMinutes(2) > DateTime.UtcNow)
-            //    && (action == Action.Buy || action == Action.JumpBuy || action == Action.StrongBuy))
-            //{
-            //    _logger.Verbose($"{BaseAsset}: Last strong sell was less than 1 minutes ago, don't buy.");
-            //    action = Action.Hold;
-            //    path.Append("_|wait");
-            //}
+            // If a race is ongoing or after it has stopped wait for 5 minutes for market to cool down
+            // before another buy is made
+            if (_lastAnalysis.LastRaceEnded.AddMinutes(5) > DateTime.UtcNow && action == ActionType.Buy)
+            {
+                _logger.Verbose($"{BaseAsset}: Race ended less than 9 minutes ago, don't buy.");
+                action = ActionType.Hold;
+                path.Append("_|race");
+            }
 
-            //Point raceStartingPrice;
-            //try
-            //{
-            //    // Check if price has gained a lot over the last 30 minutes
-            //    // Get Price from 30 minutes ago
-            //    raceStartingPrice = new Point(time: TimeSpan.FromMinutes(-5),
-            //                                    price: _listener.GetLowestPrice(BaseAsset, _300s),
-            //                                    slope: 0);
-            //}
-            //catch (Exception e)
-            //{
-            //    _logger.Error(e, e.Message);
-            //    raceStartingPrice = new Point();
-            //}
+            // If Panic mode ended, wait for 5 minutes before start buying again, except if jump
+            if (_lastAnalysis.LastPanicModeEnded.AddMinutes(5) > DateTime.UtcNow)
+            {
+                path.Append("_panicend");
+            }
 
-            ///// Advise to sell on <see cref="TakeProfitLimit"/> % gain
-            //var raceIdentifier = TakeProfitLimit;
-            //if (currentPrice.Value < 100)
-            //{
-            //    raceIdentifier = 0.97M;
-            //}
+            Point raceStartingPrice;
+            try
+            {
+                var s45Ago = DateTime.Now.AddSeconds(-45);
+                raceStartingPrice = new Point(time: TimeSpan.FromMinutes(-1),
+                                                price: _currentPrices.Where(c => c.On > s45Ago).Min(c => c.BestAskPrice),
+                                                slope: 0);
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e, e.Message);
+                raceStartingPrice = new Point();
+            }
 
-            //if (raceStartingPrice.Value != default && raceStartingPrice < (currentPrice * raceIdentifier))
-            //{
-            //    _logger.Verbose($"{BaseAsset}: Race detected at {currentPrice.Value:0.00}.");
-            //    _lastAnalysis.RaceDetected();
-            //    path.Append("_racestart");
+            /// Advise to sell on <see cref="TakeProfitLimit"/> gain
+            var raceIdentifier = TakeProfitLimit;
 
-            //    // Check market movement, if a huge sell is detected advice to take profits
-            //    if (stat3s.Slope10s < -currentPrice.Value.XPartOf(10))
-            //    {
-            //        action = Action.TakeProfitsSell;
-            //        _logger.Verbose($"{BaseAsset}: Race ended at {currentPrice.Value:0.00}.");
-            //        path.Append("|raceend");
-            //        _lastAnalysis.RaceEnded();
-            //    }
-            //}
+            if (raceStartingPrice.Value != default && raceStartingPrice < (currentPrice * raceIdentifier))
+            {
+                _logger.Verbose($"{BaseAsset}: Race detected at {currentPrice.Value:0.00}.");
+                _lastAnalysis.RaceDetected();
+                path.Append("_racestart");
+
+                // Check market movement, if a huge sell is detected advice to take profits
+                if (stat3s.Slope10s < -currentPrice.Value.XPartOf(10))
+                {
+                    action = Action.TakeProfitsSell;
+                    _logger.Verbose($"{BaseAsset}: Race ended at {currentPrice.Value:0.00}.");
+                    path.Append("|raceend");
+                    _lastAnalysis.RaceEnded();
+                }
+            }
 
             //// Print strategy changes
             //if (_lastAnalysis.Action != action)
@@ -328,7 +370,8 @@ namespace Trape.Cli.trader.Analyze
             {
                 Action = action,
                 Price = currentPrice.Value,
-                Symbol = BaseAsset,
+                BestAskPrice = _bestAskPrice.GetAverage(),
+                BestBidPrice = _bestBidPrice.GetAverage(),
                 CreatedOn = DateTime.UtcNow
             };
 
@@ -357,7 +400,38 @@ namespace Trape.Cli.trader.Analyze
             //    }
             //}
 
-            _newRecommendation.OnNext(newRecommendation);
+            if (action != ActionType.Hold)
+            {
+                _newRecommendation.OnNext(newRecommendation);
+            }
+        }
+
+        /// <summary>
+        /// Returns the change in percent in a given timespan compared to now.
+        /// </summary>
+        /// <param name="symbol">Symbol</param>
+        /// <param name="timespan">Interval</param>
+        /// <returns></returns>
+        public decimal? Slope(TimeSpan timespan)
+        {
+            var ordered = _currentPrices.Where(d => d.On >= DateTime.Now.Add(timespan)).OrderByDescending(s => s.On);
+            var latest = ordered.FirstOrDefault();
+            var oldest = ordered.LastOrDefault();
+
+            if (latest is null || oldest is null)
+            {
+                return null;
+            }
+
+            // normalize
+            var divider = latest.On.Ticks - oldest.On.Ticks;
+
+            if (divider == 0)
+            {
+                return null;
+            }
+
+            return (latest.BestAskPrice - oldest.BestAskPrice) / divider;
         }
 
         #endregion
@@ -385,65 +459,44 @@ namespace Trape.Cli.trader.Analyze
 
             #region Subscriptions
 
-            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToSymbolTickerUpdatesAsync(Name, (IBinanceTick bt) =>
-            {
-                _binanceStreamTickBuffer.Add(bt);
-            }));
+            // Subscribe to all symbols
+            var updateSubscription = await _binanceSocketClient.Spot.SubscribeToBookTickerUpdatesAsync(Symbol.Name, async (BinanceStreamBookPrice bsbp) =>
+                {
+                    _currentPrices.Enqueue(new CurrentBookPrice(bsbp));
 
-            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.OneMinute, (IBinanceStreamKlineData bskd) =>
-            {
-                _binanceStreamKlineDataBuffer.Add(bskd);
-            }));
+                    Task addBestAskPrice = _bestAskPrice.Add(bsbp.BestAskPrice);
+                    Task addBestBidPrice = _bestBidPrice.Add(bsbp.BestBidPrice);
 
-            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.ThreeMinutes, (IBinanceStreamKlineData bskd) =>
-            {
-                _binanceStreamKlineDataBuffer.Add(bskd);
-            }));
+                    await Task.WhenAll(addBestAskPrice, addBestBidPrice).ConfigureAwait(true);
 
-            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.FiveMinutes, (IBinanceStreamKlineData bskd) =>
-            {
-                _binanceStreamKlineDataBuffer.Add(bskd);
-            }));
+                    _logger.Verbose($"{bsbp.Symbol}: Book tick update - asking is {bsbp.BestAskPrice:0.00}");
+                    _logger.Verbose($"{bsbp.Symbol}: Book tick update - bidding is {bsbp.BestBidPrice:0.00}");
 
-            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.FifteenMinutes, (IBinanceStreamKlineData bskd) =>
-            {
-                _binanceStreamKlineDataBuffer.Add(bskd);
-            }));
+                }).ConfigureAwait(true);
 
-            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.ThirtyMinutes, (IBinanceStreamKlineData bskd) =>
-            {
-                _binanceStreamKlineDataBuffer.Add(bskd);
-            }));
+            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToSymbolTickerUpdatesAsync(Name, (IBinanceTick bt) => _binanceStreamTickBuffer.Add(bt)));
 
-            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.OneHour, (IBinanceStreamKlineData bskd) =>
-            {
-                _binanceStreamKlineDataBuffer.Add(bskd);
-            }));
+            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.OneMinute, (IBinanceStreamKlineData bskd) => _binanceStreamKlineDataBuffer.Update(bskd)));
 
-            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.TwoHour, (IBinanceStreamKlineData bskd) =>
-            {
-                _binanceStreamKlineDataBuffer.Add(bskd);
-            }));
+            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.ThreeMinutes, (IBinanceStreamKlineData bskd) => _binanceStreamKlineDataBuffer.Update(bskd)));
 
-            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.SixHour, (IBinanceStreamKlineData bskd) =>
-            {
-                _binanceStreamKlineDataBuffer.Add(bskd);
-            }));
+            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.FiveMinutes, (IBinanceStreamKlineData bskd) => _binanceStreamKlineDataBuffer.Update(bskd)));
 
-            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.EightHour, (IBinanceStreamKlineData bskd) =>
-            {
-                _binanceStreamKlineDataBuffer.Add(bskd);
-            }));
+            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.FifteenMinutes, (IBinanceStreamKlineData bskd) => _binanceStreamKlineDataBuffer.Update(bskd)));
 
-            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.TwelveHour, (IBinanceStreamKlineData bskd) =>
-            {
-                _binanceStreamKlineDataBuffer.Add(bskd);
-            }));
+            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.ThirtyMinutes, (IBinanceStreamKlineData bskd) => _binanceStreamKlineDataBuffer.Update(bskd)));
 
-            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.OneDay, (IBinanceStreamKlineData bskd) =>
-            {
-                _binanceStreamKlineDataBuffer.Add(bskd);
-            }));
+            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.OneHour, (IBinanceStreamKlineData bskd) => _binanceStreamKlineDataBuffer.Update(bskd)));
+
+            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.TwoHour, (IBinanceStreamKlineData bskd) => _binanceStreamKlineDataBuffer.Update(bskd)));
+
+            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.SixHour, (IBinanceStreamKlineData bskd) => _binanceStreamKlineDataBuffer.Update(bskd)));
+
+            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.EightHour, (IBinanceStreamKlineData bskd) => _binanceStreamKlineDataBuffer.Update(bskd)));
+
+            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.TwelveHour, (IBinanceStreamKlineData bskd) => _binanceStreamKlineDataBuffer.Update(bskd)));
+
+            subscribeTasks.Add(_binanceSocketClient.Spot.SubscribeToKlineUpdatesAsync(Name, KlineInterval.OneDay, (IBinanceStreamKlineData bskd) => _binanceStreamKlineDataBuffer.Update(bskd)));
 
             #endregion
 
@@ -515,6 +568,8 @@ namespace Trape.Cli.trader.Analyze
                 _cancellationTokenSource.Dispose();
                 _jobRecommender.Dispose();
                 _newRecommendation.Dispose();
+                _bestAskPrice.Dispose();
+                _bestBidPrice.Dispose();
             }
 
             _disposed = true;

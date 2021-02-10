@@ -9,8 +9,4 @@
     <PackageReference Include="Binance.Net" Version="6.8.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Trape.Datalayer\Trape.Datalayer.csproj" />
-  </ItemGroup>
-
 </Project>

@@ -1,23 +1,17 @@
-﻿using Binance.Net.Objects.Spot.MarketData;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Binance.Net.Enums;
+using Binance.Net.Objects.Spot.MarketData;
 using Serilog;
-using SimpleInjector.Lifestyles;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Trape.Cli.trader.Account;
 using Trape.Cli.trader.Analyze;
-using Trape.Cli.trader.Listener;
 using Trape.Cli.trader.Market;
 using Trape.Cli.trader.Team;
-using Trape.Datalayer.Models;
-using Action = Trape.Datalayer.Enums.Action;
-using OrderResponseType = Trape.Datalayer.Enums.OrderResponseType;
-using OrderSide = Trape.Datalayer.Enums.OrderSide;
-using OrderType = Trape.Datalayer.Enums.OrderType;
-using TimeInForce = Trape.Datalayer.Enums.TimeInForce;
+using Trape.Cli.Trader.Analyze.Models;
+using Trape.Cli.Trader.Cache;
+using Trape.Cli.Trader.Cache.Models;
 
 namespace Trape.Cli.trader.Trading
 {
@@ -44,19 +38,14 @@ namespace Trape.Cli.trader.Trading
         private readonly IAccountant _accountant;
 
         /// <summary>
-        /// Buffer
+        /// Cache
         /// </summary>
-        private readonly IListener _buffer;
+        private readonly ICache _cache;
 
         /// <summary>
-        /// Minimum required increase of the price before another chunk is sold
+        /// Stock Exchange
         /// </summary>
-        private const decimal requiredPriceGainForResell = 1.003M;
-
-        /// <summary>
-        /// Minimum required decrease of the price before another chunk is bought
-        /// </summary>
-        private const decimal requiredPriceDropforRebuy = 0.997M;
+        private readonly IStockExchange _stockExchange;
 
         /// <summary>
         /// Base Asset
@@ -91,27 +80,12 @@ namespace Trape.Cli.trader.Trading
         /// <summary>
         /// Records last strongs to not execute a strong <c>Recommendation</c> one after the other without a break inbetween
         /// </summary>
-        private readonly Dictionary<Action, DateTime> _lastRecommendation;
+        private readonly Dictionary<ActionType, DateTime> _lastRecommendation;
 
         /// <summary>
         /// Semaphore synchronizes access in case a task takes longer to return and the timer would elapse again
         /// </summary>
         private readonly SemaphoreSlim _canTrade;
-
-        /// <summary>
-        /// Last panic sell
-        /// </summary>
-        private DateTime _lastPanicSell;
-
-        /// <summary>
-        /// Last take profit sell
-        /// </summary>
-        private DateTime _lastTakeProfitSell;
-
-        /// <summary>
-        /// Last jump buy
-        /// </summary>
-        private DateTime _lastJumpBuy;
 
         /// <summary>
         /// Analyst subscriber
@@ -127,8 +101,8 @@ namespace Trape.Cli.trader.Trading
         /// </summary>
         /// <param name="logger">Logger</param>
         /// <param name="accountant">Accountant</param>
-        /// <param name="buffer">Buffer</param>
-        public Broker(ILogger logger, IAccountant accountant, IListener buffer)
+        /// <param name="cache">Cache</param>
+        public Broker(ILogger logger, IAccountant accountant, ICache cache, IStockExchange stockExchange)
         {
             #region Argument checks
 
@@ -136,17 +110,16 @@ namespace Trape.Cli.trader.Trading
 
             _accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            _buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _cache = cache ?? throw new ArgumentNullException(paramName: nameof(cache));
+
+            _stockExchange = stockExchange ?? throw new ArgumentNullException(paramName: nameof(stockExchange));
 
             #endregion
 
             _logger = logger.ForContext<Broker>();
             _cancellationTokenSource = new CancellationTokenSource();
-            _lastRecommendation = new Dictionary<Action, DateTime>();
+            _lastRecommendation = new Dictionary<ActionType, DateTime>();
             _canTrade = new SemaphoreSlim(1, 1);
-            _lastPanicSell = default;
-            _lastTakeProfitSell = default;
-            _lastJumpBuy = default;
         }
 
         #endregion
@@ -162,7 +135,7 @@ namespace Trape.Cli.trader.Trading
         {
             LastActive = DateTime.UtcNow;
 
-            if (recommendation.Action == Datalayer.Enums.Action.Hold)
+            if (recommendation.Action == ActionType.Hold)
             {
                 Console.WriteLine($"{BaseAsset}: Recommendation is hold.");
                 _logger.Verbose($"{BaseAsset}: Recommendation is hold.");
@@ -175,6 +148,12 @@ namespace Trape.Cli.trader.Trading
                 return;
             }
 
+            // Check if there is an open order
+            if(_cache.HasOpenOrder(Symbol.Name))
+            {
+                return;
+            }
+
             try
             {
                 // Wait because context is available, otherwise would have exited before reaching this step
@@ -182,23 +161,13 @@ namespace Trape.Cli.trader.Trading
                 // so that no other task runs the same method
                 _canTrade.Wait();
 
-                // Generate new client order id
-                var newClientOrderId = Guid.NewGuid().ToString("N");
-
                 // Buy
-                if (recommendation.Action == Action.Buy
-                || recommendation.Action == Action.StrongBuy
-                || recommendation.Action == Action.JumpBuy)
+                if (recommendation.Action == ActionType.Buy)
                 {
-                    // Buy
                     await Buy(recommendation).ConfigureAwait(true);
                 }
                 // Sell
-                else if (recommendation.Action == Action.Sell
-                    || recommendation.Action == Action.StrongSell
-                    || recommendation.Action == Action.PanicSell
-                    || recommendation.Action == Action.TakeProfitsSell
-                    || recommendation.Action == Action.Hold)
+                else if (recommendation.Action == ActionType.Sell)
                 {
                     await Sell(recommendation).ConfigureAwait(true);
                 }
@@ -272,10 +241,8 @@ namespace Trape.Cli.trader.Trading
             }
 
             // Get ask price
-            var bestBidPrice = _buffer.GetBidPrice(BaseAsset);
-
+            var bestBidPrice = recommendation.BestBidPrice;
             var quantity = buyForUSDT / bestBidPrice;
-
             quantity = Math.Round(quantity, Symbol.BaseAssetPrecision);
 
             if (quantity == 0)
@@ -317,10 +284,8 @@ namespace Trape.Cli.trader.Trading
                 )
             {
                 // Get stock exchange and place order
-                var stockExchange = Program.Container.GetService<IStockExchange>();
-                await stockExchange.PlaceOrder(new ClientOrder()
+                await _stockExchange.PlaceOrder(new ClientOrder(Symbol.Name)
                 {
-                    Symbol = BaseAsset,
                     Side = OrderSide.Buy,
                     Type = OrderType.Market,
                     OrderResponseType = OrderResponseType.Full,
@@ -350,114 +315,81 @@ namespace Trape.Cli.trader.Trading
             if (assetBalance == null || assetBalance?.Free == 0)
             {
                 _logger.Debug($"{BaseAsset} nothing free");
+                return;
+            }
 
-                if (recommendation.Action == Datalayer.Enums.Action.PanicSell)
+            // Get best bid price
+            var bestAskPrice = recommendation.BestAskPrice;
+
+            var quantity = assetBalance.Free;
+
+            // Wait until previous trades were handled
+            var lockedOpenOrderQuantity = _cache.GetOpenOrderValue(BaseAsset);
+            quantity = lockedOpenOrderQuantity == 0 ? quantity : 0;
+
+            quantity = Math.Round(quantity, Symbol.BaseAssetPrecision);
+
+            if (quantity == 0)
+            {
+                _logger.Debug($"{BaseAsset}: Quantity is 0");
+                return;
+            }
+
+            // Logging
+            _logger.Debug($"{BaseAsset} Sell: {recommendation.Action};Asking:{bestAskPrice:0.00};Free:{assetBalance?.Free:0.00######};Quantity:{quantity:0.00######};LockedOpenOrderAmount:{lockedOpenOrderQuantity:0.00}");
+            _logger.Verbose($"{BaseAsset} Sell: Checking conditions");
+            _logger.Verbose($"{BaseAsset} Sell:  lastOrder is null");
+            _logger.Verbose($"{BaseAsset} Sell: {quantity:0.00000000} quantity");
+            _logger.Verbose($"{BaseAsset} Sell: {recommendation.Action} recommendation");
+            _logger.Verbose($"{BaseAsset} Sell: {quantity * bestAskPrice >= Symbol.MinNotionalFilter.MinNotional} Value {quantity * bestAskPrice} > 0: {quantity * bestAskPrice > 0} and higher than {Symbol.MinNotionalFilter.MinNotional}");
+            _logger.Verbose($"{BaseAsset} Sell: {Symbol.PriceFilter.MaxPrice >= bestAskPrice && bestAskPrice >= Symbol.PriceFilter.MinPrice} MaxPrice {Symbol.PriceFilter.MaxPrice} > Amount {bestAskPrice} > MinPrice {Symbol.PriceFilter.MinPrice}");
+            _logger.Verbose($"{BaseAsset} Sell: {Symbol.LotSizeFilter.MaxQuantity >= quantity && quantity >= Symbol.LotSizeFilter.MinQuantity} MaxLOT {Symbol.LotSizeFilter.MaxQuantity} > Amount {quantity} > MinLOT {Symbol.LotSizeFilter.MinQuantity}");
+
+            // TODO: adjust logging to log only failing step and returning
+            // TODO: if-direct checks
+
+            var isLogicValid = quantity * bestAskPrice >= Symbol.MinNotionalFilter.MinNotional
+                                && bestAskPrice > 0;
+
+            var isPriceRangeValid = bestAskPrice >= Symbol.PriceFilter.MinPrice
+                                    && bestAskPrice <= Symbol.PriceFilter.MaxPrice;
+
+            var isLOTSizeValid = quantity >= Symbol.LotSizeFilter.MinQuantity
+                                    && quantity <= Symbol.LotSizeFilter.MaxQuantity;
+
+            // Last check that amount is available
+            var isAmountAvailable = assetBalance.Free >= quantity;
+
+            _logger.Verbose($"{BaseAsset} Sell: {isLogicValid}      isLogicValid");
+            _logger.Verbose($"{BaseAsset} Sell: {isPriceRangeValid} isPriceRangeValid");
+            _logger.Verbose($"{BaseAsset} Sell: {isLOTSizeValid}    isLOTSizeValid");
+            _logger.Verbose($"{BaseAsset} Sell: {isAmountAvailable} isAmountAvailable");
+
+            // Check conditions for sell
+            if (
+                    // Logic check
+                    isLogicValid
+                    // Price range check
+                    && isPriceRangeValid
+                    // LOT size check
+                    && isLOTSizeValid
+                    && isAmountAvailable
+                )
+            {
+                // Get stock exchange and place order
+                await _stockExchange.PlaceOrder(new ClientOrder(Symbol.Name)
                 {
-                    _logger.Warning($"{BaseAsset}: PANICKING - but no asset free to sell");
-                }
+                    Side = OrderSide.Sell,
+                    Type = OrderType.Market,
+                    OrderResponseType = OrderResponseType.Full,
+                    Quantity = quantity,
+                    Price = bestAskPrice,
+                    TimeInForce = TimeInForce.ImmediateOrCancel
+                }, _cancellationTokenSource.Token).ConfigureAwait(true);
             }
             else
             {
-                // Get best bid price
-                var bestAskPrice = _buffer.GetAskPrice(BaseAsset);
-
-                IQueryable<OrderTrade> buyTrades = default;
-                // TODO: make scope smaller
-                using (AsyncScopedLifestyle.BeginScope(Program.Container))
-                {
-                    try
-                    {
-                        var quantity = assetBalance.Free;
-
-                        // Wait until previous trades were handled
-                        var lockedOpenOrderQuantity = _buffer.GetOpenOrderValue(BaseAsset);
-                        quantity = lockedOpenOrderQuantity == 0 ? quantity : 0;
-
-                        quantity = Math.Round(quantity, Symbol.BaseAssetPrecision);
-
-                        if (quantity == 0)
-                        {
-                            _logger.Debug($"{BaseAsset}: Quantity is 0");
-                            return;
-                        }
-
-                        // Logging
-                        _logger.Debug($"{BaseAsset} Sell: {recommendation.Action};Asking:{bestAskPrice:0.00};Free:{assetBalance?.Free:0.00######};Quantity:{quantity:0.00######};LockedOpenOrderAmount:{lockedOpenOrderQuantity:0.00}");
-                        _logger.Verbose($"{BaseAsset} Sell: Checking conditions");
-                        _logger.Verbose($"{BaseAsset} Sell:  lastOrder is null");
-                        _logger.Verbose($"{BaseAsset} Sell: {quantity:0.00000000} quantity");
-                        _logger.Verbose($"{BaseAsset} Sell: {recommendation.Action} recommendation");
-                        _logger.Verbose($"{BaseAsset} Sell: {quantity * bestAskPrice >= Symbol.MinNotionalFilter.MinNotional} Value {quantity * bestAskPrice} > 0: {quantity * bestAskPrice > 0} and higher than {Symbol.MinNotionalFilter.MinNotional}");
-                        _logger.Verbose($"{BaseAsset} Sell: {Symbol.PriceFilter.MaxPrice >= bestAskPrice && bestAskPrice >= Symbol.PriceFilter.MinPrice} MaxPrice {Symbol.PriceFilter.MaxPrice} > Amount {bestAskPrice} > MinPrice {Symbol.PriceFilter.MinPrice}");
-                        _logger.Verbose($"{BaseAsset} Sell: {Symbol.LotSizeFilter.MaxQuantity >= quantity && quantity >= Symbol.LotSizeFilter.MinQuantity} MaxLOT {Symbol.LotSizeFilter.MaxQuantity} > Amount {quantity} > MinLOT {Symbol.LotSizeFilter.MinQuantity}");
-
-                        // TODO: adjust logging to log only failing step and returning
-                        // TODO: if-direct checks
-
-                        // Check if is panick sell but only panic once every 20 seconds
-                        if (recommendation.Action == Action.PanicSell && _lastPanicSell.AddSeconds(20) < DateTime.UtcNow)
-                        {
-                            _lastPanicSell = DateTime.UtcNow;
-                        }
-
-
-                        // Check if we just take profits
-                        if (recommendation.Action == Action.TakeProfitsSell && _lastTakeProfitSell.AddSeconds(20) < DateTime.Now)
-                        {
-                            _lastTakeProfitSell = DateTime.UtcNow;
-                        }
-
-                        var isLogicValid = quantity * bestAskPrice >= Symbol.MinNotionalFilter.MinNotional
-                                            && bestAskPrice > 0;
-
-                        var isPriceRangeValid = bestAskPrice >= Symbol.PriceFilter.MinPrice
-                                                && bestAskPrice <= Symbol.PriceFilter.MaxPrice;
-
-                        var isLOTSizeValid = quantity >= Symbol.LotSizeFilter.MinQuantity
-                                                && quantity <= Symbol.LotSizeFilter.MaxQuantity;
-
-                        // Last check that amount is available
-                        var isAmountAvailable = assetBalance.Free >= quantity;
-
-                        _logger.Verbose($"{BaseAsset} Sell: {isLogicValid}      isLogicValid");
-                        _logger.Verbose($"{BaseAsset} Sell: {isPriceRangeValid} isPriceRangeValid");
-                        _logger.Verbose($"{BaseAsset} Sell: {isLOTSizeValid}    isLOTSizeValid");
-                        _logger.Verbose($"{BaseAsset} Sell: {isAmountAvailable} isAmountAvailable");
-
-                        // Check conditions for sell
-                        if (
-                                // Logic check
-                                isLogicValid
-                                // Price range check
-                                && isPriceRangeValid
-                                // LOT size check
-                                && isLOTSizeValid
-                                && isAmountAvailable
-                            )
-                        {
-                            // Get stock exchange and place order
-                            var stockExchange = Program.Container.GetInstance<IStockExchange>();
-                            await stockExchange.PlaceOrder(new ClientOrder()
-                            {
-                                Symbol = BaseAsset,
-                                Side = OrderSide.Sell,
-                                Type = OrderType.Market,
-                                OrderResponseType = OrderResponseType.Full,
-                                Quantity = quantity,
-                                Price = bestAskPrice,
-                                TimeInForce = TimeInForce.ImmediateOrCancel
-                            }, _cancellationTokenSource.Token).ConfigureAwait(true);
-                        }
-                        else
-                        {
-                            _logger.Debug($"{BaseAsset}: Skipping, final conditions not met");
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.Error(e, e.Message);
-                    }
-                }
+                _logger.Debug($"{BaseAsset}: Skipping, final conditions not met");
             }
         }
 
@@ -524,7 +456,9 @@ namespace Trape.Cli.trader.Trading
 
             if (disposing)
             {
-
+                _cancellationTokenSource.Dispose();
+                _canTrade.Dispose();
+                _analystSubscriber.Dispose();
             }
 
             _disposed = true;

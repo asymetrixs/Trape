@@ -23,9 +23,9 @@ namespace Trape.Cli.trader
         private readonly ILogger _logger;
 
         /// <summary>
-        /// Buffer
+        /// Listener
         /// </summary>
-        private readonly IListener _buffer;
+        private readonly IListener _listener;
 
         /// <summary>
         /// Trading Team
@@ -70,7 +70,7 @@ namespace Trape.Cli.trader
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _buffer = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
+            _listener = buffer ?? throw new ArgumentNullException(paramName: nameof(buffer));
 
             _tradingTeam = tradingTeam ?? throw new ArgumentNullException(paramName: nameof(tradingTeam));
 
@@ -101,7 +101,7 @@ namespace Trape.Cli.trader
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            await _buffer.Start().ConfigureAwait(true);
+            await _listener.Start().ConfigureAwait(true);
 
             await _accountant.Start().ConfigureAwait(true);
 
@@ -143,7 +143,7 @@ namespace Trape.Cli.trader
             // End running state
             _running.Release();
 
-            _buffer.Terminate();
+            _listener.Terminate();
 
             _logger.Information("Engine is stopped");
         }
@@ -174,7 +174,7 @@ namespace Trape.Cli.trader
 
             if (disposing)
             {
-                _buffer.Dispose();
+                _listener.Dispose();
                 _accountant.Dispose();
                 _tradingTeam.Dispose();
             }

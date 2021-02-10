@@ -2,7 +2,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Trape.Datalayer.Models;
+using Trape.Cli.Trader.Cache.Models;
 
 namespace Trape.Cli.trader.Market
 {
@@ -11,8 +11,13 @@ namespace Trape.Cli.trader.Market
     /// </summary>
     public interface IStockExchange
     {
-        Task PlaceOrder(ClientOrder order, CancellationToken cancellationToken = default);
-
+        /// <summary>
+        /// Place an order
+        /// </summary>
+        /// <param name="order"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        Task PlaceOrder(ClientOrder clientOrder, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Informs about Orders

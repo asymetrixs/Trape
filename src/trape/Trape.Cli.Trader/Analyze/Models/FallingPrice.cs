@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Trape.Cli.trader.Listener.Models
+namespace Trape.Cli.trader.Analyze.Models
 {
     /// <summary>
     /// This class holds the first time the price started dropping

@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Trape.Datalayer.Models;
-using Action = Trape.Datalayer.Enums.Action;
 
-namespace Trape.Cli.trader.Analyze.Models
+namespace Trape.Cli.Trader.Analyze.Models
 {
     /// <summary>
     /// <c>Analysis</c> produced by <c>Analyst</c>.
@@ -53,7 +51,7 @@ namespace Trape.Cli.trader.Analyze.Models
         /// <summary>
         /// Action
         /// </summary>
-        public Action Action { get; private set; }
+        public ActionType Action { get; private set; }
 
         /// <summary>
         /// Last race start
@@ -104,7 +102,7 @@ namespace Trape.Cli.trader.Analyze.Models
         /// Updates when the given action appeared last
         /// </summary>
         /// <param name="action">Action</param>        
-        public void UpdateAction(Action action)
+        public void UpdateAction(ActionType action)
         {
             var decision = _lastDecisionTimes.FirstOrDefault(l => l.Action == Action);
             if (decision == null)
@@ -176,7 +174,7 @@ namespace Trape.Cli.trader.Analyze.Models
         /// </summary>
         /// <param name="action"></param>
         /// <returns></returns>
-        public DateTime GetLastDateOf(Action action)
+        public DateTime GetLastDateOf(ActionType action)
         {
             var decision = _lastDecisionTimes.FirstOrDefault(l => l.Action == action);
             if (decision != null)

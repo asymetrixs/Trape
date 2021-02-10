@@ -9,14 +9,10 @@
 
   <ItemGroup>
     <PackageReference Include="Binance.Net" Version="6.8.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.3" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="5.0.3" />
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="5.0.1" />
-    <PackageReference Include="Npgsql" Version="5.0.3" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="5.0.2" />
     <PackageReference Include="Serilog" Version="2.10.0" />
     <PackageReference Include="Serilog.Exceptions" Version="6.0.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="3.0.1" />
@@ -31,9 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Trape.BinanceNet.Logger\Trape.BinanceNet.Logger.csproj" />
-    <ProjectReference Include="..\Trape.Datalayer\Trape.Datalayer.csproj" />
     <ProjectReference Include="..\Trape.Jobs\Trape.Jobs.csproj" />
-    <ProjectReference Include="..\Trape.Mapper\Trape.Mapper.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -43,10 +37,6 @@
     <None Update="settings.template.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Analyze\Models\" />
   </ItemGroup>
 
 </Project>

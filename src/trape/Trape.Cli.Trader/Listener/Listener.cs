@@ -1,5 +1,4 @@
-﻿using Binance.Net.Enums;
-using Binance.Net.Interfaces;
+﻿using Binance.Net.Interfaces;
 using Binance.Net.Objects.Spot.MarketData;
 using Serilog;
 using System;
@@ -9,8 +8,6 @@ using System.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
-using Trape.Cli.trader.Listener.Models;
-using Trape.Datalayer.Models;
 using Trape.Jobs;
 
 namespace Trape.Cli.trader.Listener
@@ -58,6 +55,11 @@ namespace Trape.Cli.trader.Listener
         private readonly Subject<BinanceSymbol> _newAssets;
 
         /// <summary>
+        /// New Exchange Infos
+        /// </summary>
+        private readonly Subject<BinanceExchangeInfo> _newExchangeInfo;
+
+        /// <summary>
         /// Binance Client
         /// </summary>
         private readonly IBinanceClient _binanceClient;
@@ -66,26 +68,6 @@ namespace Trape.Cli.trader.Listener
         /// Binance Socket Client
         /// </summary>
         private readonly IBinanceSocketClient _binanceSocketClients;
-
-        /// <summary>
-        /// Exchange Information
-        /// </summary>
-        private BinanceExchangeInfo _binanceExchangeInfo;
-
-        /// <summary>
-        /// Holds the last time per symbol when the price dropped for the first time
-        /// </summary>
-        private readonly Dictionary<string, FallingPrice> _fallingPrices;
-
-        /// <summary>
-        /// Cache for open orders
-        /// </summary>
-        private readonly Dictionary<string, OpenOrder> _openOrders;
-
-        /// <summary>
-        /// Holds recommendations per symbol that are pushed by <c>Analyst</c> and consumed by <c>Broker</c>
-        /// </summary>
-        private readonly ConcurrentDictionary<string, Recommendation> _recommendations;
 
         /// <summary>
         /// Indicates that service is starting
@@ -122,9 +104,9 @@ namespace Trape.Cli.trader.Listener
             _logger = logger.ForContext<Listener>();
             _cancellationTokenSource = new CancellationTokenSource();
             _disposed = false;
-            _binanceExchangeInfo = null;
             _assets = new HashSet<string>();
             _newAssets = new Subject<BinanceSymbol>();
+            _newExchangeInfo = new Subject<BinanceExchangeInfo>();
             _starting = true;
 
             #region Job setup
@@ -138,7 +120,15 @@ namespace Trape.Cli.trader.Listener
 
         #endregion
 
+        /// <summary>
+        /// New Assets
+        /// </summary>
         public IObservable<BinanceSymbol> NewAssets => _newAssets;
+
+        /// <summary>
+        /// Exchange Infos
+        /// </summary>
+        public IObservable<BinanceExchangeInfo> NewExchangeInfo => _newExchangeInfo;
 
         #region Jobs
 
@@ -151,8 +141,8 @@ namespace Trape.Cli.trader.Listener
 
             if (result.Success)
             {
-                _binanceExchangeInfo = result.Data;
-
+                _newExchangeInfo.OnNext(result.Data);
+                
                 for (int i = 0; i < result.Data.Symbols.Count(); i++)
                 {
                     var current = result.Data.Symbols.ElementAt(i);
@@ -176,128 +166,9 @@ namespace Trape.Cli.trader.Listener
             }
         }
 
-        ///// <summary>
-        ///// Checks symbols
-        ///// </summary>
-        ///// <returns></returns>
-        //private async void AddSubscription(BinanceSymbol symbol)
-        //{
-        //    // Initial loading
-        //    _logger.Debug("Checking subscriptions");
-
-        //    // Subscribe to all symbols
-        //    var updateSubscription = await _binanceSocketClients.Spot.SubscribeToAllBookTickerUpdatesAsync(async (BinanceStreamBookPrice bsbp) =>
-        //    {
-        //        var askPriceAdded = false;
-        //        var bidPriceAdded = false;
-
-        //        // Only go for pairs traded against USDT
-        //        if (!bsbp.Symbol.EndsWith("USDT", StringComparison.InvariantCulture))
-        //        {
-        //            return;
-        //        }
-
-        //        // Only go for low value assets if asset was not added before
-        //        if (!_currentPrices.ContainsKey(bsbp.Symbol) && bsbp.BestAskPrice > 2)
-        //        {
-        //            return;
-        //        }
-
-        //        // Remove USDT
-        //        bsbp.Symbol = bsbp.Symbol.Replace("USDT", string.Empty, StringComparison.InvariantCulture);
-
-        //        if (bsbp.Symbol.Contains("TUSD", StringComparison.InvariantCulture)
-        //        || bsbp.Symbol.Contains("BUSD", StringComparison.InvariantCulture)
-        //        || bsbp.Symbol.Contains("USDC", StringComparison.InvariantCulture)
-        //        || bsbp.Symbol.Contains("EUR", StringComparison.InvariantCulture))
-        //        {
-        //            return;
-        //        }
-
-        //        // Add price
-        //        if (!_currentPrices.ContainsKey(bsbp.Symbol))
-        //        {
-        //            lock (_currentPrices)
-        //            {
-        //                _currentPrices[bsbp.Symbol] = new ConcurrentQueue<CurrentBookPrice>();
-        //            }
-        //        }
-        //        _currentPrices[bsbp.Symbol].Enqueue(new CurrentBookPrice(bsbp));
-
-        //        // Update ask price
-        //        if (_bestAskPrices.ContainsKey(bsbp.Symbol))
-        //        {
-        //            await _bestAskPrices[bsbp.Symbol].Add(bsbp.BestAskPrice).ConfigureAwait(true);
-        //        }
-        //        else
-        //        {
-        //            var bestAskPrice = new BestPrice(bsbp.Symbol);
-        //            askPriceAdded = _bestAskPrices.TryAdd(bsbp.Symbol, bestAskPrice);
-        //            await bestAskPrice.Add(bsbp.BestAskPrice).ConfigureAwait(true);
-        //        }
-
-        //        _logger.Verbose($"{bsbp.Symbol}: Book tick update - asking is {bsbp.BestAskPrice:0.00}");
-
-        //        if (_bestBidPrices.ContainsKey(bsbp.Symbol))
-        //        {
-        //            await _bestBidPrices[bsbp.Symbol].Add(bsbp.BestBidPrice).ConfigureAwait(true);
-        //            bidPriceAdded = true;
-        //        }
-        //        else
-        //        {
-        //            var bestBidPrice = new BestPrice(bsbp.Symbol);
-        //            bidPriceAdded = _bestBidPrices.TryAdd(bsbp.Symbol, bestBidPrice);
-        //            await bestBidPrice.Add(bsbp.BestBidPrice).ConfigureAwait(true);
-        //        }
-
-        //        _logger.Verbose($"{bsbp.Symbol}: Book tick update - bidding is {bsbp.BestBidPrice:0.00}");
-
-        //    }).ConfigureAwait(true);
-
-        //    if (!updateSubscription.Success)
-        //    {
-        //        _logger.Warning("Subscription update failed");
-        //        return;
-        //    }
-
-        //    _updateSubscriptions = updateSubscription.Data;
-        //    _logger.Information("Subscribed");
-
-        //    _logger.Debug("Subscriptions checked");
-        //}
-
         #endregion
 
         #region Methods
-
-
-        ///// <summary>
-        ///// Returns the change in percent in a given timespan compared to now.
-        ///// </summary>
-        ///// <param name="symbol">Symbol</param>
-        ///// <param name="timespan">Interval</param>
-        ///// <returns></returns>
-        //public decimal? Slope(string symbol, TimeSpan timespan)
-        //{
-        //    var ordered = _currentPrices[symbol].Where(d => d.On >= DateTime.Now.Add(timespan)).OrderByDescending(s => s.On);
-        //    var latest = ordered.FirstOrDefault();
-        //    var oldest = ordered.LastOrDefault();
-
-        //    if (latest is null || oldest is null)
-        //    {
-        //        return null;
-        //    }
-
-        //    // normalize
-        //    var divider = latest.On.Ticks - oldest.On.Ticks;
-
-        //    if (divider == 0)
-        //    {
-        //        return null;
-        //    }
-
-        //    return (latest.BestAskPrice - oldest.BestAskPrice) / divider;
-        //}
 
         ///// <summary>
         ///// Returns lowest price in given timespan
@@ -311,178 +182,6 @@ namespace Trape.Cli.trader.Listener
         //{
         //    return _currentPrices[symbol].Where(d => d.On >= DateTime.Now.Add(timespan)).Min(s => s.BestBidPrice);
         //}
-
-        /// <summary>
-        /// Updates a recommendation
-        /// </summary>
-        /// <param name="recommendation"></param>
-        public void UpdateRecommendation(Recommendation recommendation)
-        {
-            #region Argument checks
-
-            _ = recommendation ?? throw new ArgumentNullException(paramName: nameof(recommendation));
-
-            #endregion
-
-            _recommendations.AddOrUpdate(recommendation.Symbol, recommendation, (_, value) => value = recommendation);
-        }
-
-        /// <summary>
-        /// Returns a recommendation for a <paramref name="symbol"/>.
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <returns></returns>
-        public Recommendation GetRecommendation(string symbol)
-        {
-            if (!_recommendations.ContainsKey(symbol))
-            {
-                return new Recommendation() { Action = Datalayer.Enums.Action.Hold };
-            }
-
-            return _recommendations[symbol];
-        }
-
-        /// <summary>
-        /// Stores open orders
-        /// </summary>
-        /// <param name="openOrder">Open order</param>
-        public void AddOpenOrder(OpenOrder openOrder)
-        {
-            #region Argument checks
-
-            if (openOrder == null)
-            {
-                return;
-            }
-
-            #endregion
-
-            if (_openOrders.ContainsKey(openOrder.Id))
-            {
-                _openOrders.Remove(openOrder.Id);
-            }
-
-            _logger.Debug($"Order added {openOrder.Id}");
-
-            _openOrders.Add(openOrder.Id, openOrder);
-        }
-
-        /// <summary>
-        /// Removes an open order
-        /// </summary>
-        /// <param name="clientOrderId">Id of open order</param>
-        public void RemoveOpenOrder(string clientOrderId)
-        {
-            _logger.Debug($"Order removed {clientOrderId}");
-
-            _openOrders.Remove(clientOrderId);
-        }
-
-        /// <summary>
-        /// Returns the currently blocked
-        /// </summary>
-        public decimal GetOpenOrderValue(string symbol)
-        {
-            // Remove old orders
-            foreach (var oo in _openOrders.Where(o => o.Value.CreatedOn < DateTime.UtcNow.AddSeconds(-10)).Select(o => o.Key))
-            {
-                _logger.Debug($"Order cleaned {oo}");
-                _openOrders.Remove(oo);
-            }
-
-            return _openOrders.Where(o => o.Value.Symbol == symbol).Sum(o => o.Value.Quantity);
-        }
-
-        /// <summary>
-        /// Returns the available symbols the buffer has data for
-        /// </summary>
-        /// <returns>List of symbols</returns>
-        public IEnumerable<string> GetSymbols()
-        {
-            // Take symbols that are we have data for
-            return _bestAskPrices.Keys;
-        }
-
-        /// <summary>
-        /// Returns the latest ask price for a symbol
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <returns>Ask price of the symbol</returns>
-        public decimal GetAskPrice(string symbol)
-        {
-            if (!_bestAskPrices.ContainsKey(symbol))
-            {
-                _logger.Debug($"{symbol}: No asking price available");
-
-                // Get price from Binance
-                var result = _binanceClient.Spot.Market.GetPrice(symbol);
-                if (result.Success)
-                {
-                    return result.Data.Price;
-                }
-
-                _logger.Warning($"{symbol}: Could not fetch price from Binance");
-
-                return -1;
-            }
-            else
-            {
-                return _bestAskPrices[symbol].GetAverage();
-            }
-        }
-
-        /// <summary>
-        /// Returns the latest bid price for a symbol
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <returns>Bid price of the symol</returns>
-        public decimal GetBidPrice(string symbol)
-        {
-            if (!_bestBidPrices.ContainsKey(symbol))
-            {
-                _logger.Warning($"{symbol}: No bidding price available");
-                return -1;
-            }
-            else
-            {
-                return _bestBidPrices[symbol].GetAverage();
-            }
-        }
-
-        /// <summary>
-        /// Returns exchange information for a symbol
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <returns>Exchange information</returns>
-        public BinanceSymbol? GetSymbolInfoFor(string symbol)
-        {
-            if (_binanceExchangeInfo == null || string.IsNullOrEmpty(symbol))
-            {
-                return null;
-            }
-
-            var symbolInfo = _binanceExchangeInfo.Symbols.FirstOrDefault(s => s.Name == symbol);
-
-            if (symbolInfo == null || symbolInfo.Status != SymbolStatus.Trading)
-            {
-                _logger.Warning($"{symbol}: No exchange info available");
-                return null;
-            }
-
-            return symbolInfo;
-        }
-
-
-        /// <summary>
-        /// Returns the last falling price
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <returns></returns>
-        public FallingPrice? GetLastFallingPrice(string symbol)
-        {
-            var fallingPrice = _fallingPrices.GetValueOrDefault(symbol);
-            return fallingPrice ?? null;
-        }
 
         #endregion
 
@@ -517,6 +216,7 @@ namespace Trape.Cli.trader.Listener
             _jobExchangeInfo.Terminate();
 
             _newAssets.OnCompleted();
+            _newExchangeInfo.OnCompleted();
 
             // Signal cancellation for what ever remains
             _cancellationTokenSource.Cancel();

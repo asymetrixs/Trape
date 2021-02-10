@@ -7,7 +7,7 @@ namespace Trape.Jobs
     /// <summary>
     /// Wrapper for a job
     /// </summary>
-    public class Job
+    public class Job : IDisposable
     {
         #region Fields
 
@@ -207,6 +207,9 @@ namespace Trape.Jobs
             if (disposing)
             {
                 _timer.Dispose();
+                _running.Dispose();
+                _timer.Dispose();
+                _synchronizer.Dispose();
             }
 
             _disposed = true;
