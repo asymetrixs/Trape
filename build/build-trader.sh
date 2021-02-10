@@ -53,7 +53,7 @@ rm -rf $PACKINGDIR
 rm -rf trape-trader_$VERSION.deb
 mkdir -p $TARGETDIR
 mkdir -p $METADIR
-cp -r $SOURCEDIR/trape/Trape.Cli.Trader/bin/Debug/netcoreapp3.1/ubuntu.18.04-x64/* $TARGETDIR
+cp -r $SOURCEDIR/trape/Trape.Cli.Trader/bin/Debug/net5.0/ubuntu.18.04-x64/* $TARGETDIR
 chmod 644 $TARGETDIR/*
 chmod 744 $TARGETDIR/Trape.Cli.Trader
 

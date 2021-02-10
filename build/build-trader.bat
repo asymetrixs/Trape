@@ -10,5 +10,5 @@ dotnet build --configuration:Release --runtime:ubuntu.18.04-x64
 
 cd C:\Projects\damian\trape\src
 
-scp trape\trape.cli.trader\bin\Debug\netcoreapp3.1\ubuntu.18.04-x64\* damian@universe:~/trape.trader/
+scp trape\trape.cli.trader\bin\Debug\net5.0\ubuntu.18.04-x64\* damian@universe:~/trape.trader/
 

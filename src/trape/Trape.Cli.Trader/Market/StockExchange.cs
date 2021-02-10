@@ -1,5 +1,4 @@
-﻿using Binance.Net.Interfaces;
-using Binance.Net.Objects.Spot.SpotData;
+﻿using Binance.Net.Objects.Spot.SpotData;
 using CryptoExchange.Net.Objects;
 using Serilog;
 using System;
@@ -41,17 +40,14 @@ namespace Trape.Cli.Trader.Market
         /// Initializes a new instance of the <c>StockExchange</c> class.
         /// </summary>
         /// <param name="logger">Logger</param>
-        /// /// <param name="cache">Cache</param>
-        /// <param name="binanceClient">Binance Client</param>
-        public StockExchange(ILogger logger, ICache cache, IBinanceClient binanceClient)
+        /// <param name="cache">Cache</param>
+        public StockExchange(ILogger logger, ICache cache)
         {
             #region Argument checks
 
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
             _cache = cache ?? throw new ArgumentNullException(paramName: nameof(cache));
-
-            _binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
 
             #endregion
 
