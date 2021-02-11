@@ -2,8 +2,6 @@
 {
     public class Recommendation
     {
-        #region Properties
-
         /// <summary>
         /// Best Ask Price
         /// </summary>
@@ -23,7 +21,5 @@
         /// Current Price
         /// </summary>
         public decimal Price { get; set; }
-
-        #endregion
     }
 }

@@ -1,37 +1,28 @@
-﻿using CryptoExchange.Net.Logging;
-using Serilog;
-using System;
-using System.IO;
-using System.Text;
-
-namespace Trape.BinanceNet.Logger
+﻿namespace Trape.BinanceNet.Logger
 {
+    using CryptoExchange.Net.Logging;
+    using Serilog;
+    using System;
+    using System.IO;
+    using System.Text;
+
     public class Logger : TextWriter
     {
-        #region Fields
-
         /// <summary>
         /// Instance of SeriLog
         /// </summary>
         private readonly ILogger _logger;
 
-        #endregion
-
-        #region Constructor
-
         /// <summary>
         /// Initializes a new instance of the <c>Logger</c> class.
         /// </summary>
-        /// <param name="logger"></param>
+        /// <param name="logger">Logger</param>
         public Logger(ILogger logger)
-            : base()
         {
-            _logger = logger.ForContext(typeof(Binance.Net.BinanceClient));
+            _ = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            this._logger = logger.ForContext<Binance.Net.BinanceClient>();
         }
-
-        #endregion
-
-        #region Methods
 
         /// <summary>
         /// Set encoding to UTF8
@@ -41,7 +32,7 @@ namespace Trape.BinanceNet.Logger
         /// <summary>
         /// Overriding method used by Binance.NET
         /// </summary>
-        /// <param name="value"></param>
+        /// <param name="value">Value</param>
         public override void WriteLine(string value)
         {
             if (value == null)
@@ -66,20 +57,24 @@ namespace Trape.BinanceNet.Logger
                 switch (nativeLogType)
                 {
                     case LogVerbosity.Debug:
-                        _logger.Verbose($"{prefix}: {message}");
+                        this._logger.Verbose($"{prefix}: {message}");
                         break;
+
                     case LogVerbosity.Info:
-                        _logger.Information($"{prefix}: {message}");
+                        this._logger.Information($"{prefix}: {message}");
                         break;
+
                     case LogVerbosity.Warning:
-                        _logger.Warning($"{prefix}: {message}");
+                        this._logger.Warning($"{prefix}: {message}");
                         break;
+
                     case LogVerbosity.Error:
-                        _logger.Error($"{prefix}: {message}");
+                        this._logger.Error($"{prefix}: {message}");
                         break;
+
                     default:
                         // Just so that falls into the eye
-                        _logger.Fatal($"{prefix}: {message}");
+                        this._logger.Fatal($"{prefix}: {message}");
                         break;
                 }
             }
@@ -90,15 +85,13 @@ namespace Trape.BinanceNet.Logger
                     value = value.Substring(0, 30) + "...";
                 }
 
-                if(e.Message.Contains("was not found", StringComparison.InvariantCulture))
+                if (e.Message.Contains("was not found", StringComparison.InvariantCulture))
                 {
                     return;
                 }
 
-                _logger.Fatal($"{prefix}: {e.Message} - {value}");
+                this._logger.Fatal($"{prefix}: {e.Message} - {value}");
             }
         }
-
-        #endregion
     }
 }

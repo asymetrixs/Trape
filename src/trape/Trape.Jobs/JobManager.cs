@@ -1,50 +1,36 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace Trape.Jobs
+﻿namespace Trape.Jobs
 {
+    using System;
+    using System.Collections.Generic;
+
     /// <summary>
     /// Job Manager
     /// </summary>
     public class JobManager : IJobManager
     {
-        #region Fields
-
         /// <summary>
         /// Schedulers
         /// </summary>
         private readonly List<JobScheduler> _schedulers;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the <c>JobManager</c> class.
         /// </summary>
         public JobManager()
         {
-            _schedulers = new List<JobScheduler>();
+            this._schedulers = new List<JobScheduler>();
         }
-
-        #endregion
-
-        #region Methods
 
         /// <summary>
         /// Starts a job
         /// </summary>
-        /// <param name="job"></param>
+        /// <param name="job">Job</param>
         public void Start(IJob job)
         {
-            #region Argument checks
-
             _ = job ?? throw new ArgumentNullException(paramName: nameof(job));
 
-            #endregion
-
             var scheduler = new JobScheduler(job);
-            _schedulers.Add(scheduler);
+            this._schedulers.Add(scheduler);
             scheduler.Start();
         }
 
@@ -54,7 +40,7 @@ namespace Trape.Jobs
         public void StartAll()
         {
             // Start all jobs
-            foreach (var job in _schedulers)
+            foreach (var job in this._schedulers)
             {
                 job.Start();
             }
@@ -66,7 +52,7 @@ namespace Trape.Jobs
         public void StopAll()
         {
             // Start all jobs
-            foreach (var job in _schedulers)
+            foreach (var job in this._schedulers)
             {
                 job.Stop();
             }
@@ -78,15 +64,13 @@ namespace Trape.Jobs
         public void TerminateAll()
         {
             // Terminate all jobs
-            foreach (var job in _schedulers)
+            foreach (var job in this._schedulers)
             {
                 job.Stop();
                 job.Terminate();
             }
 
-            _schedulers.Clear();
+            this._schedulers.Clear();
         }
-
-        #endregion
     }
 }

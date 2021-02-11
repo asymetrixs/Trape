@@ -1,15 +1,13 @@
-﻿using System;
-using System.Threading;
-
-namespace Trape.Jobs
+﻿namespace Trape.Jobs
 {
+    using System;
+    using System.Threading;
+
     /// <summary>
     /// Executes jobs regularly.
     /// </summary>
-    class JobScheduler : IDisposable
+    internal class JobScheduler : IDisposable
     {
-        #region Fields
-
         /// <summary>
         /// Job being executed
         /// </summary>
@@ -35,25 +33,17 @@ namespace Trape.Jobs
         /// </summary>
         private bool _disposed;
 
-        #endregion
-
-        #region Constructor
-
         /// <summary>
         /// Initializes a new instance of the <c>JobScheduler</c> class.
         /// </summary>
-        /// <param name="job"></param>
+        /// <param name="job">Job</param>
         internal JobScheduler(IJob job)
         {
-            #region Argument checks
+            this._job = job ?? throw new ArgumentNullException(paramName: nameof(job));
 
-            _job = job ?? throw new ArgumentNullException(paramName: nameof(job));
-
-            #endregion
-
-            _disposed = false;
-            _execute = new SemaphoreSlim(1, 1);
-            _cancellationTokenSource = new CancellationTokenSource();
+            this._disposed = false;
+            this._execute = new SemaphoreSlim(1, 1);
+            this._cancellationTokenSource = new CancellationTokenSource();
 
             TimeSpan timeInterval = default;
 
@@ -73,55 +63,31 @@ namespace Trape.Jobs
             }
 
             // Set up timer
-            _timer = new System.Timers.Timer
+            this._timer = new System.Timers.Timer
             {
                 Interval = timeInterval.TotalMilliseconds,
-                AutoReset = true
+                AutoReset = true,
             };
-            _timer.Elapsed += _timer_Elapsed;
+            this._timer.Elapsed += this.Timer_Elapsed;
         }
-
-        #endregion
-
-        #region Timer Elapsed
 
         /// <summary>
-        /// Execute the registered job
+        /// Public implementation of Dispose pattern callable by consumers.
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private async void _timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        public void Dispose()
         {
-            await _execute.WaitAsync().ConfigureAwait(false);
-
-            try
-            {
-                await _job.Execute(_cancellationTokenSource.Token).ConfigureAwait(false);
-            }
-            catch
-            {
-
-            }
-            finally
-            {
-
-            }
-
-            _execute.Release();
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
         }
-
-        #endregion
-
-        #region Start / Stop / Terminate
 
         /// <summary>
         /// Starts the timer
         /// </summary>
         internal void Start()
         {
-            if (!_timer.Enabled)
+            if (!this._timer.Enabled)
             {
-                _timer.Start();
+                this._timer.Start();
             }
         }
 
@@ -130,9 +96,9 @@ namespace Trape.Jobs
         /// </summary>
         internal void Stop()
         {
-            if (_timer.Enabled)
+            if (this._timer.Enabled)
             {
-                _timer.Stop();
+                this._timer.Stop();
             }
         }
 
@@ -141,52 +107,51 @@ namespace Trape.Jobs
         /// </summary>
         internal void Terminate()
         {
-            if (!_cancellationTokenSource.IsCancellationRequested)
+            if (!this._cancellationTokenSource.IsCancellationRequested)
             {
-                _cancellationTokenSource.Cancel();
+                this._cancellationTokenSource.Cancel();
             }
-        }
-
-        #endregion
-
-        #region Dispose
-
-        /// <summary>
-        /// Public implementation of Dispose pattern callable by consumers.
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         /// <summary>
         /// Protected implementation of Dispose pattern.
         /// </summary>
-        /// <param name="disposing"></param>
+        /// <param name="disposing">Disposing</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (_disposed)
+            if (this._disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                if (!_cancellationTokenSource.IsCancellationRequested)
+                if (!this._cancellationTokenSource.IsCancellationRequested)
                 {
-                    _cancellationTokenSource.Cancel();
+                    this._cancellationTokenSource.Cancel();
                 }
 
-                _timer.Stop();
-                _timer.Dispose();
-
-                _cancellationTokenSource.Dispose();
+                this._timer.Stop();
+                this._timer.Dispose();
+                this._cancellationTokenSource.Dispose();
+                this._execute.Dispose();
             }
 
-            _disposed = true;
+            this._disposed = true;
         }
 
-        #endregion
+        /// <summary>
+        /// Execute the registered job
+        /// </summary>
+        /// <param name="sender">Sender</param>
+        /// <param name="e">Event</param>
+        private async void Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            await this._execute.WaitAsync().ConfigureAwait(false);
+
+            await this._job.Execute(this._cancellationTokenSource.Token).ConfigureAwait(false);
+
+            this._execute.Release();
+        }
     }
 }

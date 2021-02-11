@@ -10,6 +10,7 @@
     <PathMap>$(AppOutputBase)=$(MSBuildProjectName)/</PathMap>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <NoWarn>CA1014</NoWarn>
+    <CodeAnalysisRuleSet>../default.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
 </Project>

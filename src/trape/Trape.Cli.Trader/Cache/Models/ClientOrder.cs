@@ -1,33 +1,27 @@
-﻿using Binance.Net.Enums;
-using System;
-
-namespace Trape.Cli.Trader.Cache.Models
+﻿namespace Trape.Cli.Trader.Cache.Models
 {
+    using Binance.Net.Enums;
+    using System;
+
     /// <summary>
     /// Represents an order
     /// </summary>
     public class ClientOrder
     {
-        #region Constructor
-
         /// <summary>
         /// Initializes a new instance of the <c>Order</c> class.
         /// </summary>
         /// <param name="symbol">Symbol</param>
         public ClientOrder(string symbol)
         {
-            Id = Guid.NewGuid().ToString("N");
-            Symbol = symbol;
+            this.Id = Guid.NewGuid().ToString("N");
+            this.Symbol = symbol;
         }
-
-        #endregion
-
-        #region Properties
 
         /// <summary>
         /// Symbol
         /// </summary>
-        public string Symbol { get; private set; }
+        public string Symbol { get; }
 
         /// <summary>
         /// Event Time
@@ -68,7 +62,5 @@ namespace Trape.Cli.Trader.Cache.Models
         /// [IGNORED] Time in force
         /// </summary>
         public TimeInForce? TimeInForce { get; set; }
-
-        #endregion
     }
 }

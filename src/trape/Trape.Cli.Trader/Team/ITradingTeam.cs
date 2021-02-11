@@ -1,7 +1,7 @@
-﻿using System;
-
-namespace Trape.Cli.Trader.Team
+﻿namespace Trape.Cli.Trader.Team
 {
+    using System;
+
     /// <summary>
     /// Interface for the <c>TradingTeam</c>
     /// </summary>
@@ -15,7 +15,6 @@ namespace Trape.Cli.Trader.Team
         /// <summary>
         /// Stops the <c>TradingTeam</c>
         /// </summary>
-        /// <returns></returns>
         void Terminate();
     }
 }

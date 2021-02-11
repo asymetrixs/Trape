@@ -1,16 +1,14 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace Trape.Jobs
+﻿namespace Trape.Jobs
 {
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
+
     /// <summary>
     /// Wrapper for a job
     /// </summary>
     public class Job : IDisposable
     {
-        #region Fields
-
         /// <summary>
         /// Actopm
         /// </summary>
@@ -41,10 +39,6 @@ namespace Trape.Jobs
         /// </summary>
         private SemaphoreSlim _running;
 
-        #endregion
-
-        #region Constructor
-
         /// <summary>
         /// Initializes a new instance of the <c>Job</c> class.
         /// </summary>
@@ -53,40 +47,8 @@ namespace Trape.Jobs
         /// <param name="cancellationToken">Cancellation Token</param>
         public Job(TimeSpan executionInterval, Action action, CancellationToken cancellationToken = default)
         {
-            Setup(executionInterval, action, cancellationToken);
+            this.Setup(executionInterval, action, cancellationToken);
         }
-
-        /// <summary>
-        /// Actual setting up
-        /// </summary>
-        /// <param name="executionInterval"></param>
-        /// <param name="action"></param>
-        /// <param name="cancellationToken"></param>
-        private void Setup(TimeSpan executionInterval, Action action, CancellationToken cancellationToken = default)
-        {
-            #region Argument checks
-
-            _action = action ?? throw new ArgumentNullException(paramName: nameof(action));
-
-            #endregion
-
-            _disposed = false;
-            ExecutionInterval = executionInterval;
-            _cancellationToken = cancellationToken;
-            _synchronizer = new SemaphoreSlim(1, 1);
-            _running = new SemaphoreSlim(1, 1);
-
-            _timer = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = executionInterval.TotalMilliseconds
-            };
-            _timer.Elapsed += Timer_Elapsed;
-        }
-
-        #endregion
-
-        #region Properties
 
         /// <summary>
         /// Execution Interval
@@ -100,40 +62,7 @@ namespace Trape.Jobs
         {
             get
             {
-                return _timer.Enabled;
-            }
-        }
-
-        #endregion
-
-        #region Methods
-
-        /// <summary>
-        /// Execute the action
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
-        {
-            if (_synchronizer.CurrentCount == 0)
-            {
-                return;
-            }
-            _synchronizer.WaitAsync();
-
-            try
-            {
-                _cancellationToken.ThrowIfCancellationRequested();
-
-                _action.Invoke();
-            }
-            catch
-            {
-                throw;
-            }
-            finally
-            {
-                _synchronizer.Release();
+                return this._timer.Enabled;
             }
         }
 
@@ -143,17 +72,16 @@ namespace Trape.Jobs
         public void Start()
         {
             // Start timer
-            _timer.Start();
+            this._timer.Start();
 
             // Enter running state
-            _running.Wait();
+            this._running.Wait();
         }
 
         /// <summary>
         /// Returns whether the timer is running or not
         /// </summary>
-        /// <returns></returns>
-        public bool IsRunning() => _timer.Enabled;
+        public bool IsRunning() => this._timer.Enabled;
 
         /// <summary>
         /// Stop job
@@ -161,60 +89,107 @@ namespace Trape.Jobs
         public void Terminate()
         {
             // Block synchronizer
-            _synchronizer.Wait();
+            this._synchronizer.Wait();
 
             // Stop timer
-            _timer.Stop();
+            this._timer.Stop();
 
             // Release
-            _running.Release();
+            this._running.Release();
         }
 
         /// <summary>
         /// Returns a Task to wait for until job has finished
         /// </summary>
-        /// <returns></returns>
         public Task WaitFor(CancellationToken stoppingToken)
         {
             // Wait for next time to enter, happens when task terminates
-            return _running.WaitAsync(stoppingToken);
+            return this._running.WaitAsync(stoppingToken);
         }
-
-        #endregion
-
-        #region Dispose
 
         /// <summary>
         /// Public implementation of Dispose pattern callable by consumers.
         /// </summary>
         public void Dispose()
         {
-            Dispose(true);
+            this.Dispose(true);
             GC.SuppressFinalize(this);
         }
 
         /// <summary>
         /// Protected implementation of Dispose pattern.
         /// </summary>
-        /// <param name="disposing"></param>
+        /// <param name="disposing">Disposing</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (_disposed)
+            if (this._disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                _timer.Dispose();
-                _running.Dispose();
-                _timer.Dispose();
-                _synchronizer.Dispose();
+                this._timer.Dispose();
+                this._running.Dispose();
+                this._timer.Dispose();
+                this._synchronizer.Dispose();
             }
 
-            _disposed = true;
+            this._disposed = true;
         }
 
-        #endregion
+        /// <summary>
+        /// Execute the action
+        /// </summary>
+        /// <param name="sender">Sender</param>
+        /// <param name="e">Event</param>
+        private void Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (this._synchronizer.CurrentCount == 0)
+            {
+                return;
+            }
+
+            this._synchronizer.WaitAsync();
+
+            try
+            {
+                this._cancellationToken.ThrowIfCancellationRequested();
+
+                this._action.Invoke();
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                this._synchronizer.Release();
+            }
+        }
+
+        /// <summary>
+        /// Actual setting up
+        /// </summary>
+        /// <param name="executionInterval">Execution Interval</param>
+        /// <param name="action">Action</param>
+        /// <param name="cancellationToken">Cancellation Token</param>
+        private void Setup(TimeSpan executionInterval, Action action, CancellationToken cancellationToken = default)
+        {
+            this._action = action ?? throw new ArgumentNullException(paramName: nameof(action));
+
+            this._disposed = false;
+            this.ExecutionInterval = executionInterval;
+            this._cancellationToken = cancellationToken;
+            this._synchronizer = new SemaphoreSlim(1, 1);
+            this._running = new SemaphoreSlim(1, 1);
+
+            this._timer = new System.Timers.Timer()
+            {
+                AutoReset = true,
+                Interval = executionInterval.TotalMilliseconds
+            };
+            this._timer.Elapsed += this.Timer_Elapsed;
+        }
     }
 }

@@ -1,9 +1,9 @@
-﻿using Binance.Net.Objects.Spot.MarketData;
-using System;
-using System.Threading.Tasks;
-
-namespace Trape.Cli.Trader.Team
+﻿namespace Trape.Cli.Trader.Team
 {
+    using Binance.Net.Objects.Spot.MarketData;
+    using System;
+    using System.Threading.Tasks;
+
     /// <summary>
     /// Interface for start/stopable classes.
     /// </summary>
@@ -12,7 +12,7 @@ namespace Trape.Cli.Trader.Team
         /// <summary>
         /// Symbol
         /// </summary>
-        BinanceSymbol Symbol { get; }
+        BinanceSymbol? Symbol { get; }
 
         /// <summary>
         /// Base Asset
@@ -30,6 +30,11 @@ namespace Trape.Cli.Trader.Team
         bool IsFaulty { get; }
 
         /// <summary>
+        /// Last time item was active
+        /// </summary>
+        public DateTime LastActive { get; }
+
+        /// <summary>
         /// Starts an instance
         /// </summary>
         /// <param name="symbol">Symbol</param>
@@ -39,10 +44,5 @@ namespace Trape.Cli.Trader.Team
         /// Stops an instance
         /// </summary>
         Task Terminate();
-
-        /// <summary>
-        /// Last time item was active
-        /// </summary>
-        public DateTime LastActive { get; }
     }
 }

@@ -1,8 +1,8 @@
-﻿using Binance.Net.Objects.Spot.MarketStream;
-using System;
-
-namespace Trape.Cli.Trader.Team.Models
+﻿namespace Trape.Cli.Trader.Team.Models
 {
+    using Binance.Net.Objects.Spot.MarketStream;
+    using System;
+
     public class CurrentBookPrice
     {
         /// <summary>
@@ -13,7 +13,7 @@ namespace Trape.Cli.Trader.Team.Models
         /// <summary>
         /// Initializes a new instance of the <see cref="CurrentBookPrice"/> class.
         /// </summary>
-        /// <param name="bsbp"></param>
+        /// <param name="bsbp">Binance Book Price</param>
         public CurrentBookPrice(BinanceStreamBookPrice bsbp)
         {
             this._binanceStreamBookPrice = bsbp;
@@ -28,31 +28,31 @@ namespace Trape.Cli.Trader.Team.Models
         /// <summary>
         /// Symbol
         /// </summary>
-        public string Symbol => _binanceStreamBookPrice.Symbol;
+        public string Symbol => this._binanceStreamBookPrice.Symbol;
 
         /// <summary>
         /// Best Ask Price
         /// </summary>
-        public decimal BestAskPrice => _binanceStreamBookPrice.BestAskPrice;
+        public decimal BestAskPrice => this._binanceStreamBookPrice.BestAskPrice;
 
         /// <summary>
         /// Best Ask Quantity
         /// </summary>
-        public decimal BestAskQuantity => _binanceStreamBookPrice.BestAskQuantity;
+        public decimal BestAskQuantity => this._binanceStreamBookPrice.BestAskQuantity;
 
         /// <summary>
         /// Best Bid Price
         /// </summary>
-        public decimal BestBidPrice => _binanceStreamBookPrice.BestBidPrice;
+        public decimal BestBidPrice => this._binanceStreamBookPrice.BestBidPrice;
 
         /// <summary>
         /// Best Bid Quantity
         /// </summary>
-        public decimal BestBidQuantity => _binanceStreamBookPrice.BestBidQuantity;
+        public decimal BestBidQuantity => this._binanceStreamBookPrice.BestBidQuantity;
 
         /// <summary>
         /// Update Id
         /// </summary>
-        public long UpdateId => _binanceStreamBookPrice.UpdateId;
+        public long UpdateId => this._binanceStreamBookPrice.UpdateId;
     }
 }

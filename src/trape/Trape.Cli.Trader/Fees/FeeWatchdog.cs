@@ -1,28 +1,20 @@
-﻿using Binance.Net.Enums;
-using Binance.Net.Interfaces;
-using Binance.Net.Objects.Spot.SpotData;
-using Serilog;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Trape.Cli.Trader.Account;
-using Trape.Cli.Trader.Cache.Models;
-using Trape.Cli.Trader.Market;
-
-namespace Trape.Cli.Trader.Fees
+﻿namespace Trape.Cli.Trader.Fees
 {
+    using Binance.Net.Enums;
+    using Binance.Net.Interfaces;
+    using Serilog;
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Trape.Cli.Trader.Account;
+    using Trape.Cli.Trader.Cache.Models;
+    using Trape.Cli.Trader.Market;
+
     /// <summary>
     /// Watchdog to always have sufficient BNBs available to pay fees
     /// </summary>
     public class FeeWatchdog : IFeeWatchdog, IDisposable
     {
-        #region Fields
-
-        /// <summary>
-        /// Disposed
-        /// </summary>
-        private bool _disposed;
-
         /// <summary>
         /// Logger
         /// </summary>
@@ -54,13 +46,14 @@ namespace Trape.Cli.Trader.Fees
         private readonly string _feeSymbol;
 
         /// <summary>
+        /// Disposed
+        /// </summary>
+        private bool _disposed;
+
+        /// <summary>
         /// Stock Exchange subscriber
         /// </summary>
-        private readonly IDisposable _stockExchangeSubscriber;
-
-        #endregion
-
-        #region Constructor
+        private IDisposable? _stockExchangeSubscriber;
 
         /// <summary>
         /// Initializes a new instance of the <c>FeeWatchdog</c> class.
@@ -70,45 +63,93 @@ namespace Trape.Cli.Trader.Fees
         /// <param name="binanceClient">Binance Client</param>
         public FeeWatchdog(ILogger logger, IAccountant accountant, IBinanceClient binanceClient, IStockExchange stockExchange)
         {
-            #region Arguments check
-
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
+            this._accountant = accountant ?? throw new ArgumentNullException(paramName: nameof(accountant));
 
-            _binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
+            this._binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
 
-            _stockExchange = stockExchange ?? throw new ArgumentNullException(paramName: nameof(stockExchange));
+            this._stockExchange = stockExchange ?? throw new ArgumentNullException(paramName: nameof(stockExchange));
 
-            #endregion
-
-            _logger = logger.ForContext(typeof(FeeWatchdog));
-            _cancellationTokenSource = new CancellationTokenSource();
-            _feeSymbol = "BNBUSDT";
-
-            _stockExchangeSubscriber = stockExchange.NewOrder.Subscribe(async (bpo) => await CheckBNB(bpo).ConfigureAwait(false));
+            this._logger = logger.ForContext(typeof(FeeWatchdog));
+            this._cancellationTokenSource = new CancellationTokenSource();
+            this._feeSymbol = "BNBUSDT";
+            this._stockExchangeSubscriber = null;
         }
 
-        #endregion
-
-        #region BNB Checker
-
-        private async Task CheckBNB(BinancePlacedOrder _)
+        /// <summary>
+        /// Start
+        /// </summary>
+        public void Start()
         {
-            // Get remaining BNB balance for trading
-            var bnb = await _accountant.GetBalance(_feeSymbol.Replace("USDT", string.Empty, StringComparison.InvariantCulture)).ConfigureAwait(true);
-            if (bnb == null)
+            this._logger.Information("Starting Fee Watchdog");
+
+            this._stockExchangeSubscriber = this._stockExchange.NewOrder.Subscribe(async (bpo) => await this.CheckBNB().ConfigureAwait(false));
+
+            this._logger.Information("Fee Watchdog started");
+        }
+
+        /// <summary>
+        /// Terminate
+        /// </summary>
+        public void Terminate()
+        {
+            this._logger.Information("Fee Watchdog stopping");
+
+            this._cancellationTokenSource.Cancel();
+
+            this._logger.Information("Fee Watchdog stopped");
+        }
+
+        /// <summary>
+        /// Public implementation of Dispose pattern callable by consumers.
+        /// </summary>
+        public void Dispose()
+        {
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Protected implementation of Dispose pattern.
+        /// </summary>
+        /// <param name="disposing">Disposing</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (this._disposed)
             {
-                // Something is oddly wrong, wait a bit
-                _logger.Debug("Cannot retrieve account info");
                 return;
             }
 
-            var priceQuery = await _binanceClient.Spot.Market.GetPriceAsync(_feeSymbol).ConfigureAwait(true);
+            if (disposing)
+            {
+                this._cancellationTokenSource.Dispose();
+                this._stockExchangeSubscriber?.Dispose();
+            }
+
+            this._disposed = true;
+        }
+
+        /// <summary>
+        /// Checks that sufficient BNB are available
+        /// </summary>
+        /// <returns></returns>
+        private async Task CheckBNB()
+        {
+            // Get remaining BNB balance for trading
+            var bnb = await this._accountant.GetBalance(this._feeSymbol.Replace("USDT", string.Empty, StringComparison.InvariantCulture)).ConfigureAwait(true);
+            if (bnb == null)
+            {
+                // Something is oddly wrong, wait a bit
+                this._logger.Debug("Cannot retrieve account info");
+                return;
+            }
+
+            var priceQuery = await this._binanceClient.Spot.Market.GetPriceAsync(this._feeSymbol).ConfigureAwait(true);
 
             if (!priceQuery.Success)
             {
-                _logger.Warning($"{_feeSymbol}: Cannot retrieve price {priceQuery.Error?.Message}");
+                this._logger.Warning($"{this._feeSymbol}: Cannot retrieve price {priceQuery.Error?.Message}");
                 return;
             }
 
@@ -117,13 +158,13 @@ namespace Trape.Cli.Trader.Fees
             // Threshold for buy is 30
             if (bnb.Free < 30)
             {
-                _logger.Information($"{_feeSymbol}: Low. {bnb.Free} - issuing buy");
+                this._logger.Information($"{this._feeSymbol}: Low. {bnb.Free} - issuing buy");
 
                 // Fixed for now, buy for 55 USDT
                 const int buy = 1;
 
                 // Get merchant and place order
-                await _stockExchange.PlaceOrder(new ClientOrder(_feeSymbol)
+                await this._stockExchange.PlaceOrder(new ClientOrder(this._feeSymbol)
                 {
                     Side = OrderSide.Buy,
                     Type = OrderType.Limit,
@@ -131,77 +172,14 @@ namespace Trape.Cli.Trader.Fees
                     Quantity = buy,
                     Price = currentPrice,
                     TimeInForce = TimeInForce.ImmediateOrCancel
-                }, _cancellationTokenSource.Token).ConfigureAwait(true);
+                }, this._cancellationTokenSource.Token).ConfigureAwait(true);
 
-                _logger.Information($"Issued buy of {buy} for {currentPrice} USDT each");
+                this._logger.Information($"Issued buy of {buy} for {currentPrice} USDT each");
             }
             else
             {
-                _logger.Debug($"Fees OK at {bnb.Free}");
+                this._logger.Debug($"Fees OK at {bnb.Free}");
             }
         }
-
-        #endregion
-
-        #region Start / Stop
-
-        /// <summary>
-        /// Start
-        /// </summary>
-        public void Start()
-        {
-            _logger.Information("Starting Fee Watchdog");
-
-            // nothing
-
-            _logger.Information("Fee Watchdog started");
-        }
-
-        /// <summary>
-        /// Terminate
-        /// </summary>
-        public void Terminate()
-        {
-            _logger.Information("Fee Watchdog stopping");
-
-            _cancellationTokenSource.Cancel();
-
-            _logger.Information("Fee Watchdog stopped");
-        }
-
-        #endregion
-
-        #region Dispose
-
-        /// <summary>
-        /// Public implementation of Dispose pattern callable by consumers.
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        /// <summary>
-        /// Protected implementation of Dispose pattern.
-        /// </summary>
-        /// <param name="disposing"></param>
-        protected virtual void Dispose(bool disposing)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            if (disposing)
-            {
-                _cancellationTokenSource.Dispose();
-                _stockExchangeSubscriber.Dispose();
-            }
-
-            _disposed = true;
-        }
-
-        #endregion
     }
 }

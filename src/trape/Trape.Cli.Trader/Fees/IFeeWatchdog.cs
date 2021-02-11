@@ -5,8 +5,14 @@
     /// </summary>
     public interface IFeeWatchdog
     {
+        /// <summary>
+        /// Start
+        /// </summary>
         void Start();
 
+        /// <summary>
+        /// Terminate
+        /// </summary>
         void Terminate();
     }
 }

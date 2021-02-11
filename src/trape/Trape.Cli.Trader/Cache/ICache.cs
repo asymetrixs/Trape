@@ -1,10 +1,9 @@
-﻿using Trape.Cli.Trader.Cache.Models;
-
-namespace Trape.Cli.Trader.Cache
+﻿namespace Trape.Cli.Trader.Cache
 {
+    using Trape.Cli.Trader.Cache.Models;
+
     public interface ICache
     {
-
         /// <summary>
         /// Removes an open order
         /// </summary>
@@ -14,7 +13,7 @@ namespace Trape.Cli.Trader.Cache
         /// <summary>
         /// Stores open orders
         /// </summary>
-        /// <param name="openOrder"></param>
+        /// <param name="openOrder">Open Order</param>
         void AddOpenOrder(OpenOrder openOrder);
 
         /// <summary>
@@ -25,7 +24,7 @@ namespace Trape.Cli.Trader.Cache
         /// <summary>
         /// Returns whether an order for this symbol is open or not
         /// </summary>
-        /// <param name="symbol"></param>
+        /// <param name="symbol">Symbol</param>
         /// <returns></returns>
         bool HasOpenOrder(string symbol);
     }

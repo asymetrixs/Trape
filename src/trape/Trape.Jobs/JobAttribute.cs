@@ -1,32 +1,22 @@
-﻿using System;
-
-namespace Trape.Jobs
+﻿namespace Trape.Jobs
 {
+    using System;
+
     [AttributeUsage(AttributeTargets.Class)]
     public sealed class JobAttribute : Attribute
     {
-        #region Properites
+        /// <summary>
+        /// Initializes a new instance of the <c>JobAttribute</c> class.
+        /// </summary>
+        /// <param name="interval">Time Span</param>
+        public JobAttribute(TimeSpan interval)
+        {
+            this.Interval = interval;
+        }
 
         /// <summary>
         /// Interval
         /// </summary>
-        public TimeSpan Interval { get; private set; }
-
-        #endregion
-
-        #region Constructor
-
-        /// <summary>
-        /// Initializes a new instance of the <c>JobAttribute</c> class.
-        /// </summary>
-        /// <param name="hours">Hours</param>
-        /// <param name="minutes">Minutes</param>
-        /// <param name="seconds">Seconds</param>
-        public JobAttribute(int hours, int minutes, int seconds)
-        {
-            Interval = new TimeSpan(hours, minutes, seconds);
-        }
-
-        #endregion
+        public TimeSpan Interval { get; }
     }
 }

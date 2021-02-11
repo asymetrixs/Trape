@@ -1,36 +1,29 @@
-﻿using Binance.Net;
-using Binance.Net.Enums;
-using Binance.Net.Interfaces;
-using Binance.Net.Objects.Spot;
-using CryptoExchange.Net.Authentication;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Serilog;
-using Serilog.Exceptions;
-using SimpleInjector;
-using SimpleInjector.Diagnostics;
-using SimpleInjector.Lifestyles;
-using System;
-using System.Threading.Tasks;
-using Trape.BinanceNet.Logger;
-using Trape.Cli.Trader.Account;
-using Trape.Cli.Trader.Cache;
-using Trape.Cli.Trader.Fees;
-using Trape.Cli.Trader.Listener;
-using Trape.Cli.Trader.Market;
-using Trape.Cli.Trader.Team;
-
-namespace Trape.Cli.Trader
+﻿namespace Trape.Cli.Trader
 {
-    public class Program
+    using Binance.Net;
+    using Binance.Net.Enums;
+    using Binance.Net.Interfaces;
+    using Binance.Net.Objects.Spot;
+    using CryptoExchange.Net.Authentication;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Hosting;
+    using Serilog;
+    using Serilog.Exceptions;
+    using SimpleInjector;
+    using SimpleInjector.Diagnostics;
+    using SimpleInjector.Lifestyles;
+    using System;
+    using System.Threading.Tasks;
+    using Trape.BinanceNet.Logger;
+    using Trape.Cli.Trader.Account;
+    using Trape.Cli.Trader.Cache;
+    using Trape.Cli.Trader.Fees;
+    using Trape.Cli.Trader.Listener;
+    using Trape.Cli.Trader.Market;
+    using Trape.Cli.Trader.Team;
+
+    public static class Program
     {
-        #region Properties
-
-        /// <summary>
-        /// DI/IoC Container
-        /// </summary>
-        public static Container Container { get; } = new();
-
         /// <summary>
         /// Binance Client
         /// </summary>
@@ -41,9 +34,10 @@ namespace Trape.Cli.Trader
         /// </summary>
         private static BinanceSocketClient _binanceSocketClient = new BinanceSocketClient();
 
-        #endregion
-
-        #region Function
+        /// <summary>
+        /// DI/IoC Container
+        /// </summary>
+        public static Container Container { get; } = new Container();
 
         /// <summary>
         /// Main entry point
@@ -59,7 +53,7 @@ namespace Trape.Cli.Trader
             // Create IoC container
             using (var app = CreateHost())
             {
-                logger = Container.GetInstance<ILogger>().ForContext<Program>();
+                logger = Container.GetInstance<ILogger>().ForContext(typeof(Program));
 
                 logger.Information("Starting...");
 
@@ -105,18 +99,15 @@ namespace Trape.Cli.Trader
                 .Destructure.ToMaximumDepth(4)
                 .Destructure.ToMaximumStringLength(100)
                 .Destructure.ToMaximumCollectionCount(10)
-                //                .WriteTo.Console(
-                //#if DEBUG
-                //                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
-                //#else
-                //                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
-                //#endif
-                //                    outputTemplate: Config.GetValue("Serilog:OutputTemplateConsole")
-                //                )
+                .WriteTo.Console(
+                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error,
+                    outputTemplate: Config.GetValue("Serilog:OutputTemplateConsole"))
                 .WriteTo.File(
-                    path: Config.GetValue("Serilog:LogFileLocation"), retainedFileCountLimit: 7, rollingInterval: RollingInterval.Day, buffered: false,
-                    outputTemplate: Config.GetValue("Serilog:OutputTemplateFile")
-                )
+                    path: Config.GetValue("Serilog:LogFileLocation"),
+                    retainedFileCountLimit: 7,
+                    rollingInterval: RollingInterval.Day,
+                    buffered: false,
+                    outputTemplate: Config.GetValue("Serilog:OutputTemplateFile"))
                 .CreateLogger();
 
             // Setup container and register defauld scope as first thing
@@ -141,7 +132,6 @@ namespace Trape.Cli.Trader
                 .UseSimpleInjector(Container);
 
             // Registration
-
             Container.Register<IBroker, Broker>(Lifestyle.Transient);
             Container.Register<IAnalyst, Analyst>(Lifestyle.Transient);
 
@@ -192,6 +182,4 @@ namespace Trape.Cli.Trader
             return host;
         }
     }
-
-    #endregion
 }

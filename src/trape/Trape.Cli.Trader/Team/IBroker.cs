@@ -1,7 +1,7 @@
-﻿using System;
-
-namespace Trape.Cli.Trader.Team
+﻿namespace Trape.Cli.Trader.Team
 {
+    using System;
+
     /// <summary>
     /// Interface for the <c>Broker</c>
     /// </summary>
@@ -10,7 +10,7 @@ namespace Trape.Cli.Trader.Team
         /// <summary>
         /// Links a broker to an analyst
         /// </summary>
-        /// <param name="analyst"></param>
+        /// <param name="analyst">Analyst</param>
         void SubscribeTo(IAnalyst analyst);
     }
 }

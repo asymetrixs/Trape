@@ -1,14 +1,12 @@
-﻿using System;
-
-namespace Trape.Cli.Trader.Cache.Models
+﻿namespace Trape.Cli.Trader.Cache.Models
 {
+    using System;
+
     /// <summary>
     /// Class for caching of open orders
     /// </summary>
     public class OpenOrder
     {
-        #region Constructor
-
         /// <summary>
         /// Initializes a new instance of the <c>OpenOrder</c> class.
         /// </summary>
@@ -17,15 +15,11 @@ namespace Trape.Cli.Trader.Cache.Models
         /// <param name="estimatedQuoteOrderQuantity">Estimated quote order quantity</param>
         public OpenOrder(string id, string symbol, decimal estimatedQuoteOrderQuantity)
         {
-            Id = id ?? throw new ArgumentNullException(nameof(id));
-            Symbol = symbol ?? throw new ArgumentNullException(nameof(symbol));
-            Quantity = estimatedQuoteOrderQuantity;
-            CreatedOn = DateTime.UtcNow;
+            this.Id = id ?? throw new ArgumentNullException(nameof(id));
+            this.Symbol = symbol ?? throw new ArgumentNullException(nameof(symbol));
+            this.Quantity = estimatedQuoteOrderQuantity;
+            this.CreatedOn = DateTime.UtcNow;
         }
-
-        #endregion
-
-        #region Properties
 
         /// <summary>
         /// GUID
@@ -46,7 +40,5 @@ namespace Trape.Cli.Trader.Cache.Models
         /// Created on
         /// </summary>
         public DateTime CreatedOn { get; }
-
-        #endregion
     }
 }

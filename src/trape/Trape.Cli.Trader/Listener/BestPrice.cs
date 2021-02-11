@@ -1,31 +1,24 @@
-﻿using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace Trape.Cli.Trader.Listener
+﻿namespace Trape.Cli.Trader.Listener
 {
+    using System;
+    using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
+
     /// <summary>
     /// This class hols information about a best price
     /// </summary>
     public class BestPrice : IDisposable
     {
-        #region Fields
-
-        /// <summary>
-        /// Disposed
-        /// </summary>
-        private bool _disposed;
-
         /// <summary>
         /// Buffer size for the price buffer
         /// </summary>
         private const long _bufferSize = 10;
 
         /// <summary>
-        /// Current position in the buffer
+        /// 3 seconds in ticks
         /// </summary>
-        private long _position;
+        private static readonly long _3secondsInTicks = new TimeSpan(0, 0, 3).Ticks;
 
         /// <summary>
         /// Synchronize adding of values
@@ -38,46 +31,48 @@ namespace Trape.Cli.Trader.Listener
         private readonly decimal[] _prices;
 
         /// <summary>
+        /// Disposed
+        /// </summary>
+        private bool _disposed;
+
+        /// <summary>
+        /// Current position in the buffer
+        /// </summary>
+        private long _position;
+
+        /// <summary>
         /// Date of last update
         /// </summary>
         private long _lastUpdate;
 
         /// <summary>
-        /// 3 seconds in ticks
-        /// </summary>
-        private static readonly long _3secondsInTicks = new TimeSpan(0, 0, 3).Ticks;
-
-        #endregion
-
-        #region Constructor
-
-        /// <summary>
         /// Initializes a new instance of the <c>BestPrice</c> class
         /// </summary>
-        /// <param name="symbol"></param>
+        /// <param name="symbol">Symbol</param>
         public BestPrice()
         {
-            _disposed = false;
-            _position = -1;
-            _prices = new decimal[_bufferSize];
-            _syncAdd = new SemaphoreSlim(1, 1);
+            this._disposed = false;
+            this._position = -1;
+            this._prices = new decimal[_bufferSize];
+            this._syncAdd = new SemaphoreSlim(1, 1);
 
             // Initialize with an obsolete value
-            _lastUpdate = DateTime.UtcNow.AddMinutes(-1).Ticks;
+            this._lastUpdate = DateTime.UtcNow.AddMinutes(-1).Ticks;
         }
 
-        #endregion
-
-        #region
+        /// <summary>
+        /// Returns the latest price
+        /// </summary>
+        public decimal? Latest => this._prices[this._position];
 
         /// <summary>
         /// Adds a new price to the array
         /// </summary>
-        /// <param name="price"></param>
+        /// <param name="price">Price</param>
         public async Task Add(decimal price)
         {
             // Enter synchronized context
-            await _syncAdd.WaitAsync().ConfigureAwait(true);
+            await this._syncAdd.WaitAsync().ConfigureAwait(true);
 
             try
             {
@@ -85,15 +80,15 @@ namespace Trape.Cli.Trader.Listener
                 unchecked
                 {
                     // Move cursor ahead
-                    _prices[++_position % _bufferSize] = price;
+                    this._prices[++this._position % _bufferSize] = price;
                 }
 
                 // Update time of addition
-                _lastUpdate = DateTime.UtcNow.Ticks;
+                this._lastUpdate = DateTime.UtcNow.Ticks;
             }
             finally
             {
-                _syncAdd.Release();
+                this._syncAdd.Release();
             }
         }
 
@@ -104,53 +99,41 @@ namespace Trape.Cli.Trader.Listener
         public decimal GetAverage()
         {
             // Check if last value is more recent than 3 seconds ago
-            if (_lastUpdate < (DateTime.UtcNow.Ticks - _3secondsInTicks))
+            if (this._lastUpdate < (DateTime.UtcNow.Ticks - _3secondsInTicks))
             {
                 return -1;
             }
 
             // Calculate average over array
-            return _prices.Average();
+            return this._prices.Average();
         }
-
-        /// <summary>
-        /// Returns the latest price
-        /// </summary>
-        /// <returns></returns>
-        public decimal? Latest => _prices[_position];
-
-        #endregion
-
-        #region Dispose
 
         /// <summary>
         /// Public implementation of Dispose pattern callable by consumers.
         /// </summary>
         public void Dispose()
         {
-            Dispose(true);
+            this.Dispose(true);
             GC.SuppressFinalize(this);
         }
 
         /// <summary>
         /// Protected implementation of Dispose pattern.
         /// </summary>
-        /// <param name="disposing"></param>
+        /// <param name="disposing">Disposing</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (_disposed)
+            if (this._disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                _syncAdd.Dispose();
+                this._syncAdd.Dispose();
             }
 
-            _disposed = true;
+            this._disposed = true;
         }
-
-        #endregion
     }
 }

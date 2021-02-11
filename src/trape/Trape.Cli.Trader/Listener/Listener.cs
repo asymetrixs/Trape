@@ -1,48 +1,25 @@
-﻿using Binance.Net.Interfaces;
-using Binance.Net.Objects.Spot.MarketData;
-using Serilog;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reactive.Subjects;
-using System.Threading;
-using System.Threading.Tasks;
-using Trape.Jobs;
-
-namespace Trape.Cli.Trader.Listener
+﻿namespace Trape.Cli.Trader.Listener
 {
+    using Binance.Net.Interfaces;
+    using Binance.Net.Objects.Spot.MarketData;
+    using Serilog;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Reactive.Subjects;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Trape.Jobs;
+
     /// <summary>
     /// This class is an implementation of <c>IBuffer</c>
     /// </summary>
     public class Listener : IListener
     {
-        #region Fields
-
-        /// <summary>
-        /// Logger
-        /// </summary>
-        private readonly ILogger _logger;
-
-        /// <summary>
-        /// Disposed
-        /// </summary>
-        private bool _disposed;
-
         /// <summary>
         /// Cancellation Token Source
         /// </summary>
         private readonly CancellationTokenSource _cancellationTokenSource;
-
-        /// <summary>
-        /// Best Ask Price per Symbol
-        /// </summary>
-        private readonly ConcurrentDictionary<string, BestPrice> _bestAskPrices;
-
-        /// <summary>
-        /// Best Bid Price per Symbol
-        /// </summary>
-        private readonly ConcurrentDictionary<string, BestPrice> _bestBidPrices;
 
         /// <summary>
         /// A list of all known currencies
@@ -70,18 +47,24 @@ namespace Trape.Cli.Trader.Listener
         private readonly IBinanceSocketClient _binanceSocketClients;
 
         /// <summary>
-        /// Indicates that service is starting
-        /// </summary>
-        private bool _starting;
-
-        /// <summary>
         /// Checks the exchange infos for new assets
         /// </summary>
         private readonly Job _jobExchangeInfo;
 
-        #endregion
+        /// <summary>
+        /// Logger
+        /// </summary>
+        private readonly ILogger _logger;
 
-        #region Constructor
+        /// <summary>
+        /// Disposed
+        /// </summary>
+        private bool _disposed;
+
+        /// <summary>
+        /// Indicates that service is starting
+        /// </summary>
+        private bool _starting;
 
         /// <summary>
         /// Initializes a new instance of the <c>Buffer</c> class
@@ -91,175 +74,136 @@ namespace Trape.Cli.Trader.Listener
         /// <param name="binanceSocketClient">Binance Socket Client</param>
         public Listener(ILogger logger, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
         {
-            #region Argument checks
-
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
-            _binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
+            this._binanceClient = binanceClient ?? throw new ArgumentNullException(paramName: nameof(binanceClient));
 
-            _binanceSocketClients = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
+            this._binanceSocketClients = binanceSocketClient ?? throw new ArgumentNullException(paramName: nameof(binanceSocketClient));
 
-            #endregion
-
-            _logger = logger.ForContext<Listener>();
-            _cancellationTokenSource = new CancellationTokenSource();
-            _disposed = false;
-            _assets = new HashSet<string>();
-            _newAssets = new Subject<BinanceSymbol>();
-            _newExchangeInfo = new Subject<BinanceExchangeInfo>();
-            _starting = true;
-
-            #region Job setup
+            this._logger = logger.ForContext<Listener>();
+            this._cancellationTokenSource = new CancellationTokenSource();
+            this._disposed = false;
+            this._assets = new HashSet<string>();
+            this._newAssets = new Subject<BinanceSymbol>();
+            this._newExchangeInfo = new Subject<BinanceExchangeInfo>();
+            this._starting = true;
 
             // Set up all jobs that query the Database in different
             // intervals to get recent data
-            _jobExchangeInfo = new Job(new TimeSpan(0, 0, 1), async () => await ExchangeInfo().ConfigureAwait(true), _cancellationTokenSource.Token);
-
-            #endregion
+            this._jobExchangeInfo = new Job(new TimeSpan(0, 0, 1), async () => await this.ExchangeInfo().ConfigureAwait(true), this._cancellationTokenSource.Token);
         }
-
-        #endregion
 
         /// <summary>
         /// New Assets
         /// </summary>
-        public IObservable<BinanceSymbol> NewAssets => _newAssets;
+        public IObservable<BinanceSymbol> NewAssets => this._newAssets;
 
         /// <summary>
         /// Exchange Infos
         /// </summary>
-        public IObservable<BinanceExchangeInfo> NewExchangeInfo => _newExchangeInfo;
-
-        #region Jobs
+        public IObservable<BinanceExchangeInfo> NewExchangeInfo => this._newExchangeInfo;
 
         /// <summary>
-        /// Updates Exchange Information
+        /// Starts the listener
         /// </summary>
-        private async Task ExchangeInfo()
-        {
-            var result = await _binanceClient.Spot.System.GetExchangeInfoAsync(_cancellationTokenSource.Token).ConfigureAwait(true);
-
-            if (result.Success)
-            {
-                _newExchangeInfo.OnNext(result.Data);
-                
-                for (int i = 0; i < result.Data.Symbols.Count(); i++)
-                {
-                    var current = result.Data.Symbols.ElementAt(i);
-
-                    if (current.QuoteAsset == "USDT" && !_assets.Contains(current.BaseAsset))
-                    {
-                        _assets.Add(current.BaseAsset);
-
-                        if (!_starting)
-                        {
-                            _logger.Information($"{current.BaseAsset}: New asset detected");
-                            //_newAssets.OnNext(current);
-                        }
-                    }
-                }
-
-                if (_starting)
-                {
-                    _logger.Information($"{result.Data.Symbols.Count()} assets detected");
-                }
-            }
-        }
-
-        #endregion
-
-        #region Methods
-
-        ///// <summary>
-        ///// Returns lowest price in given timespan
-        ///// </summary>
-        ///// <param name="symbol">Symbol</param>
-        ///// <param name="timespan">Interval</param>
-        ///// <returns></returns>
-        ///// <exception cref="ArgumentNullException"/>
-        ///// <exception cref="InvalidOperationException"/>
-        //public decimal GetLowestPrice(string symbol, TimeSpan timespan)
-        //{
-        //    return _currentPrices[symbol].Where(d => d.On >= DateTime.Now.Add(timespan)).Min(s => s.BestBidPrice);
-        //}
-
-        #endregion
-
-        #region Start / Stop
-
-        /// <summary>
-        /// Starts a buffer
-        /// </summary>
-        /// <returns></returns>
         public async Task Start()
         {
-            _logger.Information("Starting Buffer");
-
-            _jobExchangeInfo.Start();
+            this._logger.Information("Starting Buffer");
 
             // Loading exchange information
-            await ExchangeInfo().ConfigureAwait(true);
+            await this.ExchangeInfo().ConfigureAwait(true);
 
-            _logger.Information("Buffer started");
+            this._jobExchangeInfo.Start();
 
-            _starting = false;
+            this._logger.Information("Buffer started");
+
+            this._starting = false;
         }
 
         /// <summary>
-        /// Stops a buffer
+        /// Stops the listener
         /// </summary>
         public void Terminate()
         {
-            _logger.Information("Stopping buffer");
+            this._logger.Information("Stopping buffer");
 
             // Shutdown of timers
-            _jobExchangeInfo.Terminate();
+            this._jobExchangeInfo.Terminate();
 
-            _newAssets.OnCompleted();
-            _newExchangeInfo.OnCompleted();
+            this._newAssets.OnCompleted();
+            this._newExchangeInfo.OnCompleted();
 
             // Signal cancellation for what ever remains
-            _cancellationTokenSource.Cancel();
+            this._cancellationTokenSource.Cancel();
 
             // Close connections
-            _binanceSocketClients.UnsubscribeAll();
-            _logger.Information("Buffer stopped");
+            this._binanceSocketClients.UnsubscribeAll();
+            this._logger.Information("Buffer stopped");
         }
-
-        #endregion
-
-        #region Dispose
 
         /// <summary>
         /// Public implementation of Dispose pattern callable by consumers.
         /// </summary>
         public void Dispose()
         {
-            Dispose(true);
+            this.Dispose(true);
             GC.SuppressFinalize(this);
         }
 
         /// <summary>
         /// Protected implementation of Dispose pattern.
         /// </summary>
-        /// <param name="disposing"></param>
+        /// <param name="disposing">Disposing</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (_disposed)
+            if (this._disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                _jobExchangeInfo.Dispose();
-                _newAssets.Dispose();
-                _cancellationTokenSource.Dispose();
+                this._jobExchangeInfo.Dispose();
+                this._newAssets.Dispose();
+                this._cancellationTokenSource.Dispose();
+                this._newExchangeInfo.Dispose();
             }
 
-            _disposed = true;
+            this._disposed = true;
         }
 
-        #endregion
+        /// <summary>
+        /// Updates Exchange Information
+        /// </summary>
+        private async Task ExchangeInfo()
+        {
+            var result = await this._binanceClient.Spot.System.GetExchangeInfoAsync(this._cancellationTokenSource.Token).ConfigureAwait(true);
+
+            if (result.Success)
+            {
+                this._newExchangeInfo.OnNext(result.Data);
+
+                for (int i = 0; i < result.Data.Symbols.Count(); i++)
+                {
+                    var current = result.Data.Symbols.ElementAt(i);
+
+                    if (current.QuoteAsset == "USDT" && !this._assets.Contains(current.BaseAsset))
+                    {
+                        this._assets.Add(current.BaseAsset);
+
+                        if (!this._starting)
+                        {
+                            this._logger.Information($"{current.BaseAsset}: New asset detected");
+                            ////_newAssets.OnNext(current);
+                        }
+                    }
+                }
+
+                if (this._starting)
+                {
+                    this._logger.Information($"{result.Data.Symbols.Count()} assets detected");
+                }
+            }
+        }
     }
 }

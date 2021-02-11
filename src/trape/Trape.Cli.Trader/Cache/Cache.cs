@@ -1,16 +1,19 @@
-﻿using Binance.Net.Objects.Spot.MarketData;
-using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Trape.Cli.Trader.Cache.Models;
-using Trape.Cli.Trader.Listener;
-
-namespace Trape.Cli.Trader.Cache
+﻿namespace Trape.Cli.Trader.Cache
 {
-    public class Cache : ICache
+    using Binance.Net.Objects.Spot.MarketData;
+    using Serilog;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using Trape.Cli.Trader.Cache.Models;
+    using Trape.Cli.Trader.Listener;
+
+    public class Cache : ICache, IDisposable
     {
-        #region Fields
+        /// <summary>
+        /// Cache for open orders
+        /// </summary>
+        private readonly Dictionary<string, OpenOrder> _openOrders;
 
         /// <summary>
         /// Logger
@@ -28,44 +31,27 @@ namespace Trape.Cli.Trader.Cache
         private bool _disposed;
 
         /// <summary>
-        /// Cache for open orders
+        /// Initializes a new instance of the <see cref="Cache"/> class.
         /// </summary>
-        private readonly Dictionary<string, OpenOrder> _openOrders;
+        /// <param name="logger">Logger</param>
+        /// <param name="listener">Listener</param>
+        public Cache(ILogger logger, IListener listener)
+        {
+            this._logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
+            this._listener = listener ?? throw new ArgumentNullException(nameof(listener));
+
+            this._disposed = false;
+            this._openOrders = new Dictionary<string, OpenOrder>();
+            this.BinanceExchangeInfo = null;
+
+            _ = this._listener.NewExchangeInfo.Subscribe((bei) => this.BinanceExchangeInfo = bei);
+        }
 
         /// <summary>
         /// Exchange Information
         /// </summary>
-        public BinanceExchangeInfo BinanceExchangeInfo { get; private set; }
-
-        #endregion
-
-        #region Constructor
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="Cache"/> class.
-        /// </summary>
-        /// <param name="logger"></param>
-        public Cache(ILogger logger, IListener listener)
-        {
-            #region Argument checks
-
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-            _listener = listener ?? throw new ArgumentNullException(nameof(listener));
-
-            #endregion
-
-            _disposed = false;
-            _openOrders = new Dictionary<string, OpenOrder>();
-
-            _listener.NewExchangeInfo.Subscribe((bei) =>
-            {
-                BinanceExchangeInfo = bei;
-            });
-        }
-
-        #endregion
+        public BinanceExchangeInfo? BinanceExchangeInfo { get; private set; }
 
         /// <summary>
         /// Stores open orders
@@ -73,23 +59,19 @@ namespace Trape.Cli.Trader.Cache
         /// <param name="openOrder">Open order</param>
         public void AddOpenOrder(OpenOrder openOrder)
         {
-            #region Argument checks
-
             if (openOrder == null)
             {
                 return;
             }
 
-            #endregion
-
-            if (_openOrders.ContainsKey(openOrder.Id))
+            if (this._openOrders.ContainsKey(openOrder.Id))
             {
-                _openOrders.Remove(openOrder.Id);
+                this._openOrders.Remove(openOrder.Id);
             }
 
-            _logger.Debug($"Order added {openOrder.Id}");
+            this._logger.Debug($"Order added {openOrder.Id}");
 
-            _openOrders.Add(openOrder.Id, openOrder);
+            this._openOrders.Add(openOrder.Id, openOrder);
         }
 
         /// <summary>
@@ -98,9 +80,9 @@ namespace Trape.Cli.Trader.Cache
         /// <param name="clientOrderId">Id of open order</param>
         public void RemoveOpenOrder(string clientOrderId)
         {
-            _logger.Debug($"Order removed {clientOrderId}");
+            this._logger.Debug($"Order removed {clientOrderId}");
 
-            _openOrders.Remove(clientOrderId);
+            this._openOrders.Remove(clientOrderId);
         }
 
         /// <summary>
@@ -109,13 +91,13 @@ namespace Trape.Cli.Trader.Cache
         public decimal GetOpenOrderValue(string symbol)
         {
             // Remove old orders
-            foreach (var oo in _openOrders.Where(o => o.Value.CreatedOn < DateTime.UtcNow.AddSeconds(-10)).Select(o => o.Key))
+            foreach (var oo in this._openOrders.Where(o => o.Value.CreatedOn < DateTime.UtcNow.AddSeconds(-10)).Select(o => o.Key))
             {
-                _logger.Debug($"Order cleaned {oo}");
-                _openOrders.Remove(oo);
+                this._logger.Debug($"Order cleaned {oo}");
+                this._openOrders.Remove(oo);
             }
 
-            return _openOrders.Where(o => o.Value.Symbol == symbol).Sum(o => o.Value.Quantity);
+            return this._openOrders.Where(o => o.Value.Symbol == symbol).Sum(o => o.Value.Quantity);
         }
 
         /// <summary>
@@ -125,40 +107,34 @@ namespace Trape.Cli.Trader.Cache
         /// <returns></returns>
         public bool HasOpenOrder(string symbol)
         {
-            return _openOrders.Any(o => o.Value.Symbol == symbol);
+            return this._openOrders.Any(o => o.Value.Symbol == symbol);
         }
-
-
-        #region Dispose
 
         /// <summary>
         /// Public implementation of Dispose pattern callable by consumers.
         /// </summary>
         public void Dispose()
         {
-            Dispose(true);
+            this.Dispose(true);
             GC.SuppressFinalize(this);
         }
 
         /// <summary>
         /// Protected implementation of Dispose pattern.
         /// </summary>
-        /// <param name="disposing"></param>
+        /// <param name="disposing">Disposing</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (_disposed)
+            if (this._disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-
             }
 
-            _disposed = true;
+            this._disposed = true;
         }
-
-        #endregion
     }
 }
