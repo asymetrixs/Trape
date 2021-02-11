@@ -46,7 +46,7 @@
         /// <summary>
         /// Cache
         /// </summary>
-        private readonly ICache _cache;
+        private readonly IStore _cache;
 
         /// <summary>
         /// Stock Exchange
@@ -61,7 +61,7 @@
         /// <summary>
         /// Analyst subscriber
         /// </summary>
-        private IDisposable _analystSubscriber;
+        private IDisposable? _analystSubscriber;
 
         /// <summary>
         /// Initializes a new instance of the <c>Broker</c> class.
@@ -70,7 +70,7 @@
         /// <param name="accountant">Accountant</param>
         /// <param name="cache">Cache</param>
         /// <param name="stockExchange">Stock Exchange</param>
-        public Broker(ILogger logger, IAccountant accountant, ICache cache, IStockExchange stockExchange)
+        public Broker(ILogger logger, IAccountant accountant, IStore cache, IStockExchange stockExchange)
         {
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
@@ -84,12 +84,13 @@
             this._cancellationTokenSource = new CancellationTokenSource();
             this._lastRecommendation = new Dictionary<ActionType, DateTime>();
             this._canTrade = new SemaphoreSlim(1, 1);
+            this.Symbol = null;
         }
 
         /// <summary>
         /// Base Asset
         /// </summary>
-        public string BaseAsset => this.Symbol.BaseAsset;
+        public string BaseAsset => this.Symbol is null ? string.Empty : this.Symbol.BaseAsset;
 
         /// <summary>
         /// Last time <c>Broker</c> was active
@@ -99,17 +100,17 @@
         /// <summary>
         /// Symbol
         /// </summary>
-        public BinanceSymbol Symbol { get; private set; }
+        public BinanceSymbol? Symbol { get; private set; }
 
         /// <summary>
         /// Name
         /// </summary>
-        public string Name => this.Symbol.Name;
+        public string Name => this.Symbol is null ? string.Empty : this.Symbol.Name;
 
         /// <summary>
         /// Is Faulty
         /// </summary>
-        public bool IsFaulty { get; private set; }
+        public bool IsFaulty { get; }
 
         /// <summary>
         /// Links this broker to an analyst
@@ -117,7 +118,7 @@
         /// <param name="analyst">Analyst</param>
         public void SubscribeTo(IAnalyst analyst)
         {
-            this._analystSubscriber = analyst.NewRecommendation.Subscribe(this.Trade);
+            this._analystSubscriber = analyst?.NewRecommendation.Subscribe(this.Trade);
         }
 
         /// <summary>
@@ -177,7 +178,7 @@
             {
                 this._cancellationTokenSource.Dispose();
                 this._canTrade.Dispose();
-                this._analystSubscriber.Dispose();
+                this._analystSubscriber?.Dispose();
             }
 
             this._disposed = true;
@@ -205,7 +206,7 @@
             }
 
             // Check if there is an open order
-            if (this._cache.HasOpenOrder(this.Symbol.Name))
+            if (this.Symbol is null || this._cache.HasOpenOrder(this.Symbol.Name))
             {
                 return;
             }
@@ -247,6 +248,11 @@
         /// <returns>Placed order or null if none placed</returns>
         private async Task Buy(Recommendation recommendation)
         {
+            if (this.Symbol is null)
+            {
+                return;
+            }
+
             this._logger.Debug($"{this.BaseAsset}: Preparing to buy");
 
             // Get remaining USDT balance for trading
@@ -295,17 +301,17 @@
             this._logger.Verbose($"{this.BaseAsset} Buy: Checking conditions");
             this._logger.Verbose($"{this.BaseAsset} Buy: {quantity} quantity");
             this._logger.Verbose($"{this.BaseAsset} Buy: {recommendation.Action} recommendation");
-            this._logger.Verbose($"{this.BaseAsset} Buy: {quantity * bestBidPrice >= this.Symbol.MinNotionalFilter.MinNotional} Value {quantity * bestBidPrice} > 0: {quantity * bestBidPrice > 0} and higher than minNotional {this.Symbol.MinNotionalFilter.MinNotional}");
-            this._logger.Verbose($"{this.BaseAsset} Buy: {this.Symbol.PriceFilter.MaxPrice >= bestBidPrice && bestBidPrice >= this.Symbol.PriceFilter.MinPrice} MaxPrice {this.Symbol.PriceFilter.MaxPrice} >= Amount {bestBidPrice} >= MinPrice {this.Symbol.PriceFilter.MinPrice}");
-            this._logger.Verbose($"{this.BaseAsset} Buy: {this.Symbol.LotSizeFilter.MaxQuantity >= quantity && quantity >= this.Symbol.LotSizeFilter.MinQuantity} MaxLOT {this.Symbol.LotSizeFilter.MaxQuantity} > Amount {quantity} > MinLOT {this.Symbol.LotSizeFilter.MinQuantity}");
+            this._logger.Verbose($"{this.BaseAsset} Buy: {quantity * bestBidPrice >= this.Symbol.MinNotionalFilter?.MinNotional} Value {quantity * bestBidPrice} > 0: {quantity * bestBidPrice > 0} and higher than minNotional {this.Symbol.MinNotionalFilter?.MinNotional}");
+            this._logger.Verbose($"{this.BaseAsset} Buy: {this.Symbol.PriceFilter?.MaxPrice >= bestBidPrice && bestBidPrice >= this.Symbol.PriceFilter.MinPrice} MaxPrice {this.Symbol.PriceFilter?.MaxPrice} >= Amount {bestBidPrice} >= MinPrice {this.Symbol.PriceFilter?.MinPrice}");
+            this._logger.Verbose($"{this.BaseAsset} Buy: {this.Symbol.LotSizeFilter?.MaxQuantity >= quantity && quantity >= this.Symbol.LotSizeFilter.MinQuantity} MaxLOT {this.Symbol.LotSizeFilter?.MaxQuantity} > Amount {quantity} > MinLOT {this.Symbol.LotSizeFilter?.MinQuantity}");
 
-            var isLogicValid = quantity * bestBidPrice >= this.Symbol.MinNotionalFilter.MinNotional
+            var isLogicValid = quantity * bestBidPrice >= this.Symbol.MinNotionalFilter?.MinNotional
                                 && bestBidPrice > 0;
 
-            var isPriceRangeValid = bestBidPrice >= this.Symbol.PriceFilter.MinPrice
+            var isPriceRangeValid = bestBidPrice >= this.Symbol.PriceFilter?.MinPrice
                                         && bestBidPrice <= this.Symbol.PriceFilter.MaxPrice;
 
-            var isLOTSizeValid = quantity >= this.Symbol.LotSizeFilter.MinQuantity
+            var isLOTSizeValid = quantity >= this.Symbol.LotSizeFilter?.MinQuantity
                                     && quantity <= this.Symbol.LotSizeFilter.MaxQuantity;
 
             this._logger.Verbose($"{this.BaseAsset} Buy: {isLogicValid}       isLogicValid");
@@ -339,6 +345,11 @@
         /// <returns>Placed order or null if none placed</returns>
         private async Task Sell(Recommendation recommendation)
         {
+            if (this.Symbol is null)
+            {
+                return;
+            }
+
             this._logger.Debug($"{this.BaseAsset}: Preparing to sell");
 
             // Check if asset can be sold
@@ -372,17 +383,17 @@
             this._logger.Verbose($"{this.BaseAsset} Sell:  lastOrder is null");
             this._logger.Verbose($"{this.BaseAsset} Sell: {quantity:0.00000000} quantity");
             this._logger.Verbose($"{this.BaseAsset} Sell: {recommendation.Action} recommendation");
-            this._logger.Verbose($"{this.BaseAsset} Sell: {quantity * bestAskPrice >= this.Symbol.MinNotionalFilter.MinNotional} Value {quantity * bestAskPrice} > 0: {quantity * bestAskPrice > 0} and higher than {this.Symbol.MinNotionalFilter.MinNotional}");
-            this._logger.Verbose($"{this.BaseAsset} Sell: {this.Symbol.PriceFilter.MaxPrice >= bestAskPrice && bestAskPrice >= this.Symbol.PriceFilter.MinPrice} MaxPrice {this.Symbol.PriceFilter.MaxPrice} > Amount {bestAskPrice} > MinPrice {this.Symbol.PriceFilter.MinPrice}");
-            this._logger.Verbose($"{this.BaseAsset} Sell: {this.Symbol.LotSizeFilter.MaxQuantity >= quantity && quantity >= this.Symbol.LotSizeFilter.MinQuantity} MaxLOT {this.Symbol.LotSizeFilter.MaxQuantity} > Amount {quantity} > MinLOT {this.Symbol.LotSizeFilter.MinQuantity}");
+            this._logger.Verbose($"{this.BaseAsset} Sell: {quantity * bestAskPrice >= this.Symbol.MinNotionalFilter?.MinNotional} Value {quantity * bestAskPrice} > 0: {quantity * bestAskPrice > 0} and higher than {this.Symbol.MinNotionalFilter?.MinNotional}");
+            this._logger.Verbose($"{this.BaseAsset} Sell: {this.Symbol.PriceFilter?.MaxPrice >= bestAskPrice && bestAskPrice >= this.Symbol.PriceFilter.MinPrice} MaxPrice {this.Symbol.PriceFilter?.MaxPrice} > Amount {bestAskPrice} > MinPrice {this.Symbol.PriceFilter?.MinPrice}");
+            this._logger.Verbose($"{this.BaseAsset} Sell: {this.Symbol.LotSizeFilter?.MaxQuantity >= quantity && quantity >= this.Symbol.LotSizeFilter.MinQuantity} MaxLOT {this.Symbol.LotSizeFilter?.MaxQuantity} > Amount {quantity} > MinLOT {this.Symbol.LotSizeFilter?.MinQuantity}");
 
-            var isLogicValid = quantity * bestAskPrice >= this.Symbol.MinNotionalFilter.MinNotional
+            var isLogicValid = quantity * bestAskPrice >= this.Symbol.MinNotionalFilter?.MinNotional
                                 && bestAskPrice > 0;
 
-            var isPriceRangeValid = bestAskPrice >= this.Symbol.PriceFilter.MinPrice
+            var isPriceRangeValid = bestAskPrice >= this.Symbol.PriceFilter?.MinPrice
                                     && bestAskPrice <= this.Symbol.PriceFilter.MaxPrice;
 
-            var isLOTSizeValid = quantity >= this.Symbol.LotSizeFilter.MinQuantity
+            var isLOTSizeValid = quantity >= this.Symbol.LotSizeFilter?.MinQuantity
                                     && quantity <= this.Symbol.LotSizeFilter.MaxQuantity;
 
             // Last check that amount is available
@@ -404,7 +415,7 @@
                     OrderResponseType = OrderResponseType.Full,
                     Quantity = quantity,
                     Price = bestAskPrice,
-                    TimeInForce = TimeInForce.ImmediateOrCancel
+                    TimeInForce = TimeInForce.ImmediateOrCancel,
                 }, this._cancellationTokenSource.Token).ConfigureAwait(true);
             }
             else

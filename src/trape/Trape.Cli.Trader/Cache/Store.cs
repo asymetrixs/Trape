@@ -8,7 +8,7 @@
     using Trape.Cli.Trader.Cache.Models;
     using Trape.Cli.Trader.Listener;
 
-    public class Cache : ICache, IDisposable
+    public class Store : IStore, IDisposable
     {
         /// <summary>
         /// Cache for open orders
@@ -31,11 +31,11 @@
         private bool _disposed;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Cache"/> class.
+        /// Initializes a new instance of the <see cref="Store"/> class.
         /// </summary>
         /// <param name="logger">Logger</param>
         /// <param name="listener">Listener</param>
-        public Cache(ILogger logger, IListener listener)
+        public Store(ILogger logger, IListener listener)
         {
             this._logger = logger ?? throw new ArgumentNullException(nameof(logger));
 

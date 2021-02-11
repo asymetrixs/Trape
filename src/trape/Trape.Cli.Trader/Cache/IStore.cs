@@ -2,7 +2,7 @@
 {
     using Trape.Cli.Trader.Cache.Models;
 
-    public interface ICache
+    public interface IStore
     {
         /// <summary>
         /// Removes an open order

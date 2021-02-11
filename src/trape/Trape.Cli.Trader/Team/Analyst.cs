@@ -58,6 +58,11 @@
         private readonly ConcurrentQueue<CurrentBookPrice> _currentPrices;
 
         /// <summary>
+        /// Thresholds
+        /// </summary>
+        private readonly Thresholds _thresholds;
+
+        /// <summary>
         /// Best bid price
         /// </summary>
         private readonly BestPrice _bestBidPrice;
@@ -71,11 +76,6 @@
         /// Subscriptions
         /// </summary>
         private UpdateSubscription? _subscription;
-
-        /// <summary>
-        /// Thresholds
-        /// </summary>
-        private Thresholds _thresholds;
 
         /// <summary>
         /// Disposed
@@ -241,6 +241,7 @@
                 this._newRecommendation.Dispose();
                 this._bestAskPrice.Dispose();
                 this._bestBidPrice.Dispose();
+                this._thresholds.Dispose();
             }
 
             this._disposed = true;

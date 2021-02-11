@@ -47,7 +47,20 @@
         /// <param name="cancellationToken">Cancellation Token</param>
         public Job(TimeSpan executionInterval, Action action, CancellationToken cancellationToken = default)
         {
-            this.Setup(executionInterval, action, cancellationToken);
+            this._action = action ?? throw new ArgumentNullException(paramName: nameof(action));
+
+            this._disposed = false;
+            this.ExecutionInterval = executionInterval;
+            this._cancellationToken = cancellationToken;
+            this._synchronizer = new SemaphoreSlim(1, 1);
+            this._running = new SemaphoreSlim(1, 1);
+
+            this._timer = new System.Timers.Timer()
+            {
+                AutoReset = true,
+                Interval = executionInterval.TotalMilliseconds,
+            };
+            this._timer.Elapsed += this.Timer_Elapsed;
         }
 
         /// <summary>
@@ -166,30 +179,6 @@
             {
                 this._synchronizer.Release();
             }
-        }
-
-        /// <summary>
-        /// Actual setting up
-        /// </summary>
-        /// <param name="executionInterval">Execution Interval</param>
-        /// <param name="action">Action</param>
-        /// <param name="cancellationToken">Cancellation Token</param>
-        private void Setup(TimeSpan executionInterval, Action action, CancellationToken cancellationToken = default)
-        {
-            this._action = action ?? throw new ArgumentNullException(paramName: nameof(action));
-
-            this._disposed = false;
-            this.ExecutionInterval = executionInterval;
-            this._cancellationToken = cancellationToken;
-            this._synchronizer = new SemaphoreSlim(1, 1);
-            this._running = new SemaphoreSlim(1, 1);
-
-            this._timer = new System.Timers.Timer()
-            {
-                AutoReset = true,
-                Interval = executionInterval.TotalMilliseconds
-            };
-            this._timer.Elapsed += this.Timer_Elapsed;
         }
     }
 }

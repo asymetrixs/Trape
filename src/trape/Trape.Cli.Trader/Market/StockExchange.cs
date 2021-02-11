@@ -24,7 +24,7 @@
         /// <summary>
         /// Cache
         /// </summary>
-        private readonly ICache _cache;
+        private readonly IStore _cache;
 
         /// <summary>
         /// Orders
@@ -41,7 +41,7 @@
         /// </summary>
         /// <param name="logger">Logger</param>
         /// <param name="cache">Cache</param>
-        public StockExchange(ILogger logger, ICache cache)
+        public StockExchange(ILogger logger, IStore cache)
         {
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
@@ -72,7 +72,7 @@
             // Block quantity until order is processed
             this._cache.AddOpenOrder(new OpenOrder(clientOrder.Id, clientOrder.Symbol, clientOrder.Quantity));
 
-            WebCallResult<BinancePlacedOrder> placedOrder;
+            ////WebCallResult<BinancePlacedOrder> placedOrder;
 
             // 2 second to complete
             using var cancellationTokenSource = new CancellationTokenSource(2000);

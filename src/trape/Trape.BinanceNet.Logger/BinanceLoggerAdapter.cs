@@ -6,7 +6,7 @@
     using System.IO;
     using System.Text;
 
-    public class Logger : TextWriter
+    public class BinanceLoggerAdapter : TextWriter
     {
         /// <summary>
         /// Instance of SeriLog
@@ -17,7 +17,7 @@
         /// Initializes a new instance of the <c>Logger</c> class.
         /// </summary>
         /// <param name="logger">Logger</param>
-        public Logger(ILogger logger)
+        public BinanceLoggerAdapter(ILogger logger)
         {
             _ = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -33,7 +33,7 @@
         /// Overriding method used by Binance.NET
         /// </summary>
         /// <param name="value">Value</param>
-        public override void WriteLine(string value)
+        public override void WriteLine(string? value)
         {
             if (value == null)
             {

@@ -13,22 +13,27 @@
     /// Once the price declines, the class checks if it falls below a step it has already passed when rising.
     /// If this is the case, then the broker is supposed to sell the asset.
     /// </summary>
-    public class Thresholds
+    public class Thresholds : IDisposable
     {
+        /// <summary>
+        /// Hit synchronization
+        /// </summary>
+        private readonly SemaphoreSlim _hitSync;
+
         /// <summary>
         /// Thresholds
         /// </summary>
         private IOrderedEnumerable<Barrier> _thresholds;
 
         /// <summary>
+        /// Disposed
+        /// </summary>
+        private bool _disposed;
+
+        /// <summary>
         /// Threshold count
         /// </summary>
         private int _thresholdsCount;
-
-        /// <summary>
-        /// Hit synchronization
-        /// </summary>
-        private SemaphoreSlim _hitSync;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Thresholds"/> class.
@@ -38,6 +43,7 @@
             this._hitSync = new SemaphoreSlim(1, 1);
             this._thresholds = Array.Empty<Barrier>().OrderBy(a => a);
             this._thresholdsCount = 0;
+            this._disposed = false;
         }
 
         /// <summary>
@@ -84,6 +90,34 @@
         }
 
         /// <summary>
+        /// Public implementation of Dispose pattern callable by consumers.
+        /// </summary>
+        public void Dispose()
+        {
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Protected implementation of Dispose pattern.
+        /// </summary>
+        /// <param name="disposing">Disposing</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (this._disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                this._hitSync.Dispose();
+            }
+
+            this._disposed = true;
+        }
+
+        /// <summary>
         /// Initializes the threshold
         /// </summary>
         /// <param name="initialPrice">Initial Price</param>
@@ -92,7 +126,7 @@
             var generatedList = new List<Barrier>(152)
             {
                 // Add 5% gain
-                new Barrier() { Threshold = initialPrice * 1.05M }
+                new Barrier() { Threshold = initialPrice * 1.05M },
             };
 
             // Start with 10%, end at 1500% gains

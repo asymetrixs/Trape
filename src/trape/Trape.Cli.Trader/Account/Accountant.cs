@@ -47,7 +47,7 @@
         /// <summary>
         /// Cache
         /// </summary>
-        private readonly ICache _cache;
+        private readonly IStore _cache;
 
         /// <summary>
         /// Cancellation Token Source
@@ -96,7 +96,7 @@
         /// <param name="cache">Cache</param>
         /// <param name="binanceClient">Binance Client</param>
         /// <param name="binanceSocketClient">Binance Socket Client</param>
-        public Accountant(ILogger logger, ICache cache, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
+        public Accountant(ILogger logger, IStore cache, IBinanceClient binanceClient, IBinanceSocketClient binanceSocketClient)
         {
             _ = logger ?? throw new ArgumentNullException(paramName: nameof(logger));
 
@@ -138,8 +138,8 @@
         /// <summary>
         /// Returns the latest account information
         /// </summary>
-        /// <returns></returns>
-        public async Task<BinanceAccountInfo> GetAccountInfo()
+        /// <returns>Account info or null</returns>
+        public async Task<BinanceAccountInfo?> GetAccountInfo()
         {
             var bac = this._binanceAccountInfo;
 

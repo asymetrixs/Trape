@@ -50,9 +50,8 @@
             // Find the interval
             foreach (var attr in job.GetType().GetCustomAttributes(true))
             {
-                if (attr is JobAttribute)
+                if (attr is JobAttribute jobAttr)
                 {
-                    var jobAttr = attr as JobAttribute;
                     timeInterval = jobAttr.Interval;
                 }
             }

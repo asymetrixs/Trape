@@ -135,14 +135,14 @@
             Container.Register<IBroker, Broker>(Lifestyle.Transient);
             Container.Register<IAnalyst, Analyst>(Lifestyle.Transient);
 
-            Registration registration = Container.GetRegistration(typeof(IBroker)).Registration;
-            registration.SuppressDiagnosticWarning(DiagnosticType.DisposableTransientComponent, "Application takes care of disposal.");
-            registration = Container.GetRegistration(typeof(IAnalyst)).Registration;
-            registration.SuppressDiagnosticWarning(DiagnosticType.DisposableTransientComponent, "Application takes care of disposal.");
+            var registration = Container.GetRegistration(typeof(IBroker))?.Registration;
+            registration?.SuppressDiagnosticWarning(DiagnosticType.DisposableTransientComponent, "Application takes care of disposal.");
+            registration = Container.GetRegistration(typeof(IAnalyst))?.Registration;
+            registration?.SuppressDiagnosticWarning(DiagnosticType.DisposableTransientComponent, "Application takes care of disposal.");
 
             Container.Register<IStockExchange, StockExchange>(Lifestyle.Singleton);
             Container.Register<IListener, Listener.Listener>(Lifestyle.Singleton);
-            Container.Register<ICache, Trader.Cache.Cache>(Lifestyle.Singleton);
+            Container.Register<IStore, Trader.Cache.Store>(Lifestyle.Singleton);
             Container.Register<IAccountant, Accountant>(Lifestyle.Singleton);
             Container.Register<IFeeWatchdog, FeeWatchdog>(Lifestyle.Singleton);
             Container.Register<ITradingTeam, TradingTeam>(Lifestyle.Singleton);
@@ -157,11 +157,11 @@
             {
                 ApiCredentials = apiCredentials,
                 LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Debug,
-                LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) },
+                LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new BinanceLoggerAdapter(Log.Logger) },
                 AutoTimestamp = true,
                 AutoTimestampRecalculationInterval = new TimeSpan(0, 5, 0),
                 TradeRulesBehaviour = TradeRulesBehaviour.AutoComply,
-                TradeRulesUpdateInterval = new TimeSpan(0, 5, 0)
+                TradeRulesUpdateInterval = new TimeSpan(0, 5, 0),
             });
 
             Container.RegisterInstance<IBinanceClient>(_binanceClient);
@@ -172,7 +172,7 @@
                 ApiCredentials = apiCredentials,
                 AutoReconnect = true,
                 LogVerbosity = CryptoExchange.Net.Logging.LogVerbosity.Info,
-                LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new Logger(Log.Logger) }
+                LogWriters = new System.Collections.Generic.List<System.IO.TextWriter> { new BinanceLoggerAdapter(Log.Logger) },
             });
 
             Container.RegisterInstance<IBinanceSocketClient>(_binanceSocketClient);

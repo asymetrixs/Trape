@@ -84,7 +84,7 @@
         {
             this._logger.Information("Starting Fee Watchdog");
 
-            this._stockExchangeSubscriber = this._stockExchange.NewOrder.Subscribe(async (bpo) => await this.CheckBNB().ConfigureAwait(false));
+            this._stockExchangeSubscriber = this._stockExchange.NewOrder.Subscribe(async (_) => await this.CheckBNB().ConfigureAwait(false));
 
             this._logger.Information("Fee Watchdog started");
         }
@@ -171,7 +171,7 @@
                     OrderResponseType = OrderResponseType.Full,
                     Quantity = buy,
                     Price = currentPrice,
-                    TimeInForce = TimeInForce.ImmediateOrCancel
+                    TimeInForce = TimeInForce.ImmediateOrCancel,
                 }, this._cancellationTokenSource.Token).ConfigureAwait(true);
 
                 this._logger.Information($"Issued buy of {buy} for {currentPrice} USDT each");
