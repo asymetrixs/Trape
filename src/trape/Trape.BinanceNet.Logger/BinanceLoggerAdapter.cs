@@ -54,6 +54,12 @@
 
                 var nativeLogType = (LogVerbosity)Enum.Parse(typeof(LogVerbosity), logType);
 
+                // Reclassify
+                if (message.Contains("Trade rules updated", StringComparison.InvariantCulture))
+                {
+                    nativeLogType = LogVerbosity.Debug;
+                }
+
                 switch (nativeLogType)
                 {
                     case LogVerbosity.Debug:
