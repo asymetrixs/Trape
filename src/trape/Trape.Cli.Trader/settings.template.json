@@ -3,9 +3,6 @@
     "apikey": "<apikey>",
     "secretkey": "<secretkey>"
   },
-  "ConnectionStrings": {
-    "trape-db": "Server=<server>;Port=<port>;uid=<uid>;pwd=<pwd>;database=<database>;enlist=true;Pooling=true;SSL Mode=Require;Trust Server Certificate=true"
-  },
   "Serilog": {
     "MinimumLevel": "Information",
     "LogFileLocation": "/var/log/trape/trader-.log",
